@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://hotel-jireh.vercel.app/</loc>
+    <lastmod>2026-06-22</lastmod>
+    <image:image>
+      <image:loc>https://hotel-jireh.vercel.app/images/facade-day.jpg</image:loc>
+      <image:title>Hotel Jireh Bacalar — Fachada principal de día</image:title>
+      <image:caption>Vista exterior del Hotel Jireh en Bacalar, Quintana Roo</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hotel-jireh.vercel.app/images/facade-night.jpg</image:loc>
+      <image:title>Hotel Jireh Bacalar — Fachada de noche</image:title>
+      <image:caption>Entrada iluminada del Hotel Jireh Bacalar</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hotel-jireh.vercel.app/images/pool.jpg</image:loc>
+      <image:title>Alberca al aire libre — Hotel Jireh Bacalar</image:title>
+      <image:caption>Alberca exterior con área de palapa en Hotel Jireh</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hotel-jireh.vercel.app/images/palapa.jpg</image:loc>
+      <image:title>Palapa y área de mesas — Hotel Jireh Bacalar</image:title>
+      <image:caption>Área común con palapa y mesas del Hotel Jireh</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hotel-jireh.vercel.app/images/room-simple.jpg</image:loc>
+      <image:title>Habitación Sencilla $600/noche — Hotel Jireh Bacalar</image:title>
+      <image:caption>Habitación sencilla con cama matrimonial, A/C y TV por cable</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hotel-jireh.vercel.app/images/room-king.jpg</image:loc>
+      <image:title>Habitación King Size $850/noche — Hotel Jireh Bacalar</image:title>
+      <image:caption>Habitación king size amplia con A/C y TV por cable</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hotel-jireh.vercel.app/images/logo.jpg</image:loc>
+      <image:title>Logo Hotel Jireh Bacalar</image:title>
+    </image:image>
+  </url>
+</urlset>

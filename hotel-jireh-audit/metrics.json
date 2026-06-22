@@ -1,0 +1,839 @@
+{
+  "desktop": {
+    "title": "Hotel Jireh Bacalar | Hotel Familiar Económico cerca de la Laguna de los 7 Colores",
+    "url": "https://hotel-jireh.vercel.app/",
+    "h1_text": "Hospedaje familiar, sencillo y a tu alcance en Bacalar",
+    "h1_bounding_box": {
+      "x": 400,
+      "y": 326.390625,
+      "width": 567,
+      "height": 171.046875
+    },
+    "cta_whatsapp_links": [
+      {
+        "text": "Reservar por WhatsApp",
+        "box": {
+          "x": 1276.828125,
+          "y": 12,
+          "width": 243.171875,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Reservar por WhatsApp",
+        "box": {
+          "x": 400,
+          "y": 662,
+          "width": 243.171875,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 447,
+          "y": 3348.125,
+          "width": 295.328125,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 812.328125,
+          "y": 3348.125,
+          "width": 295.328125,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 1177.65625,
+          "y": 3348.125,
+          "width": 295.34375,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "WhatsApp: 983 101 9716",
+        "box": {
+          "x": 725.5625,
+          "y": 5720.3125,
+          "width": 254.578125,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "💬",
+        "box": {
+          "x": 1840,
+          "y": 1000,
+          "width": 58,
+          "height": 58
+        },
+        "visible": true
+      }
+    ],
+    "cta_count": 7,
+    "hero_bounding_box": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 72.546875
+    },
+    "nav_visible": true,
+    "nav_bounding_box": {
+      "x": 630.609375,
+      "y": 22.96875,
+      "width": 569.15625,
+      "height": 25.59375
+    },
+    "total_images": 11,
+    "broken_images": [],
+    "has_horizontal_scroll": false,
+    "fonts": [],
+    "sections": [
+      {
+        "id": null,
+        "class": "hero"
+      },
+      {
+        "id": "galeria",
+        "class": "gallery-band"
+      },
+      {
+        "id": "servicios",
+        "class": null
+      },
+      {
+        "id": "habitaciones",
+        "class": "rooms-band"
+      },
+      {
+        "id": "ubicacion",
+        "class": null
+      },
+      {
+        "id": "preguntas",
+        "class": null
+      },
+      {
+        "id": null,
+        "class": null
+      }
+    ],
+    "small_touch_targets": [
+      {
+        "text": "Habitaciones",
+        "href": "#habitaciones",
+        "width": 98.6,
+        "height": 18
+      },
+      {
+        "text": "Galería",
+        "href": "#galeria",
+        "width": 54.4,
+        "height": 18
+      },
+      {
+        "text": "Servicios",
+        "href": "#servicios",
+        "width": 68.2,
+        "height": 18
+      },
+      {
+        "text": "Ubicación",
+        "href": "#ubicacion",
+        "width": 74.1,
+        "height": 18
+      },
+      {
+        "text": "Preguntas frecuentes",
+        "href": "#preguntas",
+        "width": 161.8,
+        "height": 18
+      },
+      {
+        "text": "983 101 9716",
+        "href": "tel:+529831019716",
+        "width": 98.5,
+        "height": 16
+      },
+      {
+        "text": "hoteljireh.bacalar@gmail.com",
+        "href": "mailto:hoteljireh.bacalar@gmail.com",
+        "width": 211.0,
+        "height": 16
+      },
+      {
+        "text": "Facebook",
+        "href": "https://www.facebook.com/hoteljireh.bacalar/",
+        "width": 66.2,
+        "height": 16
+      }
+    ],
+    "body_bg_color": "rgb(255, 248, 234)",
+    "has_faq": true,
+    "has_gallery": true,
+    "above_fold": {
+      "h1_above_fold": true,
+      "h1_y_top": 326.390625,
+      "cta_above_fold": true,
+      "cta_positions": [
+        {
+          "y": 12,
+          "above_fold": true
+        },
+        {
+          "y": 662,
+          "above_fold": true
+        },
+        {
+          "y": 3348.125,
+          "above_fold": false
+        },
+        {
+          "y": 3348.125,
+          "above_fold": false
+        },
+        {
+          "y": 3348.125,
+          "above_fold": false
+        }
+      ],
+      "nav_above_fold": true
+    },
+    "viewport": {
+      "name": "desktop",
+      "width": 1920,
+      "height": 1080,
+      "device_scale_factor": 1
+    }
+  },
+  "laptop": {
+    "title": "Hotel Jireh Bacalar | Hotel Familiar Económico cerca de la Laguna de los 7 Colores",
+    "url": "https://hotel-jireh.vercel.app/",
+    "h1_text": "Hospedaje familiar, sencillo y a tu alcance en Bacalar",
+    "h1_bounding_box": {
+      "x": 80,
+      "y": 326.390625,
+      "width": 567,
+      "height": 171.046875
+    },
+    "cta_whatsapp_links": [
+      {
+        "text": "Reservar por WhatsApp",
+        "box": {
+          "x": 956.828125,
+          "y": 12,
+          "width": 243.171875,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Reservar por WhatsApp",
+        "box": {
+          "x": 80,
+          "y": 662,
+          "width": 243.171875,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 127,
+          "y": 3348.125,
+          "width": 295.328125,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 492.328125,
+          "y": 3348.125,
+          "width": 295.328125,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 857.65625,
+          "y": 3348.125,
+          "width": 295.34375,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "WhatsApp: 983 101 9716",
+        "box": {
+          "x": 405.5625,
+          "y": 5720.3125,
+          "width": 254.578125,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "💬",
+        "box": {
+          "x": 1200,
+          "y": 720,
+          "width": 58,
+          "height": 58
+        },
+        "visible": true
+      }
+    ],
+    "cta_count": 7,
+    "hero_bounding_box": {
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": 72.546875
+    },
+    "nav_visible": true,
+    "nav_bounding_box": {
+      "x": 310.609375,
+      "y": 22.96875,
+      "width": 569.15625,
+      "height": 25.59375
+    },
+    "total_images": 11,
+    "broken_images": [],
+    "has_horizontal_scroll": false,
+    "fonts": [],
+    "sections": [
+      {
+        "id": null,
+        "class": "hero"
+      },
+      {
+        "id": "galeria",
+        "class": "gallery-band"
+      },
+      {
+        "id": "servicios",
+        "class": null
+      },
+      {
+        "id": "habitaciones",
+        "class": "rooms-band"
+      },
+      {
+        "id": "ubicacion",
+        "class": null
+      },
+      {
+        "id": "preguntas",
+        "class": null
+      },
+      {
+        "id": null,
+        "class": null
+      }
+    ],
+    "small_touch_targets": [
+      {
+        "text": "Habitaciones",
+        "href": "#habitaciones",
+        "width": 98.6,
+        "height": 18
+      },
+      {
+        "text": "Galería",
+        "href": "#galeria",
+        "width": 54.4,
+        "height": 18
+      },
+      {
+        "text": "Servicios",
+        "href": "#servicios",
+        "width": 68.2,
+        "height": 18
+      },
+      {
+        "text": "Ubicación",
+        "href": "#ubicacion",
+        "width": 74.1,
+        "height": 18
+      },
+      {
+        "text": "Preguntas frecuentes",
+        "href": "#preguntas",
+        "width": 161.8,
+        "height": 18
+      },
+      {
+        "text": "983 101 9716",
+        "href": "tel:+529831019716",
+        "width": 98.5,
+        "height": 16
+      },
+      {
+        "text": "hoteljireh.bacalar@gmail.com",
+        "href": "mailto:hoteljireh.bacalar@gmail.com",
+        "width": 211.0,
+        "height": 16
+      },
+      {
+        "text": "Facebook",
+        "href": "https://www.facebook.com/hoteljireh.bacalar/",
+        "width": 66.2,
+        "height": 16
+      }
+    ],
+    "body_bg_color": "rgb(255, 248, 234)",
+    "has_faq": true,
+    "has_gallery": true,
+    "above_fold": {
+      "h1_above_fold": true,
+      "h1_y_top": 326.390625,
+      "cta_above_fold": true,
+      "cta_positions": [
+        {
+          "y": 12,
+          "above_fold": true
+        },
+        {
+          "y": 662,
+          "above_fold": true
+        },
+        {
+          "y": 3348.125,
+          "above_fold": false
+        },
+        {
+          "y": 3348.125,
+          "above_fold": false
+        },
+        {
+          "y": 3348.125,
+          "above_fold": false
+        }
+      ],
+      "nav_above_fold": true
+    },
+    "viewport": {
+      "name": "laptop",
+      "width": 1280,
+      "height": 800,
+      "device_scale_factor": 1
+    }
+  },
+  "tablet": {
+    "title": "Hotel Jireh Bacalar | Hotel Familiar Económico cerca de la Laguna de los 7 Colores",
+    "url": "https://hotel-jireh.vercel.app/",
+    "h1_text": "Hospedaje familiar, sencillo y a tu alcance en Bacalar",
+    "h1_bounding_box": {
+      "x": 0,
+      "y": 271.09375,
+      "width": 768,
+      "height": 37.3125
+    },
+    "cta_whatsapp_links": [
+      {
+        "text": "Reservar por WhatsApp",
+        "box": {
+          "x": 590.515625,
+          "y": 12,
+          "width": 177.484375,
+          "height": 71.09375
+        },
+        "visible": true
+      },
+      {
+        "text": "Reservar por WhatsApp",
+        "box": {
+          "x": 0,
+          "y": 472.96875,
+          "width": 243.171875,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 47,
+          "y": 4231.34375,
+          "width": 302,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 419,
+          "y": 4231.34375,
+          "width": 302,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 47,
+          "y": 4856.265625,
+          "width": 302,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "WhatsApp: 983 101 9716",
+        "box": {
+          "x": 149.5625,
+          "y": 7141.8125,
+          "width": 254.578125,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "💬",
+        "box": {
+          "x": 688,
+          "y": 944,
+          "width": 58,
+          "height": 58
+        },
+        "visible": true
+      }
+    ],
+    "cta_count": 7,
+    "hero_bounding_box": {
+      "x": 0,
+      "y": 0,
+      "width": 768,
+      "height": 96.09375
+    },
+    "nav_visible": true,
+    "nav_bounding_box": {
+      "x": 102.40625,
+      "y": 21.953125,
+      "width": 488.109375,
+      "height": 51.1875
+    },
+    "total_images": 11,
+    "broken_images": [],
+    "has_horizontal_scroll": false,
+    "fonts": [],
+    "sections": [
+      {
+        "id": null,
+        "class": "hero"
+      },
+      {
+        "id": "galeria",
+        "class": "gallery-band"
+      },
+      {
+        "id": "servicios",
+        "class": null
+      },
+      {
+        "id": "habitaciones",
+        "class": "rooms-band"
+      },
+      {
+        "id": "ubicacion",
+        "class": null
+      },
+      {
+        "id": "preguntas",
+        "class": null
+      },
+      {
+        "id": null,
+        "class": null
+      }
+    ],
+    "small_touch_targets": [
+      {
+        "text": "Habitaciones",
+        "href": "#habitaciones",
+        "width": 98.6,
+        "height": 18
+      },
+      {
+        "text": "Galería",
+        "href": "#galeria",
+        "width": 54.4,
+        "height": 18
+      },
+      {
+        "text": "Servicios",
+        "href": "#servicios",
+        "width": 68.2,
+        "height": 18
+      },
+      {
+        "text": "Ubicación",
+        "href": "#ubicacion",
+        "width": 74.1,
+        "height": 18
+      },
+      {
+        "text": "Preguntas frecuentes",
+        "href": "#preguntas",
+        "width": 80.8,
+        "height": 43.6
+      },
+      {
+        "text": "983 101 9716",
+        "href": "tel:+529831019716",
+        "width": 98.5,
+        "height": 16
+      },
+      {
+        "text": "hoteljireh.bacalar@gmail.com",
+        "href": "mailto:hoteljireh.bacalar@gmail.com",
+        "width": 211.0,
+        "height": 16
+      },
+      {
+        "text": "Facebook",
+        "href": "https://www.facebook.com/hoteljireh.bacalar/",
+        "width": 66.2,
+        "height": 16
+      }
+    ],
+    "body_bg_color": "rgb(255, 248, 234)",
+    "has_faq": true,
+    "has_gallery": true,
+    "above_fold": {
+      "h1_above_fold": true,
+      "h1_y_top": 271.09375,
+      "cta_above_fold": true,
+      "cta_positions": [
+        {
+          "y": 12,
+          "above_fold": true
+        },
+        {
+          "y": 472.96875,
+          "above_fold": true
+        },
+        {
+          "y": 4231.34375,
+          "above_fold": false
+        },
+        {
+          "y": 4231.34375,
+          "above_fold": false
+        },
+        {
+          "y": 4856.265625,
+          "above_fold": false
+        }
+      ],
+      "nav_above_fold": true
+    },
+    "viewport": {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024,
+      "device_scale_factor": 2
+    }
+  },
+  "mobile": {
+    "title": "Hotel Jireh Bacalar | Hotel Familiar Económico cerca de la Laguna de los 7 Colores",
+    "url": "https://hotel-jireh.vercel.app/",
+    "h1_text": "Hospedaje familiar, sencillo y a tu alcance en Bacalar",
+    "h1_bounding_box": {
+      "x": 0,
+      "y": 271.09375,
+      "width": 375,
+      "height": 108.84375
+    },
+    "cta_whatsapp_links": [
+      {
+        "text": "Reservar por WhatsApp",
+        "box": {
+          "x": 144.03125,
+          "y": 12,
+          "width": 230.96875,
+          "height": 71.09375
+        },
+        "visible": true
+      },
+      {
+        "text": "Reservar por WhatsApp",
+        "box": {
+          "x": 0,
+          "y": 572.640625,
+          "width": 243.171875,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 47,
+          "y": 5262.015625,
+          "width": 281,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 47,
+          "y": 5871.1875,
+          "width": 281,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "box": {
+          "x": 47,
+          "y": 6480.359375,
+          "width": 281,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "WhatsApp: 983 101 9716",
+        "box": {
+          "x": 60.203125,
+          "y": 9392.65625,
+          "width": 254.578125,
+          "height": 47.546875
+        },
+        "visible": true
+      },
+      {
+        "text": "💬",
+        "box": {
+          "x": 295,
+          "y": 732,
+          "width": 58,
+          "height": 58
+        },
+        "visible": true
+      }
+    ],
+    "cta_count": 7,
+    "hero_bounding_box": {
+      "x": 0,
+      "y": 0,
+      "width": 375,
+      "height": 96.09375
+    },
+    "nav_visible": false,
+    "nav_bounding_box": null,
+    "total_images": 11,
+    "broken_images": [],
+    "has_horizontal_scroll": false,
+    "fonts": [],
+    "sections": [
+      {
+        "id": null,
+        "class": "hero"
+      },
+      {
+        "id": "galeria",
+        "class": "gallery-band"
+      },
+      {
+        "id": "servicios",
+        "class": null
+      },
+      {
+        "id": "habitaciones",
+        "class": "rooms-band"
+      },
+      {
+        "id": "ubicacion",
+        "class": null
+      },
+      {
+        "id": "preguntas",
+        "class": null
+      },
+      {
+        "id": null,
+        "class": null
+      }
+    ],
+    "small_touch_targets": [
+      {
+        "text": "983 101 9716",
+        "href": "tel:+529831019716",
+        "width": 98.5,
+        "height": 16
+      },
+      {
+        "text": "hoteljireh.bacalar@gmail.com",
+        "href": "mailto:hoteljireh.bacalar@gmail.com",
+        "width": 211.0,
+        "height": 16
+      },
+      {
+        "text": "Facebook",
+        "href": "https://www.facebook.com/hoteljireh.bacalar/",
+        "width": 66.2,
+        "height": 16
+      }
+    ],
+    "body_bg_color": "rgb(255, 248, 234)",
+    "has_faq": true,
+    "has_gallery": true,
+    "above_fold": {
+      "h1_above_fold": true,
+      "h1_y_top": 271.09375,
+      "cta_above_fold": true,
+      "cta_positions": [
+        {
+          "y": 12,
+          "above_fold": true
+        },
+        {
+          "y": 572.640625,
+          "above_fold": true
+        },
+        {
+          "y": 5262.015625,
+          "above_fold": false
+        },
+        {
+          "y": 5871.1875,
+          "above_fold": false
+        },
+        {
+          "y": 6480.359375,
+          "above_fold": false
+        }
+      ],
+      "nav_above_fold": false
+    },
+    "viewport": {
+      "name": "mobile",
+      "width": 375,
+      "height": 812,
+      "device_scale_factor": 3
+    }
+  }
+}

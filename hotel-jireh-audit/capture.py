@@ -200,7 +200,7 @@ async def main():
     results = {}
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(headless=True, args=["--ignore-certificate-errors"])
 
         for vp in VIEWPORTS:
             name = vp["name"]
@@ -209,6 +209,7 @@ async def main():
             context = await browser.new_context(
                 viewport={"width": vp["width"], "height": vp["height"]},
                 device_scale_factor=vp["device_scale_factor"],
+                ignore_https_errors=True,
                 user_agent=(
                     "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) "
                     "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"

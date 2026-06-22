@@ -1,0 +1,124 @@
+{
+  "desktop": {
+    "title": "Hotel Jireh Bacalar | Hotel Familiar Económico cerca de la Laguna de los 7 Colores",
+    "h1_text": "Hospedaje familiar, sencillo y a tu alcance en Bacalar",
+    "h1_font_family": "\"Fraunces Display\", Georgia, \"Times New Roman\", serif",
+    "h1_above_fold": true,
+    "hero_selector_matched": "section.hero",
+    "hero_bg_color": "rgb(255, 248, 234)",
+    "accent_bars": [],
+    "body_bg": "rgb(255, 248, 234)",
+    "fonts": [],
+    "section_eyebrows_visible": [
+      "BACALAR · QUINTANA ROO",
+      "Entrada principal — Hotel Jireh",
+      "CONÓCENOS",
+      "LO QUE INCLUYE TU ESTANCIA",
+      "HABITACIONES Y TARIFAS",
+      "UBICACIÓN",
+      "PREGUNTAS FRECUENTES"
+    ],
+    "cta_whatsapp": [
+      {
+        "text": "Reservar por WhatsApp",
+        "above_fold": true,
+        "y": 12
+      },
+      {
+        "text": "Reservar por WhatsApp",
+        "above_fold": true,
+        "y": 662
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "above_fold": false,
+        "y": 3348.125
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "above_fold": false,
+        "y": 3348.125
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "above_fold": false,
+        "y": 3348.125
+      },
+      {
+        "text": "WhatsApp: 983 101 9716",
+        "above_fold": false,
+        "y": 5720.3125
+      },
+      {
+        "text": "💬",
+        "above_fold": true,
+        "y": 820
+      }
+    ],
+    "cta_above_fold": true,
+    "horizontal_scroll": false,
+    "broken_images": [],
+    "total_images": 11
+  },
+  "mobile": {
+    "title": "Hotel Jireh Bacalar | Hotel Familiar Económico cerca de la Laguna de los 7 Colores",
+    "h1_text": "Hospedaje familiar, sencillo y a tu alcance en Bacalar",
+    "h1_font_family": "\"Fraunces Display\", Georgia, \"Times New Roman\", serif",
+    "h1_above_fold": true,
+    "hero_selector_matched": "section.hero",
+    "hero_bg_color": "rgb(255, 248, 234)",
+    "accent_bars": [],
+    "body_bg": "rgb(255, 248, 234)",
+    "fonts": [],
+    "section_eyebrows_visible": [
+      "BACALAR · QUINTANA ROO",
+      "Entrada principal — Hotel Jireh",
+      "CONÓCENOS",
+      "LO QUE INCLUYE TU ESTANCIA",
+      "HABITACIONES Y TARIFAS",
+      "UBICACIÓN",
+      "PREGUNTAS FRECUENTES"
+    ],
+    "cta_whatsapp": [
+      {
+        "text": "Reservar por WhatsApp",
+        "above_fold": true,
+        "y": 12
+      },
+      {
+        "text": "Reservar por WhatsApp",
+        "above_fold": true,
+        "y": 536.359375
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "above_fold": false,
+        "y": 5206.09375
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "above_fold": false,
+        "y": 5826.515625
+      },
+      {
+        "text": "Consultar disponibilidad",
+        "above_fold": false,
+        "y": 6446.9375
+      },
+      {
+        "text": "WhatsApp: 983 101 9716",
+        "above_fold": false,
+        "y": 9257.53125
+      },
+      {
+        "text": "💬",
+        "above_fold": true,
+        "y": 764
+      }
+    ],
+    "cta_above_fold": true,
+    "horizontal_scroll": false,
+    "broken_images": [],
+    "total_images": 11
+  }
+}

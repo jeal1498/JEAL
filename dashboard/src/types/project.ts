@@ -11,8 +11,6 @@ export type TechName =
 
 export type ProjectStatus = 'live' | 'pending' | 'in-progress';
 
-export type DeviceMode = 'desktop' | 'tablet' | 'mobile';
-
 export interface Project {
   id: string;
   name: string;
@@ -23,7 +21,6 @@ export interface Project {
   techStack: TechName[];
   liveUrl: string | null;
   previewPath: string | null;
-  devPort: number | null;
   status: ProjectStatus;
   year: number;
 }

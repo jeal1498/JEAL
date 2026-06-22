@@ -1,7 +1,10 @@
-import Link from 'next/link';
 import Image from 'next/image';
 import { ExternalLink } from 'lucide-react';
 import type { Project, TechName } from '@/types/project';
+
+function resolveExternalUrl(project: Project): string | null {
+  return project.liveUrl ?? project.previewPath ?? null;
+}
 
 const TECH_COLORS: Record<TechName, { bg: string; text: string }> = {
   'Next.js':        { bg: '#000000', text: '#ffffff' },
@@ -28,11 +31,13 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project, priority = false }: ProjectCardProps) {
   const status = STATUS_LABELS[project.status];
+  const externalUrl = resolveExternalUrl(project);
 
   return (
     <article className="group relative bg-[hsl(var(--card))] rounded-[var(--radius)] border border-[hsl(var(--border))] overflow-hidden transition-all duration-300 hover:border-white/20 hover:shadow-[0_20px_60px_rgba(208,208,231,0.06)]">
       {/* Screenshot zone */}
-      <Link href={`/projects/${project.id}`} className="block relative aspect-[16/10] overflow-hidden bg-[#0a0810]">
+      {externalUrl ? (
+        <a href={externalUrl} target="_blank" rel="noopener noreferrer" className="block relative aspect-[16/10] overflow-hidden bg-[#0a0810]">
         <Image
           src={project.previewImage}
           alt={project.previewAlt}
@@ -51,7 +56,27 @@ export function ProjectCard({ project, priority = false }: ProjectCardProps) {
             {status.label}
           </span>
         )}
-      </Link>
+      </a>
+      ) : (
+        <div className="block relative aspect-[16/10] overflow-hidden bg-[#0a0810]">
+          <Image
+            src={project.previewImage}
+            alt={project.previewAlt}
+            fill
+            className="object-cover object-top"
+            priority={priority}
+            sizes="(max-width: 768px) 100vw, 50vw"
+          />
+          <span className="absolute top-3 left-3 text-[0.65rem] font-bold uppercase tracking-widest text-white/90 bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/10">
+            {project.category}
+          </span>
+          {project.status !== 'live' && (
+            <span className={`absolute top-3 right-3 text-[0.65rem] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border ${status.color}`}>
+              {status.label}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Content zone */}
       <div className="p-5 flex flex-col gap-3">
@@ -82,26 +107,21 @@ export function ProjectCard({ project, priority = false }: ProjectCardProps) {
           <span className="text-xs text-[hsl(var(--muted-foreground))]/60 font-mono">
             {project.year}
           </span>
-          <div className="flex items-center gap-2">
-            {project.liveUrl && (
-              <a
-                href={project.liveUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors duration-200"
-                onClick={(e) => e.stopPropagation()}
-                title="Abrir sitio live"
-              >
-                <ExternalLink size={12} />
-              </a>
-            )}
-            <Link
-              href={`/projects/${project.id}`}
+          {externalUrl ? (
+            <a
+              href={externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[hsl(var(--foreground))] bg-white/8 hover:bg-white/15 px-3 py-1.5 rounded transition-colors duration-200"
             >
+              <ExternalLink size={11} />
               Ver Proyecto
-            </Link>
-          </div>
+            </a>
+          ) : (
+            <span className="text-xs text-[hsl(var(--muted-foreground))]/40 px-3 py-1.5">
+              En desarrollo
+            </span>
+          )}
         </div>
       </div>
     </article>

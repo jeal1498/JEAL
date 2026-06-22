@@ -1,0 +1,481 @@
+{
+  "summary": {
+    "health_score": 44,
+    "business_type": "Hotel familiar económico — brick-and-mortar, Bacalar, Quintana Roo, México",
+    "url_audited": "https://hotel-jireh.vercel.app/",
+    "audit_date": "2026-06-22",
+    "top_findings": [
+      "Canonical apunta a hoteljirehbacalar.com (dominio inexistente) — posible deindexación",
+      "Sin robots.txt ni sitemap.xml (ambos 404)",
+      "OG image rota (mismo dominio inexistente) — previsualizaciones en blanco en WhatsApp/Facebook",
+      "Keywords objetivo estructuralmente no competibles vs OTAs en posiciones 1-10",
+      "Sin Google Business Profile vinculado — invisible en Local Pack"
+    ],
+    "quick_wins": [
+      "Corregir canonical a https://hotel-jireh.vercel.app/ (30 min)",
+      "Crear robots.txt y sitemap.xml con Image Sitemap (15 min)",
+      "Corregir og:image a URL relativa funcional (5 min)",
+      "Añadir tiempo de respuesta WhatsApp junto al CTA: 'Respondemos en <30 min' (5 min)",
+      "Cambiar '7.2/10 en 142 reseñas' por '7.2/10 en Booking.com' con enlace (10 min)"
+    ]
+  },
+  "categories": [
+    {
+      "name": "Technical SEO",
+      "score": 34,
+      "weight": 22,
+      "what_works": [
+        "HTTPS con HSTS (max-age=63072000, includeSubDomains, preload)",
+        "HTML estático — Googlebot lee sin necesidad de JavaScript",
+        "lang='es-MX' correcto",
+        "Viewport y charset UTF-8 presentes",
+        "Estructura H1/H2/H3 lógica sin duplicados"
+      ],
+      "findings": [
+        {
+          "title": "Canonical roto — dominio inexistente",
+          "severity": "Critical",
+          "description": "<link rel='canonical' href='https://www.hoteljirehbacalar.com/'> apunta a un dominio que devuelve NXDOMAIN. Google puede ignorar o desindexar la página.",
+          "recommendation": "Cambiar a <link rel='canonical' href='https://hotel-jireh.vercel.app/'> hasta que hoteljirehbacalar.com esté activo."
+        },
+        {
+          "title": "robots.txt — 404",
+          "severity": "Critical",
+          "description": "https://hotel-jireh.vercel.app/robots.txt devuelve 404. Los crawlers (Google, GPTBot, ClaudeBot) trabajan sin guía.",
+          "recommendation": "Crear robots.txt con User-agent: * / Allow: / / Sitemap: https://hotel-jireh.vercel.app/sitemap.xml"
+        },
+        {
+          "title": "sitemap.xml — 404",
+          "severity": "Critical",
+          "description": "https://hotel-jireh.vercel.app/sitemap.xml devuelve 404. Sin Image Sitemap las 7 imágenes no son descubiertas por Google Images.",
+          "recommendation": "Crear sitemap.xml con 1 URL + Image Sitemap para las 7 imágenes del sitio."
+        },
+        {
+          "title": "OG image apunta a dominio inexistente",
+          "severity": "Critical",
+          "description": "og:image=https://www.hoteljirehbacalar.com/images/facade-day.jpg — imagen rota. Cada enlace compartido en WhatsApp/Facebook aparece sin preview visual.",
+          "recommendation": "Cambiar a URL absoluta del Vercel: https://hotel-jireh.vercel.app/images/facade-day.jpg"
+        },
+        {
+          "title": "Title demasiado largo — 82 caracteres",
+          "severity": "High",
+          "description": "'Hotel Jireh Bacalar | Hotel Familiar Económico cerca de la Laguna de los 7 Colores' — Google trunca en ~60-70 chars. El diferenciador 'Laguna de los 7 Colores' desaparece.",
+          "recommendation": "Reducir a: 'Hotel Jireh Bacalar | Hospedaje Familiar Económico' (51 chars) o incluir el diferenciador en los primeros 60 chars."
+        },
+        {
+          "title": "Meta description — 240 caracteres (límite: 160)",
+          "severity": "High",
+          "description": "La meta description se trunca en SERPs. El CTA 'Reserva por WhatsApp o teléfono' queda fuera del snippet visible.",
+          "recommendation": "Reducir a máx 155 chars con keyword primaria + diferenciador + CTA."
+        },
+        {
+          "title": "5 headers de seguridad HTTP faltantes",
+          "severity": "Medium",
+          "description": "Faltan: X-Content-Type-Options, X-Frame-Options, Content-Security-Policy, Referrer-Policy, Permissions-Policy.",
+          "recommendation": "Agregar en vercel.json bajo 'headers' con un solo bloque para '/(.*)'."
+        },
+        {
+          "title": "Sin Twitter Card image",
+          "severity": "Low",
+          "description": "twitter:card está definida pero falta twitter:image. Los tweets sin imagen tienen menor CTR.",
+          "recommendation": "Añadir <meta name='twitter:image' content='https://hotel-jireh.vercel.app/images/facade-day.jpg'>"
+        }
+      ]
+    },
+    {
+      "name": "Content Quality (E-E-A-T)",
+      "score": 47,
+      "weight": 23,
+      "what_works": [
+        "Precios específicos ($600/$850/$950 MXN) visibles y verificables",
+        "Distancias concretas a atracciones (1.1km Fuerte, ~5min laguna)",
+        "FAQ con 6 respuestas estructuradas",
+        "Registro informal apropiado para segmento económico/familiar",
+        "Datos de contacto completos: teléfono, email, WhatsApp, Facebook"
+      ],
+      "findings": [
+        {
+          "title": "Sin política de cancelación — bloqueador de confianza #1",
+          "severity": "Critical",
+          "description": "En páginas transaccionales, la ausencia de política de cancelación es la señal de desconfianza más importante según el QRG. El usuario no puede comprometerse sin saber si puede retractarse.",
+          "recommendation": "Añadir sección 'Política de cancelación' (mín 100 palabras): plazos, penalizaciones, proceso de reembolso."
+        },
+        {
+          "title": "Thin content — 725 palabras vs 1,000-3,000 de competidores OTA",
+          "severity": "High",
+          "description": "Booking.com y TripAdvisor sirven 1,000-3,000 palabras por propiedad. Para competir con contenido directo se necesita profundidad: descripciones de habitación, guía de zona, historia del hotel.",
+          "recommendation": "Expandir a 1,200-1,500 palabras: historia del hotel (150w), guía zona Bacalar (250w), descripciones detalladas por habitación (200w), testimonios reales (150w)."
+        },
+        {
+          "title": "'7.2/10 en 142 reseñas' sin plataforma de origen",
+          "severity": "High",
+          "description": "Un rating sin fuente atribuida es un self-claim. Google y los usuarios no pueden verificarlo. Además, 7.2/10 visible en ATF genera fricción antes de la reserva.",
+          "recommendation": "Atribuir explícitamente: '7.2/10 en Booking.com (142 reseñas)' con enlace. Si es de múltiples plataformas, indicarlo."
+        },
+        {
+          "title": "Cero señales de experiencia humana",
+          "severity": "High",
+          "description": "Sin nombre del propietario, sin historia de fundación, sin fotos con personas. E-E-A-T requiere identidad humana verificable detrás del contenido.",
+          "recommendation": "Añadir sección 'Nuestra historia' (100-150w) con nombre del propietario, año de fundación y motivación."
+        },
+        {
+          "title": "Sin fecha de actualización de precios",
+          "severity": "Medium",
+          "description": "Los precios aparecen sin fecha de vigencia. Los buscadores y AI no pueden evaluar la frescura del contenido.",
+          "recommendation": "Añadir 'Tarifas actualizadas: junio 2026' junto a la sección de habitaciones."
+        },
+        {
+          "title": "Pasajes FAQ demasiado cortos para citas de LLMs",
+          "severity": "Medium",
+          "description": "Las respuestas FAQ tienen 17-38 palabras. El rango óptimo de citación para ChatGPT/Gemini/Perplexity es 134-167 palabras.",
+          "recommendation": "Expandir cada respuesta FAQ con contexto útil, instrucciones de llegada y datos comparativos."
+        }
+      ]
+    },
+    {
+      "name": "On-Page SEO",
+      "score": 48,
+      "weight": 20,
+      "what_works": [
+        "1 H1 claro con keyword de ubicación",
+        "H2s descriptivos que estructuran la página por secciones",
+        "Todas las imágenes tienen atributo alt",
+        "WhatsApp CTA pre-cargado por tipo de habitación"
+      ],
+      "findings": [
+        {
+          "title": "Keyword primaria ausente como frase exacta en body",
+          "severity": "High",
+          "description": "'hotel en Bacalar' nunca aparece como frase exacta en el cuerpo de texto. La keyword principal está implícita pero no presente.",
+          "recommendation": "Incluir 'hotel en Bacalar' de forma natural en el primer párrafo del hero o en la primera H2."
+        },
+        {
+          "title": "Sin variantes semánticas",
+          "severity": "Medium",
+          "description": "Ausentes: 'alojamiento Bacalar', 'donde hospedarse en Bacalar', 'hotel barato Bacalar', 'hospedaje económico Quintana Roo'.",
+          "recommendation": "Incorporar en la guía de zona o en la sección de descripción del hotel."
+        },
+        {
+          "title": "Sin enlace a Google Maps",
+          "severity": "Medium",
+          "description": "La sección de ubicación tiene distancias pero no abre Google Maps. En móvil, esto elimina el flujo de navegación más común.",
+          "recommendation": "Añadir botón 'Ver en Google Maps' con coordenadas o dirección codificada."
+        },
+        {
+          "title": "H1 con 'sencillo' como modificador negativo",
+          "severity": "Low",
+          "description": "'Hospedaje familiar, sencillo y a tu alcance' puede comunicar 'básico/austero' para segmentos pareja o primera visita.",
+          "recommendation": "Cambiar 'sencillo' por 'acogedor': 'Hospedaje familiar, acogedor y a tu alcance en Bacalar'."
+        }
+      ]
+    },
+    {
+      "name": "Schema / Structured Data",
+      "score": 42,
+      "weight": 10,
+      "what_works": [
+        "Hotel schema implementado con amenidades, coordenadas, ofertas y atractivos cercanos",
+        "FAQPage con 6 Q&A correctamente estructuradas",
+        "Teléfono en formato E.164 (+52983...)",
+        "Dirección postal completa con CP"
+      ],
+      "findings": [
+        {
+          "title": "url en Hotel schema apunta a dominio inexistente",
+          "severity": "Critical",
+          "description": "\"url\": \"https://www.hoteljirehbacalar.com/\" — Google no puede asociar la entidad Hotel con ninguna URL real. El rich result de Hotel queda bloqueado.",
+          "recommendation": "Cambiar a \"url\": \"https://hotel-jireh.vercel.app/\" hasta que el dominio definitivo esté activo."
+        },
+        {
+          "title": "@id ausente — entidad no referenciable",
+          "severity": "Critical",
+          "description": "Sin @id la entidad Hotel no puede ser referenciada desde otros bloques ni desde grafos externos (Knowledge Graph).",
+          "recommendation": "Añadir \"@id\": \"https://hotel-jireh.vercel.app/#hotel\""
+        },
+        {
+          "title": "image ausente en Hotel schema",
+          "severity": "Critical",
+          "description": "Google requiere image para activar el rich result de LodgingBusiness. La página tiene 6 imágenes en HTML, ninguna declarada en schema.",
+          "recommendation": "Añadir array image con URLs absolutas de facade-day.jpg, facade-night.jpg, pool.jpg, room-king.jpg."
+        },
+        {
+          "title": "checkinTime/checkoutTime no en ISO 8601",
+          "severity": "High",
+          "description": "\"checkinTime\": \"13:30\" debe ser \"T13:30:00\" según la especificación schema:Time.",
+          "recommendation": "Cambiar a \"T13:30:00\" y \"T12:00:00\"."
+        },
+        {
+          "title": "aggregateRating sin fuente atribuible",
+          "severity": "High",
+          "description": "7.2/10 de 142 reseñas sin provider/url de origen. Riesgo de penalización por datos no verificables.",
+          "recommendation": "Añadir \"url\": \"[URL de Booking/TripAdvisor]\" dentro del aggregateRating o eliminar si no puede atribuirse."
+        },
+        {
+          "title": "Faltan WebSite, WebPage y BreadcrumbList schemas",
+          "severity": "Medium",
+          "description": "Sin estos tres bloques el sitio carece de identidad de entidad web, fecha de actualización y estructura de navegación para los SERPs.",
+          "recommendation": "Añadir los tres schemas. BreadcrumbList habilita breadcrumb snippet incluso en single-page sites."
+        },
+        {
+          "title": "FAQPage: Google eliminó rich results el 7 mayo 2026",
+          "severity": "Info",
+          "description": "El FAQPage schema ya no genera rich results en Google SERPs. Sin embargo, sigue siendo el formato más citado por ChatGPT, Gemini y Perplexity.",
+          "recommendation": "Mantener sin cambios. El valor es ahora GEO (AI citations), no SERP visual."
+        }
+      ]
+    },
+    {
+      "name": "Performance (Core Web Vitals)",
+      "score": 65,
+      "weight": 10,
+      "what_works": [
+        "HTML estático sin JavaScript externo — sin render-blocking resources",
+        "Todo CSS inline — 0 requests de CSS adicionales",
+        "TTFB de 290ms desde Vercel CDN edge",
+        "INP <50ms (sin JavaScript en la página)",
+        "CLS estimado 0.02-0.05 (CSS controla aspect-ratio de imágenes)"
+      ],
+      "findings": [
+        {
+          "title": "Sin fetchpriority='high' en imagen hero (LCP)",
+          "severity": "High",
+          "description": "El browser no sabe que facade-day.jpg es el LCP hasta terminar el layout parse. Sin fetchpriority, compite en descarga con las otras 6 imágenes.",
+          "recommendation": "Añadir fetchpriority=\"high\" y loading=\"eager\" a la imagen hero. Impacto estimado: -200 a -400ms en LCP."
+        },
+        {
+          "title": "Imágenes en JPEG sin WebP/AVIF",
+          "severity": "High",
+          "description": "facade-day.jpg pesa 177KB. En WebP: ~124KB (-30%). En AVIF: ~97KB (-45%). Total 7 imágenes: 548KB → 165-295KB con formato moderno.",
+          "recommendation": "Convertir a WebP (mínimo) o AVIF. Usar <picture> con fallback JPEG para compatibilidad."
+        },
+        {
+          "title": "Sin loading='lazy' en imágenes below-the-fold",
+          "severity": "High",
+          "description": "Las 5 imágenes de galería y habitaciones se descargan simultáneamente con la imagen hero, compitiendo por ancho de banda.",
+          "recommendation": "Añadir loading=\"lazy\" a todas las imágenes excepto el hero y el logo del header."
+        },
+        {
+          "title": "Logo en JPEG (22KB) sin transparencia",
+          "severity": "Medium",
+          "description": "El logo debe ser SVG (~2-5KB) o PNG con canal alpha. JPEG no soporta transparencia y pesa 4x más.",
+          "recommendation": "Convertir logo a SVG o PNG transparente."
+        },
+        {
+          "title": "Sin atributos width/height en elementos img",
+          "severity": "Medium",
+          "description": "Sin dimensiones HTML declaradas, existe riesgo residual de CLS en conexiones lentas donde el CSS aún no se ha procesado.",
+          "recommendation": "Añadir width y height a todos los elementos <img>."
+        }
+      ]
+    },
+    {
+      "name": "AI Search Readiness (GEO)",
+      "score": 52,
+      "weight": 10,
+      "what_works": [
+        "FAQPage schema con 6 Q&A — formato más citado por LLMs",
+        "Hotel schema con datos verificables (precios, dirección, coordenadas)",
+        "HTML semántico con headings bien estructurados",
+        "Contenido factual con números específicos"
+      ],
+      "findings": [
+        {
+          "title": "Sin robots.txt — crawlers AI sin guía",
+          "severity": "Critical",
+          "description": "GPTBot, ClaudeBot, PerplexityBot y OAI-SearchBot encuentran 404 en /robots.txt. Sin guía explícita de acceso.",
+          "recommendation": "Crear robots.txt con permisos explícitos para todos los AI crawlers."
+        },
+        {
+          "title": "Sin llms.txt",
+          "severity": "High",
+          "description": "El estándar llms.txt (adoptado por ChatGPT y Perplexity en 2025) permite al hotel declarar su contexto, precios y política de uso para LLMs.",
+          "recommendation": "Crear /llms.txt con nombre, descripción, precios, contacto y política de uso de la información."
+        },
+        {
+          "title": "Pasajes FAQ demasiado cortos para citación óptima",
+          "severity": "High",
+          "description": "Respuestas de 17-38 palabras. Rango óptimo LLMs: 134-167 palabras. Los LLMs prefieren pasajes con contexto completo.",
+          "recommendation": "Expandir cada FAQ con contexto, instrucciones de llegada y datos comparativos."
+        },
+        {
+          "title": "Canonical roto impacta Google AI Overviews y Gemini",
+          "severity": "Critical",
+          "description": "Gemini comparte corpus con Google. Si Google no indexa la página correctamente, Gemini tampoco puede citarla.",
+          "recommendation": "Prioridad 1: corregir canonical antes de cualquier otra optimización GEO."
+        }
+      ]
+    },
+    {
+      "name": "Images",
+      "score": 58,
+      "weight": 5,
+      "what_works": [
+        "Todas las imágenes tienen atributo alt",
+        "Imágenes accesibles (HTTP 200 en todas)",
+        "Buena variedad: fachada día/noche, habitaciones, alberca, palapa, logo"
+      ],
+      "findings": [
+        {
+          "title": "Imagen hero no aspiracional para destino de turismo",
+          "severity": "High",
+          "description": "Una fachada frontal plana no vende la experiencia de Bacalar. El usuario llega buscando agua turquesa y el primer visual es cemento y ventanas.",
+          "recommendation": "Reemplazar o complementar con foto de la alberca, la laguna o actividad turística. Esta sola imagen puede mejorar el tiempo en página."
+        },
+        {
+          "title": "Sin srcset/responsive images",
+          "severity": "Medium",
+          "description": "Las mismas imágenes de 177KB se sirven en móvil donde el viewport es 375px. Un srcset reduciría el peso en móvil ~60-70%.",
+          "recommendation": "Implementar srcset con versiones 400w, 800w, 1200w para las imágenes principales."
+        },
+        {
+          "title": "Sin Image Sitemap",
+          "severity": "Medium",
+          "description": "Las 7 imágenes no están declaradas en sitemap. Google Images no las puede descubrir proactivamente.",
+          "recommendation": "Crear Image Sitemap con título y caption para cada imagen. Ver propuesta en sitemap.md."
+        }
+      ]
+    },
+    {
+      "name": "Local SEO",
+      "score": 33,
+      "weight": 0,
+      "what_works": [
+        "NAP consistente en schema (nombre, dirección, teléfono E.164)",
+        "Coordenadas GPS presentes",
+        "Email de contacto declarado",
+        "Facebook page vinculada"
+      ],
+      "findings": [
+        {
+          "title": "Sin Google Business Profile vinculado",
+          "severity": "Critical",
+          "description": "No hay Maps embed, enlace a GBP, widget de reseñas Google ni sameAs apuntando al perfil. El GBP es el factor #1 de ranking local según Whitespark 2026.",
+          "recommendation": "Crear/reclamar GBP con categoría 'Hotel', fotos, horarios y URL del dominio correcto."
+        },
+        {
+          "title": "Sin presencia en OTAs (0 citas Tier 1)",
+          "severity": "Critical",
+          "description": "Booking.com, TripAdvisor, Expedia y Agoda no están mencionados ni vinculados. Para un hotel en Bacalar, 80%+ de reservas de viajeros nuevos pasa por OTAs.",
+          "recommendation": "Crear perfil en Booking.com (prioridad 1) y TripAdvisor para generar autoridad de citas y habilitar aggregateRating verificable."
+        },
+        {
+          "title": "Teléfono con formato inconsistente",
+          "severity": "Low",
+          "description": "Schema usa E.164 (+529831019716) pero HTML muestra '983 101 9716' sin prefijo internacional.",
+          "recommendation": "Unificar a '+52 983 101 9716' en todas las apariciones del sitio."
+        }
+      ]
+    },
+    {
+      "name": "SXO (Search Experience)",
+      "score": 41,
+      "weight": 0,
+      "what_works": [
+        "Precio visible en ATF — $600/noche",
+        "CTA WhatsApp doble en ATF móvil",
+        "CTA pre-cargado por tipo de habitación",
+        "Layout mobile funcional"
+      ],
+      "findings": [
+        {
+          "title": "Keywords objetivo estructuralmente no competibles",
+          "severity": "Critical",
+          "description": "El top-10 para 'hotel en Bacalar' es 100% OTAs y guías editoriales. Ningún hotel directo aparece. El Google Hotels Pack ocupa posiciones premium. Ningún fix técnico puede resolver esto.",
+          "recommendation": "Pivotar keywords a: marca ('Hotel Jireh Bacalar'), geolocal exacto ('hotel cerca Fuerte San Felipe'), long-tail precio ('hotel Bacalar 600 pesos'), amenidad ('hotel Bacalar con alberca y estacionamiento'). Presencia en OTAs para keywords de volumen alto."
+        },
+        {
+          "title": "Sin política de cancelación visible",
+          "severity": "High",
+          "description": "La incertidumbre sobre cancelación es la friction #1 en la decisión de reserva para familias y primeros visitantes.",
+          "recommendation": "Añadir en FAQ o sección dedicada: condiciones de cancelación, plazos y proceso de reembolso."
+        },
+        {
+          "title": "Sin señales de urgencia ni escasez",
+          "severity": "Medium",
+          "description": "Ningún elemento indica disponibilidad limitada o temporada alta. El usuario puede diferir la decisión indefinidamente.",
+          "recommendation": "Añadir indicador de temporada: 'Julio-Agosto: temporada alta — disponibilidad limitada'."
+        }
+      ]
+    }
+  ],
+  "action_plan": {
+    "phases": [
+      {
+        "name": "Fase 1: Fixes Críticos (Hoy — máx 2 horas)",
+        "timeframe": "Día 1",
+        "items": [
+          "Corregir canonical a https://hotel-jireh.vercel.app/ en <link>, og:url, og:image y schema url",
+          "Crear robots.txt (User-agent: * / Allow: / / Sitemap: URL)",
+          "Crear sitemap.xml con Image Sitemap para las 7 imágenes",
+          "Corregir @id y url en Hotel schema JSON-LD",
+          "Añadir array image al Hotel schema con 4 fotos principales"
+        ]
+      },
+      {
+        "name": "Fase 2: Conversión y Confianza (Semana 1)",
+        "timeframe": "Días 2-7",
+        "items": [
+          "Añadir política de cancelación (mín 100 palabras)",
+          "Atribuir el rating: '7.2/10 en Booking.com (142 reseñas)' con enlace",
+          "Añadir tiempo de respuesta WhatsApp: 'Respondemos en <30 min · 8am-10pm'",
+          "Cambiar 'sencillo' por 'acogedor' en el H1",
+          "Reducir title a <70 chars y meta description a <155 chars",
+          "Añadir headers de seguridad HTTP en vercel.json",
+          "Crear perfil en Booking.com"
+        ]
+      },
+      {
+        "name": "Fase 3: Contenido y Performance (Semana 2-3)",
+        "timeframe": "Días 8-21",
+        "items": [
+          "Expandir FAQ a 134-167 palabras por respuesta",
+          "Añadir sección 'Nuestra historia' con nombre del propietario",
+          "Convertir imágenes a WebP con <picture> y fallback JPEG",
+          "Añadir fetchpriority='high' en imagen hero",
+          "Añadir loading='lazy' en imágenes below-the-fold",
+          "Crear llms.txt con datos del hotel",
+          "Añadir enlace a Google Maps en sección de ubicación",
+          "Reemplazar imagen hero con foto aspiracional (laguna/alberca)"
+        ]
+      },
+      {
+        "name": "Fase 4: Autoridad y Dominio (Mes 2)",
+        "timeframe": "Mes 2",
+        "items": [
+          "Registrar hoteljirehbacalar.com y migrar el sitio",
+          "Crear/reclamar Google Business Profile con fotos y horarios",
+          "Crear perfil en TripAdvisor",
+          "Pivotar keywords a long-tail competibles",
+          "Añadir guía de zona Bacalar (250 palabras)",
+          "Añadir testimonios textuales reales con nombre y fecha",
+          "Implementar srcset para imágenes responsive"
+        ]
+      }
+    ]
+  },
+  "scores_detail": {
+    "technical_seo": {"score": 34, "weight": 0.22, "contribution": 7.5},
+    "content_quality": {"score": 47, "weight": 0.23, "contribution": 10.8},
+    "on_page_seo": {"score": 48, "weight": 0.20, "contribution": 9.6},
+    "schema": {"score": 42, "weight": 0.10, "contribution": 4.2},
+    "performance": {"score": 65, "weight": 0.10, "contribution": 6.5},
+    "ai_search": {"score": 52, "weight": 0.10, "contribution": 5.2},
+    "images": {"score": 58, "weight": 0.05, "contribution": 2.9},
+    "total": 46.7
+  },
+  "artifacts": {
+    "findings_dir": "findings/",
+    "screenshots_dir": "screenshots/",
+    "findings_files": [
+      "technical.md",
+      "content.md",
+      "schema.md",
+      "sitemap.md",
+      "performance.md",
+      "visual.md",
+      "geo.md",
+      "local.md",
+      "sxo.md"
+    ]
+  }
+}

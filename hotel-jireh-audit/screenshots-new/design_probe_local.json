@@ -1,0 +1,66 @@
+{
+  "title": "Hotel Jireh Bacalar | Hospedaje Familiar con Alberca · Bacalar",
+  "hero_bg": "oklch(0.18 0.038 43)",
+  "hero_bg_broad": {
+    "selector": "section.hero",
+    "bg": "oklch(0.18 0.038 43)"
+  },
+  "h1_font": {
+    "fontFamily": "Bitter, Georgia, \"Times New Roman\", serif",
+    "fontSize": "57.6px",
+    "color": "oklch(0.985 0.006 80)"
+  },
+  "accent": {
+    "bg": "oklch(0.65 0.155 44)",
+    "color": "rgb(255, 255, 255)",
+    "text": "Reservar por WhatsApp"
+  },
+  "eyebrows_found": [
+    {
+      "tag": "LI",
+      "text": "Servicios",
+      "class": ""
+    },
+    {
+      "tag": "A",
+      "text": "Servicios",
+      "class": ""
+    },
+    {
+      "tag": "LI",
+      "text": "Ubicación",
+      "class": ""
+    },
+    {
+      "tag": "A",
+      "text": "Ubicación",
+      "class": ""
+    },
+    {
+      "tag": "LI",
+      "text": "Preguntas",
+      "class": ""
+    },
+    {
+      "tag": "A",
+      "text": "Preguntas",
+      "class": ""
+    }
+  ],
+  "faq_details_count": 6,
+  "faq_details_sample": [
+    {
+      "summary": "¿Dónde está ubicado el Hotel Jireh en Bacalar?\n          +",
+      "open": false
+    },
+    {
+      "summary": "¿Cuánto cuesta hospedarse en el Hotel Jireh?\n          +",
+      "open": false
+    },
+    {
+      "summary": "¿Qué servicios incluye el Hotel Jireh?\n          +",
+      "open": false
+    }
+  ],
+  "css_vars": {}
+}

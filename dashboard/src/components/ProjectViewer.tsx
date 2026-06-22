@@ -1,20 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Monitor, Tablet, Smartphone, ExternalLink, Loader2 } from 'lucide-react';
-import type { Project, DeviceMode } from '@/types/project';
-
-const DEVICE_WIDTHS: Record<DeviceMode, string> = {
-  desktop: '100%',
-  tablet: '768px',
-  mobile: '375px',
-};
-
-const DEVICE_ICONS = {
-  desktop: Monitor,
-  tablet: Tablet,
-  mobile: Smartphone,
-} as const;
+import { ArrowLeft, Monitor, ExternalLink } from 'lucide-react';
+import type { Project } from '@/types/project';
 
 const STATUS_LABELS: Record<Project['status'], string> = {
   live: 'Live',
@@ -28,10 +15,9 @@ const STATUS_COLORS: Record<Project['status'], string> = {
   'in-progress': 'text-sky-400 bg-sky-400/10 border-sky-400/20',
 };
 
-function resolveIframeSrc(project: Project): string | null {
+function resolveExternalUrl(project: Project): string | null {
+  if (project.liveUrl) return project.liveUrl;
   if (project.previewPath) return project.previewPath;
-  if (project.devPort && process.env.NODE_ENV === 'development')
-    return `http://localhost:${project.devPort}`;
   return null;
 }
 
@@ -40,24 +26,7 @@ interface ProjectViewerProps {
 }
 
 export function ProjectViewer({ project }: ProjectViewerProps) {
-  const [device, setDevice] = useState<DeviceMode>('desktop');
-  const [loading, setLoading] = useState(true);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const iframeSrc = resolveIframeSrc(project);
-
-  useEffect(() => {
-    if (!iframeSrc) return;
-    setLoading(true);
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-    if ((iframe.contentDocument?.readyState ?? '') === 'complete') {
-      setLoading(false);
-      return;
-    }
-    const onLoad = () => setLoading(false);
-    iframe.addEventListener('load', onLoad);
-    return () => iframe.removeEventListener('load', onLoad);
-  }, [iframeSrc]);
+  const externalUrl = resolveExternalUrl(project);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[hsl(var(--background))]">
@@ -84,65 +53,24 @@ export function ProjectViewer({ project }: ProjectViewerProps) {
           </span>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
-          {iframeSrc && (['desktop', 'tablet', 'mobile'] as DeviceMode[]).map((mode) => {
-            const Icon = DEVICE_ICONS[mode];
-            return (
-              <button
-                key={mode}
-                onClick={() => setDevice(mode)}
-                title={mode.charAt(0).toUpperCase() + mode.slice(1)}
-                className={`p-1.5 rounded transition-all duration-200 ${
-                  device === mode
-                    ? 'text-[hsl(var(--foreground))] bg-white/10 border border-white/20'
-                    : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-white/5'
-                }`}
-              >
-                <Icon size={14} />
-              </button>
-            );
-          })}
-
-          {project.liveUrl && (
-            <>
-              <div className="w-px h-5 bg-[hsl(var(--border))] mx-1" />
-              <a
-                href={project.liveUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Abrir en nueva pestaña"
-                className="p-1.5 rounded text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-white/5 transition-all duration-200"
-              >
-                <ExternalLink size={14} />
-              </a>
-            </>
-          )}
-        </div>
+        {externalUrl && (
+          <div className="flex items-center gap-1 shrink-0">
+            <a
+              href={externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Abrir en nueva pestaña"
+              className="p-1.5 rounded text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-white/5 transition-all duration-200"
+            >
+              <ExternalLink size={14} />
+            </a>
+          </div>
+        )}
       </header>
 
       {/* Content area */}
       <main className="flex-1 overflow-auto bg-[hsl(var(--background))] relative">
-        {iframeSrc ? (
-          /* Iframe mode: self-hosted (previewPath) or local dev (devPort) */
-          <div
-            className="h-full transition-all duration-300 ease-in-out mx-auto"
-            style={{ width: DEVICE_WIDTHS[device], minWidth: device === 'desktop' ? '100%' : undefined }}
-          >
-            {loading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-[hsl(var(--background))] z-10">
-                <Loader2 className="animate-spin text-[hsl(var(--muted-foreground))]" size={24} />
-              </div>
-            )}
-            <iframe
-              ref={iframeRef}
-              src={iframeSrc}
-              title={project.name}
-              className="w-full h-full border-0"
-              style={{ display: 'block' }}
-            />
-          </div>
-        ) : project.liveUrl ? (
-          /* Fallback mode: live site can't be embedded (Cloudflare / X-Frame-Options) */
+        {externalUrl ? (
           <div className="h-full flex flex-col items-center justify-center gap-6 px-6">
             <div className="relative w-full max-w-2xl aspect-[16/10] rounded-lg overflow-hidden border border-[hsl(var(--border))] shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
               <Image
@@ -154,11 +82,9 @@ export function ProjectViewer({ project }: ProjectViewerProps) {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
-                <div>
-                  <p className="text-xs text-white/60 font-mono">{project.liveUrl}</p>
-                </div>
+                <p className="text-xs text-white/60 font-mono">{externalUrl}</p>
                 <a
-                  href={project.liveUrl}
+                  href={externalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 text-xs font-bold text-white bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-full transition-all duration-200"
@@ -168,9 +94,6 @@ export function ProjectViewer({ project }: ProjectViewerProps) {
                 </a>
               </div>
             </div>
-            <p className="text-xs text-[hsl(var(--muted-foreground))] text-center max-w-sm">
-              Este sitio no permite previsualización embebida. Ábrelo en una nueva pestaña para verlo completo.
-            </p>
           </div>
         ) : (
           /* No URL at all */

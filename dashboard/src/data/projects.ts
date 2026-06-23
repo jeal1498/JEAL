@@ -16,6 +16,20 @@ export const projects: Project[] = [
     year: 2025,
   },
   {
+    id: 'mentesanaylibre',
+    name: 'Psic. Noemi Eb. — Mente Sana y Libre',
+    description:
+      'Sitio clínico para psicoterapeuta con enfoque cognitivo conductual en Cancún. Convierte adultos con ansiedad o depresión en primeras sesiones agendadas.',
+    category: 'Portafolio Clínico',
+    previewImage: '/previews/mentesanaylibre.svg',
+    previewAlt: 'Sitio web de Psic. Noemi Eb. — Mente Sana y Libre',
+    techStack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'React', 'Framer Motion', 'shadcn/ui'],
+    liveUrl: null,
+    previewPath: null,
+    status: 'in-progress',
+    year: 2026,
+  },
+  {
     id: 'hotel-jireh',
     name: 'Hotel Jireh Bacalar',
     description:

@@ -1,0 +1,233 @@
+@import url('https://fonts.googleapis.com/css2?family=Gloock&family=Montserrat:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 180 48% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 180 48% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 180 48% 20%;
+
+    --primary: 180 48% 20%;
+    --primary-foreground: 180 20% 97%;
+    --primary-light: 180 44% 31%;
+    --primary-dark: 180 52% 13%;
+
+    --secondary: 180 20% 96%;
+    --secondary-foreground: 180 48% 20%;
+
+    --muted: 180 15% 95%;
+    --muted-foreground: 180 16% 38%;
+
+    --accent: 150 35% 83%;
+    --accent-foreground: 180 48% 20%;
+
+    --accent-blue: 150 35% 83%;
+    --accent-pink: 200 50% 87%;
+    --accent-sand: 30 53% 90%;
+    --accent-green: 120 40% 87%;
+    --whatsapp: 142 70% 49%;
+    --success: 160 84% 39%;
+    --warning: 38 92% 50%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 180 48% 20%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 256 27% 10%;
+    --foreground: 210 40% 98%;
+    --card: 256 27% 10%;
+    --card-foreground: 210 40% 98%;
+    --popover: 256 27% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 256 27% 25%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-size: 17px;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-weight: 400;
+  }
+
+  /* Párrafos y texto de cuerpo: nunca menos de peso 400 */
+  p, li, td, dd, blockquote {
+    font-weight: 400;
+  }
+}
+
+@layer utilities {
+  .section-padding {
+    @apply py-16 md:py-24 lg:py-32;
+  }
+
+  .label-caps {
+    @apply text-xs font-bold uppercase tracking-widest text-muted-foreground;
+  }
+
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/80;
+  }
+
+  .glass-dark {
+    @apply bg-primary/95 backdrop-blur-lg;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .whatsapp-pulse {
+    animation: pulse-green 2s infinite;
+  }
+
+  @keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 hsl(142 70% 49% / 0.7); }
+    70% { box-shadow: 0 0 0 15px hsl(142 70% 49% / 0); }
+    100% { box-shadow: 0 0 0 0 hsl(142 70% 49% / 0); }
+  }
+
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+    100% { transform: translateY(0px); }
+  }
+
+  .float-animation {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+
+@keyframes sectionReveal {
+  from { opacity: 0; transform: translateY(1.5rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Accessibility: honor OS motion preference ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+  /* ── Blog prose styles ── */
+  .prose-blog {
+    @apply text-foreground leading-relaxed;
+  }
+  .prose-blog h2 {
+    @apply text-2xl md:text-3xl font-serif font-bold text-primary mt-12 mb-4 leading-snug scroll-mt-28;
+  }
+  .prose-blog h3 {
+    @apply text-xl font-bold text-primary mt-8 mb-3 scroll-mt-28;
+  }
+  .prose-blog p {
+    @apply text-muted-foreground font-light mb-5 text-base;
+    line-height: 1.85;
+  }
+  .prose-blog strong {
+    @apply font-bold text-primary;
+  }
+  .prose-blog ul {
+    @apply space-y-2 mb-6 pl-0;
+  }
+  .prose-blog li {
+    @apply flex items-start gap-3 text-sm text-muted-foreground font-light leading-relaxed;
+  }
+  .prose-blog blockquote {
+    @apply border-l-4 border-accent-blue bg-accent-blue/5 px-6 py-4 rounded-r-xl my-8 text-primary font-medium italic text-base leading-relaxed;
+  }
+  .prose-blog .highlight-box {
+    @apply bg-secondary border border-border rounded-xl p-6 my-8;
+  }
+  .prose-blog .answer-box {
+    @apply bg-primary text-primary-foreground rounded-xl p-6 my-8 font-medium text-base leading-relaxed;
+  }
+  .prose-blog .warning-box {
+    @apply bg-accent-pink/10 border border-accent-pink/30 rounded-xl p-5 my-6 text-sm text-foreground leading-relaxed;
+  }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@layer utilities {
+  .text-display {
+    font-size: clamp(2rem, 5vw, 3.75rem);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+  .text-headline {
+    font-size: clamp(1.875rem, 4vw, 2.25rem);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+}

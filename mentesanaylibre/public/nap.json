@@ -1,0 +1,16 @@
+{
+  "name": "Psic. Noemi Eb. — Psicóloga en Cancún",
+  "telephone": "+529988502475",
+  "address": {
+    "streetAddress": "[DIRECCIÓN_PENDIENTE]",
+    "addressLocality": "Cancún",
+    "addressRegion": "Quintana Roo",
+    "postalCode": "77539",
+    "addressCountry": "MX"
+  },
+  "geo": { "latitude": 21.1619, "longitude": -86.8515 },
+  "url": "https://www.mentesanaylibre.com.mx",
+  "openingHours": ["Mo-Fr 09:00-19:00", "Sa 09:00-14:00"],
+  "description": "Psicoterapeuta con enfoque cognitivo conductual. TCC para ansiedad, depresión y adolescentes en Cancún.",
+  "priceRange": "$800-$1,200 MXN por sesión"
+}

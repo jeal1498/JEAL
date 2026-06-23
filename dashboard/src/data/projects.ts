@@ -25,7 +25,7 @@ export const projects: Project[] = [
     previewAlt: 'Sitio web de Psic. Noemi Eb. — Mente Sana y Libre',
     techStack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'React', 'Framer Motion', 'shadcn/ui'],
     liveUrl: null,
-    previewPath: null,
+    previewPath: '/projects/mentesanaylibre',
     status: 'in-progress',
     year: 2026,
   },

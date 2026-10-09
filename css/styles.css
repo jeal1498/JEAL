@@ -53,6 +53,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
@@ -205,7 +206,7 @@ button.small { padding: 6px 10px; font-size: 13px; }
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--line);
 }
-.tabs[hidden] { display: none; }
+.tabs[hidden], .grid[hidden] { display: none; }
 .tabs a { display: grid; justify-items: center; gap: 2px; font-size: 11px; color: var(--muted); padding: 4px 0; }
 .tabs a.active { color: var(--accent); font-weight: 600; }
 

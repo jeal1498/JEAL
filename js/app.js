@@ -1034,7 +1034,9 @@ async function renderBackup() {
     <section class="card">
       <h3>Google Sheets ${cfg.url ? '✓' : ''}</h3>
       <p class="muted small">${backupStatus()}</p>
-      ${cfg.url ? `<div class="actions"><button class="primary" id="bkNow">Respaldar ahora</button><button id="bkRestore">Restaurar desde Drive</button></div>` : ''}
+      ${cfg.url ? `<div class="actions"><button class="primary" id="bkNow">Respaldar ahora</button><button id="bkRestore">Restaurar desde Drive</button>
+        <a class="btn" href="${esc(backup.testUrl(cfg))}" target="_blank" rel="noopener">Probar en el navegador</a></div>
+        <p class="muted small">"Probar" debe mostrar un texto como <code>{"ok":true…}</code> o <code>"Aún no hay respaldo"</code>. Si ves una página de Google pidiendo iniciar sesión o un error, la implementación está mal configurada.</p>` : ''}
     </section>
     <section class="card steps">
       <h3>${cfg.url ? 'Configuración' : 'Configurar (una sola vez, ~5 min)'}</h3>
@@ -1124,7 +1126,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

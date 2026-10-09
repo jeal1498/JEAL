@@ -49,14 +49,22 @@ export async function setConfig(patch) {
   return cfg;
 }
 
+// "Failed to fetch" con Apps Script casi siempre es la implementación (acceso, URL o error del script):
+// Google responde una página de login/error sin permiso CORS y el navegador solo dice eso.
+const NET_HELP = 'Google no respondió a la app. Revisa: 1) en la implementación, "Quién tiene acceso" = Cualquier persona (no "con cuenta de Google"); 2) la URL termina en /exec; 3) si cambiaste el código, haz Implementar → Gestionar implementaciones → editar → Nueva versión. Toca "Probar en el navegador" para ver qué contesta Google.';
+async function call(url, opts) {
+  let res;
+  try { res = await fetch(url, opts); } catch { throw new Error(navigator.onLine === false ? 'Sin conexión a internet' : NET_HELP); }
+  try { return await res.json(); } catch { throw new Error(NET_HELP); }
+}
+
 // Envía todo a la hoja. Body como text/plain para que el navegador no haga preflight (Apps Script no lo soporta).
 export async function backupNow() {
   const cfg = await getConfig();
   if (!cfg.url) throw new Error('Respaldo no configurado');
   const data = await db.exportAll();
   try {
-    const res = await fetch(cfg.url, { method: 'POST', body: JSON.stringify({ token: cfg.token, tables: tables(data), raw: JSON.stringify(data) }) });
-    const out = await res.json();
+    const out = await call(cfg.url, { method: 'POST', body: JSON.stringify({ token: cfg.token, tables: tables(data), raw: JSON.stringify(data) }) });
     if (!out.ok) throw new Error(out.error || 'Error en la hoja');
     return await setConfig({ last: Date.now(), error: '' });
   } catch (err) {
@@ -65,10 +73,11 @@ export async function backupNow() {
   }
 }
 
+export const testUrl = (cfg) => `${cfg.url}?token=${encodeURIComponent(cfg.token)}`;
+
 export async function fetchBackup() {
   const cfg = await getConfig();
-  const res = await fetch(`${cfg.url}?token=${encodeURIComponent(cfg.token)}`);
-  const out = await res.json();
+  const out = await call(testUrl(cfg));
   if (!out.ok) throw new Error(out.error || 'Error en la hoja');
   return out.data;
 }

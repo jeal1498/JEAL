@@ -1,7 +1,8 @@
 // Almacenamiento local (IndexedDB). Todo vive en el dispositivo.
 const DB_NAME = 'secondbrain';
-const VERSION = 1;
-export const STORES = ['fuel', 'maintenance', 'expenses', 'reminders'];
+const VERSION = 2;
+export const STORES = ['fuel', 'maintenance', 'expenses', 'reminders', 'income', 'bills', 'goals'];
+export const FIN_STORES = ['income', 'bills', 'goals'];
 
 let dbp;
 function open() {
@@ -43,6 +44,7 @@ export async function exportAll() {
   const data = { app: 'secondbrain', version: VERSION, exportedAt: new Date().toISOString() };
   for (const s of STORES) data[s] = await all(s);
   data.vehicle = (await getSetting('vehicle')) || {};
+  data.finance = (await getSetting('finance')) || {};
   return data;
 }
 
@@ -55,7 +57,18 @@ export async function importAll(data) {
       for (const item of data[s] || []) os.put(item);
     }
     t.objectStore('settings').put(data.vehicle || {}, 'vehicle');
+    t.objectStore('settings').put(data.finance || {}, 'finance');
   });
+}
+
+// Agrega (sin borrar nada) los movimientos de finanzas de un archivo.
+export async function mergeFinance(data) {
+  if (!data || data.app !== 'secondbrain') throw new Error('Archivo no válido');
+  let n = 0;
+  await tx(FIN_STORES, 'readwrite', (t) => {
+    for (const s of FIN_STORES) for (const item of data[s] || []) { t.objectStore(s).put(item); n++; }
+  });
+  return n;
 }
 
 export async function clearAll() {

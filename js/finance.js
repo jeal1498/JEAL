@@ -1,0 +1,139 @@
+// Cálculos puros de finanzas: pagos repetidos, reparto del ingreso y metas.
+//
+// Reparto (igual que el Excel): el ingreso de cada mes cubre los pagos en orden de
+// fecha, empezando por los que quedaron pendientes de meses anteriores. Lo que sobra
+// se aparta para las metas, también en orden de fecha.
+
+export const CATEGORIES = ['🚗 Vehículo', '👤 Yo', '👩 Karen', '👧 Julieta', '👨‍👩‍👧‍👦 Familia', '💡 Servicios', '🏛️ Finanzas', '🏠 Casa', '🛒 Súper', '📦 Otro'];
+export const REPEATS = [
+  { v: '', l: 'No se repite' },
+  { v: 'week', l: 'Cada semana' },
+  { v: '2week', l: 'Cada 2 semanas' },
+  { v: 'month', l: 'Cada mes' },
+];
+export const GOAL_WINDOW = 120; // días: solo las metas cercanas cuentan para la meta diaria
+
+const pad = (n) => String(n).padStart(2, '0');
+const parse = (s) => new Date(s + 'T00:00');
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+export const monthKey = (s) => s.slice(0, 7);
+export const monthDays = (key) => new Date(+key.slice(0, 4), +key.slice(5, 7), 0).getDate();
+export const addMonths = (key, n) => ymd(new Date(+key.slice(0, 4), +key.slice(5, 7) - 1 + n, 1)).slice(0, 7);
+export const daysBetween = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return ymd(d); };
+
+// Fechas en que cae un pago dentro del mes `key` (considera repetición, "hasta" y omitidos).
+export function occurrences(bill, key) {
+  const start = bill.date;
+  if (!start || monthKey(start) > key) return [];
+  const first = `${key}-01`;
+  const last = `${key}-${pad(monthDays(key))}`;
+  const out = [];
+  if (bill.repeat === 'month') {
+    out.push(`${key}-${pad(Math.min(+start.slice(8), monthDays(key)))}`);
+  } else if (bill.repeat === 'week' || bill.repeat === '2week') {
+    const step = bill.repeat === 'week' ? 7 : 14;
+    let d = start < first ? addDays(start, Math.ceil(daysBetween(start, first) / step) * step) : start;
+    for (; d <= last; d = addDays(d, step)) out.push(d);
+  } else if (monthKey(start) === key) {
+    out.push(start);
+  }
+  const skip = bill.skip || [];
+  return out.filter((d) => d >= start && (!bill.until || d <= bill.until) && !skip.includes(d));
+}
+
+// Pagos del mes como instancias: { id, date, category, concept, amount, bill | fuel }.
+export function billsIn(state, key, withFuel) {
+  const out = [];
+  for (const b of state.bills) {
+    for (const date of occurrences(b, key)) out.push({ id: `${b.id}@${date}`, date, category: b.category, concept: b.concept, amount: +b.amount || 0, bill: b });
+  }
+  if (withFuel) {
+    for (const f of state.fuel) {
+      if (monthKey(f.date) === key) out.push({ id: `fuel:${f.id}`, date: f.date, category: '🚗 Vehículo', concept: f.fuelType === 'lp' ? 'Gas LP' : 'Combustible', amount: +f.total || 0, fuel: f });
+    }
+  }
+  // Mismo día: primero lo que se registró antes (como el orden de filas del Excel).
+  const created = (x) => (x.bill || x.fuel).createdAt || 0;
+  return out.sort((a, b) => a.date.localeCompare(b.date) || created(a) - created(b));
+}
+
+// Simula mes a mes desde el primer registro hasta hoy.
+// `before`: solo cuenta ingresos anteriores a esa fecha (para la meta "al empezar el día").
+export function simulate(state, today, { withFuel = false, before = null } = {}) {
+  const cur = monthKey(today);
+  const keys = [
+    ...state.income.map((x) => x.date),
+    ...state.bills.map((x) => x.date),
+    ...(withFuel ? state.fuel.map((x) => x.date) : []),
+  ].filter(Boolean).map(monthKey);
+  let key = keys.length ? keys.reduce((a, b) => (a < b ? a : b)) : cur;
+  if (key > cur) key = cur;
+
+  const incomeBy = new Map();
+  for (const x of state.income) {
+    if (!x.date || x.date > today || (before && x.date >= before)) continue;
+    const k = monthKey(x.date);
+    incomeBy.set(k, (incomeBy.get(k) || 0) + (+x.amount || 0));
+  }
+
+  const paid = new Map();
+  let carry = [];
+  let saved = 0;
+  for (; key <= cur; key = addMonths(key, 1)) {
+    let pool = incomeBy.get(key) || 0;
+    const queue = [...carry, ...billsIn(state, key, withFuel)];
+    carry = [];
+    for (const b of queue) {
+      const p = paid.get(b.id) || 0;
+      const pay = Math.min(b.amount - p, pool);
+      if (pay > 0) { paid.set(b.id, p + pay); pool -= pay; }
+      if ((paid.get(b.id) || 0) < b.amount) carry.push(b);
+    }
+    saved += pool; // al cerrar el mes lo sobrante se va a metas (el mes actual, de forma provisional)
+  }
+
+  let left = saved;
+  const goals = [...state.goals].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999')).map((g) => {
+    const amount = +g.amount || 0;
+    const have = Math.min(+g.saved || 0, amount);
+    const add = Math.min(amount - have, left);
+    left -= add;
+    const collected = have + add;
+    const pending = amount - collected;
+    const days = g.date ? daysBetween(today, g.date) : null;
+    const cuota = pending > 0 && days > 0 && days <= GOAL_WINDOW ? pending / days : 0;
+    return { g, amount, collected, pending, days, cuota };
+  });
+
+  return { paid, carry, saved, free: left, goals };
+}
+
+// Estado de un pago dado lo cubierto.
+export function billStatus(b, paidAmt, today) {
+  const pending = Math.max(0, b.amount - paidAmt);
+  const days = daysBetween(today, b.date);
+  let level = 'ok';
+  if (pending <= 0) level = 'paid';
+  else if (days < 0) level = 'overdue';
+  else if (days <= 7) level = 'soon';
+  return { pending, paid: paidAmt, days, level, cuota: pending <= 0 ? 0 : days > 0 ? pending / days : pending };
+}
+
+// Resumen del mes actual: lo que falta, meta diaria de pagos y de metas.
+export function todayPlan(state, today, withFuel) {
+  const key = monthKey(today);
+  const end = `${key}-${pad(monthDays(key))}`;
+  const daysLeft = monthDays(key) - +today.slice(8) + 1;
+  // Meta calculada al empezar el día (sin lo que entró hoy), así "hoy llevas X de Y" tiene sentido.
+  const start = simulate(state, today, { withFuel, before: today });
+  const now = simulate(state, today, { withFuel });
+  const pendingOf = (sim) => {
+    const list = [...sim.carry.filter((b) => b.date < `${key}-01`), ...billsIn(state, key, withFuel)];
+    return list.reduce((s, b) => s + Math.max(0, b.amount - (sim.paid.get(b.id) || 0)), 0);
+  };
+  const metaBills = pendingOf(start) / daysLeft;
+  const metaGoals = start.goals.reduce((s, x) => s + x.cuota, 0);
+  const earnedToday = state.income.filter((x) => x.date === today).reduce((s, x) => s + (+x.amount || 0), 0);
+  return { key, end, daysLeft, metaBills, metaGoals, meta: metaBills + metaGoals, earnedToday, pending: pendingOf(now), sim: now };
+}

@@ -1,8 +1,8 @@
 // Almacenamiento local (IndexedDB). Todo vive en el dispositivo.
 const DB_NAME = 'secondbrain';
-const VERSION = 2;
-export const STORES = ['fuel', 'maintenance', 'expenses', 'reminders', 'income', 'bills', 'goals'];
-export const FIN_STORES = ['income', 'bills', 'goals'];
+const VERSION = 3;
+export const STORES = ['fuel', 'maintenance', 'expenses', 'reminders', 'income', 'bills', 'goals', 'budgets'];
+export const FIN_STORES = ['income', 'bills', 'goals', 'budgets'];
 
 let dbp;
 function open() {
@@ -61,12 +61,15 @@ export async function importAll(data) {
   });
 }
 
-// Agrega (sin borrar nada) los movimientos de finanzas de un archivo.
+// Agrega los movimientos de finanzas de un archivo (y borra solo los ids que indique `delete`).
 export async function mergeFinance(data) {
   if (!data || data.app !== 'secondbrain') throw new Error('Archivo no válido');
   let n = 0;
   await tx(FIN_STORES, 'readwrite', (t) => {
-    for (const s of FIN_STORES) for (const item of data[s] || []) { t.objectStore(s).put(item); n++; }
+    for (const s of FIN_STORES) {
+      for (const id of data.delete?.[s] || []) t.objectStore(s).delete(id);
+      for (const item of data[s] || []) { t.objectStore(s).put(item); n++; }
+    }
   });
   return n;
 }

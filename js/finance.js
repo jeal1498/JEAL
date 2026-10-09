@@ -11,6 +11,10 @@ export const REPEATS = [
   { v: '2week', l: 'Cada 2 semanas' },
   { v: 'month', l: 'Cada mes' },
 ];
+export const BUDGET_KINDS = [
+  { v: 'category', l: 'Todo lo de la categoría' },
+  { v: 'fuel', l: 'Cargas de combustible' },
+];
 export const GOAL_WINDOW = 120; // días: solo las metas cercanas cuentan para la meta diaria
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -20,6 +24,7 @@ export const monthKey = (s) => s.slice(0, 7);
 export const monthDays = (key) => new Date(+key.slice(0, 4), +key.slice(5, 7), 0).getDate();
 export const addMonths = (key, n) => ymd(new Date(+key.slice(0, 4), +key.slice(5, 7) - 1 + n, 1)).slice(0, 7);
 export const daysBetween = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
+const localToday = () => ymd(new Date());
 const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return ymd(d); };
 
 // Fechas en que cae un pago dentro del mes `key` (considera repetición, "hasta" y omitidos).
@@ -56,8 +61,16 @@ export function vehicleItems(state) {
 // Pago de vehículo capturado en finanzas que ya existe en Vehículo (misma fecha y monto): no se cuenta doble.
 const dupKey = (date, amount) => `${date}|${Math.round(amount * 100)}`;
 
-// Pagos del mes como instancias: { id, date, category, concept, amount, bill | veh }.
-export function billsIn(state, key) {
+// Qué movimientos cuentan contra un presupuesto.
+const FUEL_RE = /combust|gasolin|\bgas\b|\blp\b/i;
+function budgetCounts(g, x) {
+  if (x.budget) return false;
+  if (g.kind === 'fuel') return x.veh?.store === 'fuel' || (!!x.bill && x.category === VEHICLE_CAT && FUEL_RE.test(x.concept));
+  return x.category === g.category;
+}
+
+// Pagos del mes como instancias: { id, date, category, concept, amount, bill | veh | budget }.
+export function billsIn(state, key, today = localToday()) {
   const veh = vehicleItems(state).filter((v) => monthKey(v.item.date) === key);
   const vehKeys = new Set(veh.map((v) => dupKey(v.item.date, v.amount)));
   const out = [];
@@ -68,8 +81,17 @@ export function billsIn(state, key) {
     }
   }
   for (const v of veh) out.push({ id: `${v.store}:${v.item.id}`, date: v.item.date, category: VEHICLE_CAT, concept: v.concept, amount: v.amount, veh: v });
+  // Presupuesto mensual: lo gastado ya está en la lista; solo se reserva lo que queda (a fin de mes).
+  // En meses pasados no se reserva nada: lo que no se gastó, no se debe.
+  const end = `${key}-${pad(monthDays(key))}`;
+  for (const g of state.budgets || []) {
+    const limit = +g.amount || 0;
+    const spent = out.filter((x) => budgetCounts(g, x)).reduce((s, x) => s + x.amount, 0);
+    const left = key < monthKey(today) ? 0 : Math.max(0, limit - spent);
+    out.push({ id: `budget:${g.id}@${key}`, date: end, category: g.category, concept: g.concept, amount: left, budget: g, spent, limit });
+  }
   // Mismo día: primero lo que se registró antes (como el orden de filas del Excel).
-  const created = (x) => (x.bill || x.veh.item).createdAt || x.veh?.item.updatedAt || 0;
+  const created = (x) => (x.bill || x.veh?.item || x.budget).createdAt || x.veh?.item.updatedAt || 0;
   return out.sort((a, b) => a.date.localeCompare(b.date) || created(a) - created(b));
 }
 
@@ -97,7 +119,7 @@ export function simulate(state, today, { before = null } = {}) {
   let saved = 0;
   for (; key <= cur; key = addMonths(key, 1)) {
     let pool = incomeBy.get(key) || 0;
-    const queue = [...carry, ...billsIn(state, key)];
+    const queue = [...carry, ...billsIn(state, key, today)];
     carry = [];
     for (const b of queue) {
       const p = paid.get(b.id) || 0;
@@ -144,7 +166,7 @@ export function todayPlan(state, today) {
   const start = simulate(state, today, { before: today });
   const now = simulate(state, today);
   const pendingOf = (sim) => {
-    const list = [...sim.carry.filter((b) => b.date < `${key}-01`), ...billsIn(state, key)];
+    const list = [...sim.carry.filter((b) => b.date < `${key}-01`), ...billsIn(state, key, today)];
     return list.reduce((s, b) => s + Math.max(0, b.amount - (sim.paid.get(b.id) || 0)), 0);
   };
   const metaBills = pendingOf(start) / daysLeft;

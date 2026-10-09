@@ -296,3 +296,7 @@ textarea { resize: vertical; }
 .vehlink[hidden] { display: none; }
 .vehlink p { margin: 0; }
 .vehlink small { color: var(--muted); font-size: 12px; }
+.progress.warn i { background: var(--soon); }
+.progress.over i { background: var(--over); }
+.budget.warn .status { color: var(--soon); }
+.budget.over .status { color: var(--over); font-weight: 600; }

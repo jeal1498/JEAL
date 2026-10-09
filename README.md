@@ -14,6 +14,7 @@ PWA personal (sin build, sin servidor). Los datos viven solo en el dispositivo (
 - **Hoy**: meta del día (pagos del mes + apartado para metas), lo que llevas hoy y próximos pagos.
 - **Ingresos**: calendario del mes con total por semana; toca un día para registrar.
 - **Pagos**: con fecha límite y repetición (semanal, quincenal, mensual). El ingreso del mes los cubre en orden de fecha; muestra pagado, pendiente y cuánto juntar por día.
+- **Presupuestos**: tope al mes (ej. combustible $6,000); cada gasto lo descuenta, lo que queda se reserva en la meta diaria y avisa al pasar 80% y 100%.
 - **Metas**: lo que sobra cada mes se aparta para las metas en orden de fecha; cuota diaria/semanal/mensual (metas a 120 días o menos).
 - **Conectado con Vehículo**: cargas, servicios y gastos del vehículo aparecen solos en Pagos; un pago de 🚗 Vehículo capturado en finanzas se guarda en Vehículo. Sin duplicados.
 - **Ajustes**: importar movimientos (JSON) sin borrar nada.

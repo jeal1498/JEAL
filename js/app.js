@@ -1,5 +1,5 @@
 import * as db from './db.js';
-import { CATEGORIES, REPEATS, GOAL_WINDOW, VEHICLE_CAT, monthKey, monthDays, addMonths, billsIn, billStatus, simulate, todayPlan } from './finance.js';
+import { CATEGORIES, REPEATS, BUDGET_KINDS, GOAL_WINDOW, VEHICLE_CAT, monthKey, monthDays, addMonths, billsIn, billStatus, simulate, todayPlan } from './finance.js';
 import { fuelStats, fuelStatsByType, FUELS, fuelTypeOf, currentOdometer, firstOdometer, totals, monthlySpend, reminderStatus, amountOf } from './calc.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -7,14 +7,14 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const today = () => new Date().toLocaleDateString('en-CA');
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
-const state = { fuel: [], maintenance: [], expenses: [], reminders: [], income: [], bills: [], goals: [], vehicle: {}, finance: {} };
+const state = { fuel: [], maintenance: [], expenses: [], reminders: [], income: [], bills: [], goals: [], budgets: [], vehicle: {}, finance: {} };
 
 async function load() {
-  const [fuel, maintenance, expenses, reminders, income, bills, goals, vehicle, finance] = await Promise.all([
+  const [fuel, maintenance, expenses, reminders, income, bills, goals, budgets, vehicle, finance] = await Promise.all([
     db.all('fuel'), db.all('maintenance'), db.all('expenses'), db.all('reminders'),
-    db.all('income'), db.all('bills'), db.all('goals'), db.getSetting('vehicle'), db.getSetting('finance'),
+    db.all('income'), db.all('bills'), db.all('goals'), db.all('budgets'), db.getSetting('vehicle'), db.getSetting('finance'),
   ]);
-  Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, vehicle: vehicle || {}, finance: finance || {} });
+  Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, vehicle: vehicle || {}, finance: finance || {} });
 }
 
 // ---------- Formato ----------
@@ -150,6 +150,16 @@ const SCHEMAS = {
       { k: 'date', label: 'Fecha límite', type: 'date', req: true, def: today },
       { k: 'repeat', label: 'Se repite', type: 'select', options: REPEATS },
       { k: 'until', label: 'Repetir hasta (opcional)', type: 'date' },
+      { k: 'notes', label: 'Notas', type: 'textarea' },
+    ],
+  },
+  budgets: {
+    title: 'Presupuesto', newLabel: 'Nuevo',
+    fields: [
+      { k: 'concept', label: 'Nombre', type: 'text', req: true, placeholder: 'Ej. Combustible' },
+      { k: 'amount', label: 'Tope al mes', type: 'number', step: '0.01', req: true },
+      { k: 'category', label: 'Categoría', type: 'select', options: CATEGORIES, req: true },
+      { k: 'kind', label: 'Qué cuenta', type: 'select', options: BUDGET_KINDS },
       { k: 'notes', label: 'Notas', type: 'textarea' },
     ],
   },
@@ -689,6 +699,26 @@ function billRow(b, paid, t) {
     <span class="row-amount">${money(st.level === 'paid' ? b.amount : st.pending)}${st.level !== 'paid' && paid > 0 ? `<small>de ${money(b.amount)}</small>` : ''}</span></li>`;
 }
 
+// Presupuestos del mes: gastado contra tope; lo que queda ya está reservado en la meta diaria.
+function budgetsCard(list, key, t, withAdd) {
+  const bs = list.filter((b) => b.budget);
+  if (!bs.length && !withAdd) return '';
+  const daysLeft = key === monthKey(t) ? monthDays(key) - +t.slice(8) + 1 : key > monthKey(t) ? monthDays(key) : 0;
+  const rows = bs.map((b) => {
+    const pct = b.limit ? b.spent / b.limit : 0;
+    const cls = pct > 1 ? 'over' : pct >= 0.8 ? 'warn' : '';
+    const left = b.limit - b.spent;
+    const msg = left < 0 ? `Te pasaste ${money(-left)}` : `Quedan ${money(left)}${daysLeft && left > 0 ? ` · ${money(left / daysLeft)}/día` : ''}`;
+    return `<li data-budget="${b.budget.id}" tabindex="0" class="budget ${cls}">
+      <span class="row-icon emoji">${catEmoji(b.category)}</span>
+      <span class="row-body"><b>${esc(b.concept)}</b><small><span class="status">${msg}</span></small>${bar(pct, cls)}</span>
+      <span class="row-amount">${money0(b.spent)}<small>de ${money0(b.limit)}</small></span></li>`;
+  });
+  return `<section class="card"><h3>Presupuestos</h3>
+    ${rows.length ? `<ul class="list flat">${rows.join('')}</ul>` : '<p class="muted small">Pon un tope al mes, por ejemplo para combustible o súper. Cada gasto lo va descontando y lo que queda se reserva solo.</p>'}
+    ${withAdd ? '<button class="small" data-new="budgets">＋ Presupuesto</button>' : ''}</section>`;
+}
+
 function catCard(list) {
   const by = new Map();
   for (const b of list) by.set(b.category, (by.get(b.category) || 0) + b.amount);
@@ -701,7 +731,7 @@ function catCard(list) {
 
 function renderFinToday() {
   const t = today();
-  if (!state.income.length && !state.bills.length && !state.goals.length) {
+  if (!state.income.length && !state.bills.length && !state.goals.length && !state.budgets.length) {
     view.innerHTML = `
       <div class="empty">
         ${icon('wallet')}
@@ -717,7 +747,7 @@ function renderFinToday() {
   const monthBills = billsIn(state, key);
   const next = billsIn(state, addMonths(key, 1));
   const upcoming = [...sim.carry.filter((b) => b.date < key + '-01'), ...monthBills, ...next]
-    .filter((b) => (sim.paid.get(b.id) || 0) < b.amount).slice(0, 5);
+    .filter((b) => !b.budget && (sim.paid.get(b.id) || 0) < b.amount).slice(0, 5);
   const earnedMonth = sum(state.income.filter((x) => monthKey(x.date) === key), (x) => x.amount);
   const saved = sum(sim.goals, (g) => g.collected);
   const goalsTotal = sum(sim.goals, (g) => g.amount);
@@ -730,9 +760,10 @@ function renderFinToday() {
       <span>Hoy llevas <b>${money(plan.earnedToday)}</b>${plan.meta > plan.earnedToday ? ` · faltan ${money(plan.meta - plan.earnedToday)}` : plan.meta ? ' · ¡meta cumplida! 🎉' : ''}</span>
       <span class="small">Pagos ${money(plan.metaBills)}/día (quedan ${plan.daysLeft} días del mes) · Metas ${money(plan.metaGoals)}/día</span>
     </section>
+    ${budgetsCard(monthBills, key, t, false)}
     <section class="tiles">
       ${finTile('Ingresos del mes', money(earnedMonth), cap(fdate(key + '-01', { month: 'long' })))}
-      ${finTile('Pagos del mes', money(sum(monthBills, (b) => b.amount)), `${monthBills.length} pago${monthBills.length === 1 ? '' : 's'}`)}
+      ${finTile('Pagos del mes', money(sum(monthBills, (b) => b.amount)), 'Incluye lo reservado')}
       ${finTile('Falta cubrir', money(plan.pending), plan.pending > 0 ? 'Incluye vencidos' : 'Mes cubierto ✓')}
       ${finTile('Ahorrado en metas', money(saved), goalsTotal ? `de ${money(goalsTotal)}` : 'Sin metas')}
     </section>
@@ -779,12 +810,14 @@ function renderBills() {
   const key = finMonth;
   const t = today();
   const sim = simulate(state, t);
-  const list = billsIn(state, key);
+  const all = billsIn(state, key);
+  const list = all.filter((b) => !b.budget);
   const prev = key === monthKey(t) ? sim.carry.filter((b) => b.date < key + '-01') : [];
-  const total = sum(list, (b) => b.amount);
-  const covered = sum(list, (b) => sim.paid.get(b.id) || 0);
+  const total = sum(all, (b) => b.amount);
+  const covered = sum(all, (b) => sim.paid.get(b.id) || 0);
   view.innerHTML = `
     ${monthNav()}
+    ${budgetsCard(all, key, t, true)}
     ${list.length || prev.length ? `
       <section class="tiles three">
         ${finTile('Total', money0(total))}
@@ -795,7 +828,7 @@ function renderBills() {
         <ul class="list">${prev.map((b) => billRow(b, sim.paid.get(b.id) || 0, t)).join('')}</ul>` : ''}
       ${list.length ? `<h4 class="group"><span>${monthLabel(key)}</span><span>${list.length} pago${list.length === 1 ? '' : 's'}</span></h4>
         <ul class="list">${list.map((b) => billRow(b, sim.paid.get(b.id) || 0, t)).join('')}</ul>` : ''}
-      ${catCard(list)}`
+      ${catCard(all)}`
     : `<div class="empty">${icon('receipt')}<p>Agrega tus pagos: colegiatura, servicios, tandas, tarjetas… Si se repite, márcalo y aparecerá solo cada mes.</p></div>`}`;
 }
 
@@ -862,6 +895,11 @@ function bindFin() {
         : null;
       openForm('bills', b.bill, { extra });
     };
+    li.onclick = open;
+    li.onkeydown = (e) => { if (e.key === 'Enter') open(); };
+  });
+  view.querySelectorAll('[data-budget]').forEach((li) => {
+    const open = () => openForm('budgets', state.budgets.find((g) => g.id === li.dataset.budget));
     li.onclick = open;
     li.onkeydown = (e) => { if (e.key === 'Enter') open(); };
   });
@@ -992,7 +1030,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 
 async function refresh() {
   await load();

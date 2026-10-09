@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-09, v1.4.0)
+## SecondBrain (estado al 2026-10-09, v1.5.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos **solo en el dispositivo** (IndexedDB, `js/db.js`). Respaldo manual JSON/CSV en Ajustes.
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -20,7 +20,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - `js/app.js` — router por hash (`#/`, `#/vehiculo/<tab>`), vistas, formularios por esquema (`SCHEMAS`), gráficas SVG propias.
 - `js/finance.js` — finanzas puras: pagos repetidos, reparto del ingreso por fecha, metas, meta diaria.
 - `js/calc.js` — cálculos puros (rendimiento tanque lleno→tanque lleno, gasto mensual, recordatorios).
-- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `settings` (claves `vehicle`, `finance`).
+- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `budgets`, `settings` (claves `vehicle`, `finance`).
 - `css/styles.css` — tokens en `:root` con modo oscuro; series de gráficas `--s1..--s4` (paleta validada).
 
 ### Módulo Vehículo
@@ -31,6 +31,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 ### Módulo Finanzas (`#/finanzas`)
 - Hoy / Ingresos (calendario) / Pagos (repetición semanal, quincenal, mensual; "Omitir" un día) / Metas.
 - El ingreso de cada mes cubre pagos en orden de fecha (vencidos primero); el sobrante al cerrar el mes va a metas por fecha.
+- Presupuestos (`budgets`): tope mensual; `kind` `fuel` (cargas + pagos 🚗 tipo combustible) o `category`. Lo gastado ya está en la lista; se reserva solo lo que queda, a fin de mes (meses pasados: 0).
 - Meta de hoy = pendiente del mes / días restantes + cuota de metas a ≤120 días. Vehículo es la única fuente de sus gastos: cargas/servicios/gastos salen solos en Pagos (`vehicleItems`); un pago 🚗 en finanzas se captura en Vehículo; pagos 🚗 iguales (fecha+monto) a un registro de Vehículo se ocultan.
 
 ### Agregar un módulo nuevo

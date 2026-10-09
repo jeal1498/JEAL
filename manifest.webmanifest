@@ -1,0 +1,32 @@
+{
+  "name": "SecondBrain",
+  "short_name": "SecondBrain",
+  "description": "Mi segundo cerebro: combustible, mantenimiento y gastos del vehículo.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f5f2",
+  "theme_color": "#2a78d6",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Registrar carga",
+      "url": "./#/vehiculo/cargas"
+    }
+  ]
+}

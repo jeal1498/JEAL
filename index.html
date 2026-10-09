@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SecondBrain</title>
+  <meta name="description" content="Mi segundo cerebro: control de combustible, mantenimiento y gastos del vehículo.">
+  <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SecondBrain">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header id="top" class="top"></header>
+  <main id="view" class="view"></main>
+  <nav id="tabs" class="tabs" hidden></nav>
+  <button id="fab" class="fab" aria-label="Agregar" hidden><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+  <dialog id="sheet" class="sheet"></dialog>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

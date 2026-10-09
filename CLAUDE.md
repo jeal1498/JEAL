@@ -9,7 +9,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 
 ## SecondBrain (estado al 2026-10-09, v1.7.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
-- Datos **solo en el dispositivo** (IndexedDB, `js/db.js`). Respaldo manual JSON/CSV en Ajustes.
+- Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
 - Publicado en GitHub Pages desde `main` (root): https://jeal1498.github.io/JEAL/
 - **Cada cambio terminado se sube directo a `main`** (lo pidió el usuario). Vercel está desactivado con `vercel.json`.
@@ -18,10 +18,11 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 
 ### Archivos
 - `index.html` — shell (header, `#view`, tabs, FAB, `<dialog>` de formularios).
-- `js/app.js` — router por hash (`#/`, `#/vehiculo/<tab>`), vistas, formularios por esquema (`SCHEMAS`), gráficas SVG propias.
+- `js/app.js` — router por hash (`#/`, `#/vehiculo/<tab>`, `#/finanzas/<tab>`, `#/respaldo`), vistas, formularios por esquema (`SCHEMAS`), gráficas SVG propias.
 - `js/finance.js` — finanzas puras: pagos repetidos, reparto del ingreso por fecha, metas, meta diaria.
+- `js/backup.js` — respaldo/restauración en Google Sheets y texto del Apps Script (`scriptFor`).
 - `js/calc.js` — cálculos puros (rendimiento tanque lleno→tanque lleno, gasto mensual, recordatorios).
-- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `budgets`, `settings` (claves `vehicle`, `finance`).
+- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `budgets`, `settings` (claves `vehicle`, `finance`, `backup`). DB `VERSION` 3.
 - `css/styles.css` — tokens en `:root` con modo oscuro; series de gráficas `--s1..--s4` (paleta validada).
 
 ### Módulo Vehículo
@@ -38,6 +39,12 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 ### Agregar un módulo nuevo
 Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en `render()`, sus stores en `db.js` (subir `VERSION` de la DB y crear stores en `onupgradeneeded`) y sus esquemas de formulario.
 
+## Estado de los datos del usuario (2026-10-09)
+- Ya cargó en su teléfono (vía "Agregar desde archivo"): 11 cargas de gas LP jul–sep 2026, ingresos/pagos de octubre 2026 y metas de su Excel (pestañas `10/26` y `BUDGET FAMILIAR`), presupuesto Combustible $6,000/mes. **No volver a generarle esos archivos.**
+- Supuestos a confirmar si pregunta: Colegiatura y Gym mensuales, Psicóloga (👤 Yo) semanal; carga del 15-jul marcada como no-llena.
+- Respaldo en Google Sheets **conectado y funcionando**. Si cambia el código del Apps Script debe hacer "Nueva versión" en la implementación; "Clave incorrecta" = TOKEN distinto al de la app.
+- Para pasarle datos: generar JSON `{app:'secondbrain', <store>: [...]}` con ids estables y `createdAt`; ella lo sube en Respaldo → **Agregar** (no borra). `delete: {<store>: [ids]}` para quitar.
+
 ## Probar
 `python3 -m http.server 8765` y Playwright con Chromium en `/opt/pw-browsers/chromium` (`playwright-core` en el scratchpad). Revisar capturas a 390px, claro y oscuro.
 
@@ -47,4 +54,4 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 
 ## Ideas pendientes
 - Otros módulos para el SecondBrain (notas, hábitos…).
-- Sincronizar/respaldar en la nube si algún día lo necesita.
+- Ideas mencionadas en finanzas: presupuestos para súper/comida fuera.

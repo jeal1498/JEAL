@@ -207,7 +207,9 @@ function openForm(store, item = null, { preset = {}, extra = null, onSaved = nul
       input = `<input type="${f.type}" ${common} ${mode} ${list} value="${esc(v(f))}">`;
       if (f.list) input += `<datalist id="dl-${f.k}">${f.list().map((o) => `<option value="${esc(o)}">`).join('')}</datalist>`;
     }
-    return `<label class="field ${f.type === 'textarea' ? 'wide' : ''}" for="${id}"><span>${f.label}</span>${input}</label>`;
+    // Sugerencias visibles (el datalist casi no se ve en el teléfono): botones con lo ya capturado.
+    const sugg = f.list && f.list().length ? `<div class="sugg" data-for="${f.k}"></div>` : '';
+    return `<label class="field ${f.type === 'textarea' || sugg ? 'wide' : ''}" for="${id}"><span>${f.label}</span>${input}</label>${sugg}`;
   };
 
   sheet.innerHTML = `
@@ -228,6 +230,7 @@ function openForm(store, item = null, { preset = {}, extra = null, onSaved = nul
   const form = $('form', sheet);
   if (store === 'fuel') wireFuelMath(form);
   if (store === 'bills') wireVehicleLink(form, item);
+  schema.fields.filter((f) => f.list).forEach((f) => wireSuggestions(form, store, f, isNew));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -264,6 +267,40 @@ function openForm(store, item = null, { preset = {}, extra = null, onSaved = nul
   };
   sheet.showModal();
   if (isNew) setTimeout(() => [...form.querySelectorAll('input[required]')].find((el) => !el.value)?.focus(), 50);
+}
+
+// Botones con valores ya usados, filtrados mientras escribes. En un registro nuevo,
+// elegir uno copia monto/categoría del último registro con ese valor.
+function wireSuggestions(form, store, f, isNew) {
+  const box = $(`.sugg[data-for="${f.k}"]`, form);
+  const el = form.elements[f.k];
+  if (!box || !el) return;
+  const all = f.list();
+  const norm = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const draw = () => {
+    const q = norm(el.value.trim());
+    const items = all.filter((o) => norm(o) !== q && norm(o).includes(q));
+    box.innerHTML = items.map((o) => `<button type="button">${esc(o)}</button>`).join('');
+    box.hidden = !items.length;
+  };
+  el.addEventListener('input', draw);
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    el.value = b.textContent;
+    if (isNew) {
+      const last = state[store].filter((x) => x[f.k] === el.value).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (b.createdAt || 0) - (a.createdAt || 0))[0];
+      for (const k of ['amount', 'category']) {
+        const input = form.elements[k];
+        if (last && input && last[k] !== '' && last[k] != null && (k === 'category' ? [...input.options].some((o) => o.value === last[k]) : input.value === '')) {
+          input.value = last[k];
+          input.dispatchEvent(new Event('change'));
+        }
+      }
+    }
+    draw();
+  });
+  draw();
 }
 
 // Pago de vehículo en finanzas → se captura en el módulo Vehículo (única fuente), con fecha y monto ya puestos.
@@ -1139,7 +1176,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '1.7.0';
+const VERSION = '1.7.1';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

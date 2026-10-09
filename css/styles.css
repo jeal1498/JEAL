@@ -233,6 +233,9 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 textarea { resize: vertical; }
+.sugg { grid-column: 1 / -1; display: flex; gap: 6px; overflow-x: auto; margin-top: -4px; padding-bottom: 2px; scrollbar-width: none; }
+.sugg[hidden] { display: none; }
+.sugg button { flex: none; font: inherit; font-size: 13px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; white-space: nowrap; cursor: pointer; }
 .check { display: flex; gap: 10px; align-items: center; font-size: 15px; padding: 4px 0; }
 .check input { width: 22px; height: 22px; accent-color: var(--accent); }
 .check span { display: grid; }

@@ -2,7 +2,6 @@
 const DB_NAME = 'secondbrain';
 const VERSION = 3;
 export const STORES = ['fuel', 'maintenance', 'expenses', 'reminders', 'income', 'bills', 'goals', 'budgets'];
-export const FIN_STORES = ['income', 'bills', 'goals', 'budgets'];
 
 let dbp;
 function open() {
@@ -61,12 +60,12 @@ export async function importAll(data) {
   });
 }
 
-// Agrega los movimientos de finanzas de un archivo (y borra solo los ids que indique `delete`).
-export async function mergeFinance(data) {
+// Agrega los registros de un archivo sin borrar nada (salvo los ids que indique `delete`).
+export async function mergeData(data) {
   if (!data || data.app !== 'secondbrain') throw new Error('Archivo no válido');
   let n = 0;
-  await tx(FIN_STORES, 'readwrite', (t) => {
-    for (const s of FIN_STORES) {
+  await tx(STORES, 'readwrite', (t) => {
+    for (const s of STORES) {
       for (const id of data.delete?.[s] || []) t.objectStore(s).delete(id);
       for (const item of data[s] || []) { t.objectStore(s).put(item); n++; }
     }

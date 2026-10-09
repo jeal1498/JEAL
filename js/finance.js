@@ -49,13 +49,19 @@ export function occurrences(bill, key) {
 
 export const VEHICLE_CAT = '🚗 Vehículo';
 
+// Mes en que empezó el control de finanzas (primer ingreso o pago).
+const financeStart = (state) => [...state.income, ...state.bills].map((x) => x.date).filter(Boolean).map(monthKey).sort()[0];
+
 // Lo registrado en el módulo Vehículo es la única fuente: finanzas solo lo lee.
+// Lo anterior al inicio de finanzas (historial del vehículo) no cuenta: se pagó con dinero que no está registrado.
 export function vehicleItems(state) {
+  const start = financeStart(state);
+  if (!start) return [];
   return [
     ...state.fuel.map((x) => ({ store: 'fuel', item: x, amount: +x.total || 0, concept: x.fuelType === 'lp' ? 'Gas LP' : 'Gasolina' })),
     ...state.maintenance.map((x) => ({ store: 'maintenance', item: x, amount: +x.cost || 0, concept: x.type || 'Servicio' })),
     ...state.expenses.map((x) => ({ store: 'expenses', item: x, amount: +x.amount || 0, concept: x.category || 'Gasto' })),
-  ].filter((v) => v.item.date && v.amount > 0);
+  ].filter((v) => v.item.date && v.amount > 0 && monthKey(v.item.date) >= start);
 }
 
 // Pago de vehículo capturado en finanzas que ya existe en Vehículo (misma fecha y monto): no se cuenta doble.

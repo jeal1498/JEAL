@@ -877,14 +877,14 @@ function renderFinSettings() {
     </section>
     <section class="card">
       <h3>Importar movimientos</h3>
-      <p class="muted small">Agrega ingresos, pagos y metas desde un archivo JSON sin borrar lo que ya tienes. El respaldo completo está en Ajustes del vehículo.</p>
+      <p class="muted small">Agrega registros (ingresos, pagos, metas, cargas…) desde un archivo JSON sin borrar lo que ya tienes. El respaldo completo está en Respaldo.</p>
       <label class="btn">Importar JSON<input type="file" id="finImport" accept="application/json,.json" hidden></label>
     </section>`;
   $('#finImport').onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     try {
-      const n = await db.mergeFinance(JSON.parse(await file.text()));
+      const n = await db.mergeData(JSON.parse(await file.text()));
       await refresh();
       toast(`${n} movimientos importados`);
     } catch (err) {
@@ -1060,9 +1060,22 @@ async function renderBackup() {
       <div class="actions">
         <button id="export">Exportar JSON</button>
         <label class="btn">Importar JSON<input type="file" id="import" accept="application/json,.json" hidden></label>
+        <label class="btn">Agregar desde archivo<input type="file" id="merge" accept="application/json,.json" hidden></label>
       </div>
+      <p class="muted small"><b>Importar</b> reemplaza todo; <b>Agregar</b> suma los registros del archivo sin borrar nada.</p>
     </section>`;
 
+  $('#merge').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const n = await db.mergeData(JSON.parse(await file.text()));
+      await refresh();
+      toast(`${n} registros agregados`);
+    } catch (err) {
+      alert('No se pudo agregar: ' + err.message);
+    }
+  };
   const run = async (btn, fn) => {
     btn.disabled = true;
     try { await fn(); } catch (err) { alert('No se pudo: ' + (err.message || err)); } finally { btn.disabled = false; state.backup = await backup.getConfig(); if (location.hash === '#/respaldo') render(); }
@@ -1126,7 +1139,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '1.6.1';
+const VERSION = '1.7.0';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

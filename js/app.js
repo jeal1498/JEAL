@@ -1,5 +1,5 @@
 import * as db from './db.js';
-import { fuelStats, currentOdometer, firstOdometer, totals, monthlySpend, reminderStatus, amountOf } from './calc.js';
+import { fuelStats, fuelStatsByType, FUELS, fuelTypeOf, currentOdometer, firstOdometer, totals, monthlySpend, reminderStatus, amountOf } from './calc.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -44,27 +44,40 @@ const P = {
 };
 const icon = (n) => `<svg viewBox="0 0 24 24" class="i" aria-hidden="true">${P[n]}</svg>`;
 
+// El vehículo usa gas LP si está activado en ajustes o ya hay cargas de LP.
+const hasLP = () => !!state.vehicle.lp || state.fuel.some((f) => fuelTypeOf(f) === 'lp');
+const lastFuelType = () => {
+  const last = [...state.fuel].sort((a, b) => a.date.localeCompare(b.date) || a.odometer - b.odometer).at(-1);
+  return last ? fuelTypeOf(last) : 'gasolina';
+};
+const lastPriceOf = (type) => {
+  const p = fuelStats(state.fuel.filter((f) => fuelTypeOf(f) === type)).lastPrice;
+  return p ? p.toFixed(2) : '';
+};
+const fuelTag = (x) => (hasLP() ? `<span class="tag ${fuelTypeOf(x)}">${fuelTypeOf(x) === 'lp' ? 'LP' : 'Gas'}</span>` : '');
+
 // ---------- Esquemas de formularios ----------
-const MAINT_TYPES = ['Servicio', 'Cambio de aceite', 'Llantas', 'Frenos', 'Batería', 'Afinación', 'Alineación y balanceo', 'Reparación', 'Otro'];
+const MAINT_TYPES = ['Servicio', 'Cambio de aceite', 'Equipo de gas LP', 'Llantas', 'Frenos', 'Batería', 'Afinación', 'Alineación y balanceo', 'Reparación', 'Otro'];
 const EXPENSE_TYPES = ['Seguro', 'Verificación', 'Tenencia / Refrendo', 'Estacionamiento', 'Casetas', 'Lavado', 'Multa', 'Accesorios', 'Otro'];
 
 const SCHEMAS = {
   fuel: {
     title: 'Carga de combustible',
     fields: [
+      { k: 'fuelType', label: 'Combustible', type: 'select', options: Object.entries(FUELS).map(([v, l]) => ({ v, l })), def: lastFuelType, show: hasLP },
       { k: 'date', label: 'Fecha', type: 'date', req: true, def: today },
       { k: 'odometer', label: 'Odómetro (km)', type: 'number', step: '1', req: true, def: () => currentOdometer(state) || '' },
       { k: 'liters', label: 'Litros', type: 'number', step: '0.01', req: true },
-      { k: 'pricePerLiter', label: 'Precio por litro', type: 'number', step: '0.01', def: () => { const s = fuelStats(state.fuel).lastPrice; return s ? s.toFixed(2) : ''; } },
+      { k: 'pricePerLiter', label: 'Precio por litro', type: 'number', step: '0.01', def: () => lastPriceOf(hasLP() ? lastFuelType() : 'gasolina') },
       { k: 'total', label: 'Total pagado', type: 'number', step: '0.01', req: true },
       { k: 'full', label: 'Llené el tanque', type: 'checkbox', def: () => true, hint: 'Necesario para calcular el rendimiento' },
       { k: 'station', label: 'Gasolinera', type: 'text', list: () => uniq(state.fuel.map((f) => f.station)) },
       { k: 'notes', label: 'Notas', type: 'textarea' },
     ],
     summary: (x) => {
-      const kml = fuelStats(state.fuel).byId.get(x.id);
+      const kml = fuelStats(hasLP() ? state.fuel.filter((f) => fuelTypeOf(f) === 'lp') : state.fuel).byId.get(x.id);
       return {
-        title: `${num(x.liters, 2)} L${x.station ? ' · ' + esc(x.station) : ''}`,
+        title: `${fuelTag(x)}${num(x.liters, 2)} L${x.station ? ' · ' + esc(x.station) : ''}`,
         sub: `${fdate(x.date)} · ${num(x.odometer)} km${kml ? ` · <b>${num(kml, 1)} km/l</b>` : ''}${x.full ? '' : ' · parcial'}`,
         amount: money(x.total),
       };
@@ -123,6 +136,7 @@ function openForm(store, item = null) {
   const isNew = !item;
   const v = (f) => (item ? item[f.k] ?? '' : typeof f.def === 'function' ? f.def() : f.def ?? '');
   const field = (f) => {
+    if (f.show && !f.show()) return '';
     const id = `f-${f.k}`;
     const common = `id="${id}" name="${f.k}" ${f.req ? 'required' : ''} ${f.placeholder ? `placeholder="${esc(f.placeholder)}"` : ''}`;
     if (f.type === 'checkbox') {
@@ -130,7 +144,8 @@ function openForm(store, item = null) {
     }
     let input;
     if (f.type === 'select') {
-      input = `<select ${common}>${f.options.map((o) => `<option ${o === v(f) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+      const opts = f.options.map((o) => (typeof o === 'string' ? { v: o, l: o } : o));
+      input = `<select ${common}>${opts.map((o) => `<option value="${esc(o.v)}" ${o.v === v(f) ? 'selected' : ''}>${esc(o.l)}</option>`).join('')}</select>`;
     } else if (f.type === 'textarea') {
       input = `<textarea ${common} rows="2">${esc(v(f))}</textarea>`;
     } else {
@@ -161,6 +176,7 @@ function openForm(store, item = null) {
     const data = { ...(item || {}), id: item?.id || uid(), updatedAt: Date.now() };
     for (const f of schema.fields) {
       const el = form.elements[f.k];
+      if (!el) continue;
       data[f.k] = f.type === 'checkbox' ? el.checked : f.type === 'number' ? (el.value === '' ? '' : +el.value) : el.value.trim();
     }
     if (store === 'fuel' && isNew) {
@@ -192,8 +208,13 @@ function openForm(store, item = null) {
 
 // Litros × precio = total (y al revés).
 function wireFuelMath(form) {
-  const { liters, pricePerLiter, total } = form.elements;
+  const { liters, pricePerLiter, total, fuelType } = form.elements;
   const n = (el) => parseFloat(el.value);
+  // Al cambiar de combustible, sugerir su último precio.
+  fuelType?.addEventListener('change', () => {
+    pricePerLiter.value = lastPriceOf(fuelType.value);
+    if (n(liters) && n(pricePerLiter)) total.value = (n(liters) * n(pricePerLiter)).toFixed(2);
+  });
   liters.addEventListener('input', () => { if (n(pricePerLiter)) total.value = (n(liters) * n(pricePerLiter)).toFixed(2); });
   pricePerLiter.addEventListener('input', () => { if (n(liters)) total.value = (n(liters) * n(pricePerLiter)).toFixed(2); });
   total.addEventListener('input', () => {
@@ -211,36 +232,44 @@ function toast(msg) {
 }
 
 // ---------- Gráficas (SVG propio, funciona offline) ----------
-function lineChart(pts, fmt) {
-  if (pts.length < 2) return `<p class="muted small">Necesitas al menos 3 cargas con tanque lleno para ver la tendencia.</p>`;
+function lineChart(series, fmt) {
+  series = series.filter((sr) => sr.pts.length);
+  const all = series.flatMap((sr) => sr.pts.map((p) => ({ ...p, sr })));
+  if (all.length < 2) return `<p class="muted small">Necesitas al menos 3 cargas con tanque lleno para ver la tendencia.</p>`;
   const W = 340, H = 160, L = 36, R = 12, T = 12, B = 24;
-  const ys = pts.map((p) => p.y);
+  all.sort((p, q) => p.t - q.t);
+  const t0 = all[0].t, t1 = all.at(-1).t === t0 ? t0 + 1 : all.at(-1).t;
+  const ys = all.map((p) => p.y);
   let min = Math.min(...ys), max = Math.max(...ys);
   const pad = (max - min) * 0.2 || 1;
   min = Math.max(0, min - pad); max += pad;
-  const x = (i) => L + (i * (W - L - R)) / (pts.length - 1);
+  const x = (t) => L + ((t - t0) * (W - L - R)) / (t1 - t0);
   const y = (v) => T + (H - T - B) * (1 - (v - min) / (max - min));
   const ticks = [min, (min + max) / 2, max];
-  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.y).toFixed(1)}`).join('');
-  const lastI = pts.length - 1;
-  return `<div class="chart" data-chart='${esc(JSON.stringify(pts.map((p, i) => ({ x: x(i) / W, t: `${p.label}<br><b>${fmt(p.y)}</b>` }))))}'>
+  const multi = series.length > 1;
+  const tips = all.map((p) => ({ x: x(p.t) / W, h: `${multi ? `<i class="sw ${p.sr.cls}"></i>${p.sr.label} · ` : ''}${p.label}<br><b>${fmt(p.y)}</b>` }));
+  return `${multi ? `<div class="legend">${series.map((sr) => `<span><i class="sw ${sr.cls}"></i>${sr.label}</span>`).join('')}</div>` : ''}
+    <div class="chart" data-chart='${esc(JSON.stringify(tips))}'>
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Rendimiento por carga">
       ${ticks.map((t) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text class="axis" x="${L - 6}" y="${y(t) + 4}" text-anchor="end">${num(t, 1)}</text>`).join('')}
-      <text class="axis" x="${x(0)}" y="${H - 6}">${pts[0].short}</text>
-      <text class="axis" x="${x(lastI)}" y="${H - 6}" text-anchor="end">${pts[lastI].short}</text>
-      <path class="line s1" d="${d}"/>
-      ${pts.map((p, i) => `<circle class="dot s1" cx="${x(i)}" cy="${y(p.y)}" r="${i === lastI ? 4.5 : 3}"/>`).join('')}
+      <text class="axis" x="${x(t0)}" y="${H - 6}">${all[0].short}</text>
+      <text class="axis" x="${x(all.at(-1).t)}" y="${H - 6}" text-anchor="end">${all.at(-1).short}</text>
+      ${series.map((sr) => `<path class="line ${sr.cls}" d="${sr.pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.y).toFixed(1)}`).join('')}"/>
+        ${sr.pts.map((p, i) => `<circle class="dot ${sr.cls}" cx="${x(p.t)}" cy="${y(p.y)}" r="${i === sr.pts.length - 1 ? 4.5 : 3}"/>`).join('')}`).join('')}
       <line class="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" hidden/>
     </svg><div class="tip" hidden></div></div>`;
 }
 
-const SPEND_SERIES = [
-  { k: 'fuel', label: 'Combustible', cls: 's1' },
-  { k: 'maintenance', label: 'Mantenimiento', cls: 's2' },
-  { k: 'expenses', label: 'Otros gastos', cls: 's3' },
+// Cada categoría conserva su color aunque no aparezca el gas LP.
+const spendSeries = () => [
+  { k: 'gasolina', label: hasLP() ? 'Gasolina' : 'Combustible', cls: 's1' },
+  ...(hasLP() ? [{ k: 'lp', label: 'Gas LP', cls: 's2' }] : []),
+  { k: 'maintenance', label: 'Mantenimiento', cls: 's3' },
+  { k: 'expenses', label: 'Otros gastos', cls: 's4' },
 ];
 
 function stackedBars(months) {
+  const SPEND_SERIES = spendSeries();
   const W = 340, H = 170, L = 44, R = 8, T = 10, B = 24;
   const max = Math.max(...months.map((m) => m.total)) || 1;
   const bw = (W - L - R) / months.length;
@@ -260,7 +289,7 @@ function stackedBars(months) {
       return `<rect class="bar ${s.cls}" x="${cx - barW / 2}" y="${base + gap}" width="${barW}" height="${h}" rx="${top ? 3 : 0}"/>`;
     });
     const label = fdate(m.key + '-01', { month: 'short' }).replace('.', '');
-    tips.push({ x: cx / W, t: `<b>${fdate(m.key + '-01', { month: 'long', year: 'numeric' })}</b><br>${SPEND_SERIES.map((s) => `<i class="sw ${s.cls}"></i>${s.label}: ${money(m[s.k])}`).join('<br>')}<br><b>Total: ${money(m.total)}</b>` });
+    tips.push({ x: cx / W, h: `<b>${fdate(m.key + '-01', { month: 'long', year: 'numeric' })}</b><br>${SPEND_SERIES.map((s) => `<i class="sw ${s.cls}"></i>${s.label}: ${money(m[s.k])}`).join('<br>')}<br><b>Total: ${money(m.total)}</b>` });
     return `${segs.join('')}<text class="axis" x="${cx}" y="${H - 6}" text-anchor="middle">${label}</text>`;
   });
   return `<div class="legend">${SPEND_SERIES.map((s) => `<span><i class="sw ${s.cls}"></i>${s.label}</span>`).join('')}</div>
@@ -284,7 +313,7 @@ function bindCharts(root) {
       let best = 0;
       pts.forEach((p, i) => { if (Math.abs(p.x - fx) < Math.abs(pts[best].x - fx)) best = i; });
       const p = pts[best];
-      tip.innerHTML = p.t;
+      tip.innerHTML = p.h;
       tip.hidden = false;
       const px = p.x * r.width;
       tip.style.left = Math.min(Math.max(px - tip.offsetWidth / 2, 0), r.width - tip.offsetWidth) + 'px';
@@ -344,7 +373,7 @@ function renderHome() {
   tabs.hidden = true;
   const odo = currentOdometer(state);
   const pending = alertsFor(odo).filter((a) => a.s.level !== 'ok').length;
-  const fs = fuelStats(state.fuel);
+  const km = odo - firstOdometer(state);
   const month = monthlySpend(state, 1)[0].total;
   view.innerHTML = `
     <p class="muted">Módulos</p>
@@ -352,7 +381,7 @@ function renderHome() {
       <span class="module-icon">${icon('car')}</span>
       <span class="module-body">
         <b>${esc(state.vehicle.name || 'Vehículo')}</b>
-        <small>${fs.avgKml ? num(fs.avgKml, 1) + ' km/l · ' : ''}${money(month)} este mes${pending ? ` · <span class="badge">${pending} aviso${pending > 1 ? 's' : ''}</span>` : ''}</small>
+        <small>${km > 0 ? money(totals(state).all / km) + '/km · ' : ''}${money(month)} este mes${pending ? ` · <span class="badge">${pending} aviso${pending > 1 ? 's' : ''}</span>` : ''}</small>
       </span>
     </a>
     <div class="module soon"><span class="module-icon">＋</span><span class="module-body"><b>Más módulos</b><small>Próximamente: notas, finanzas, hábitos…</small></span></div>`;
@@ -378,6 +407,8 @@ function renderVehicle(sub) {
 
 function renderSummary() {
   const fs = fuelStats(state.fuel);
+  const byType = fuelStatsByType(state.fuel);
+  const lp = hasLP();
   const odo = currentOdometer(state);
   const km = odo - firstOdometer(state);
   const tot = totals(state);
@@ -398,7 +429,32 @@ function renderSummary() {
   }
 
   const tile = (label, value, sub = '') => `<div class="tile"><small>${label}</small><b>${value}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
-  const trend = fs.series.slice(-12).map((s) => ({ y: s.kml, label: fdate(s.date), short: fdate(s.date, { day: 'numeric', month: 'short' }) }));
+  const pts = (st) => st.series.slice(-12).map((s) => ({ t: new Date(s.date + 'T00:00').getTime(), y: s.kml, label: fdate(s.date), short: fdate(s.date, { day: 'numeric', month: 'short' }) }));
+  const trend = lp
+    ? [{ label: 'Gas LP', cls: 's2', pts: pts(byType.lp) }]
+    : [{ label: 'Combustible', cls: 's1', pts: pts(fs) }];
+  const g = byType.gasolina, l = byType.lp;
+  const gasSpend = state.fuel.filter((f) => fuelTypeOf(f) === 'gasolina').reduce((s, f) => s + amountOf.fuel(f), 0);
+  // Ahorro = lo que habría costado recorrer esos km solo con gasolina − lo que realmente se gastó en combustible.
+  const kmlGas = +state.vehicle.kmlGas;
+  const saving = km > 0 && kmlGas && g.lastPrice ? (km / kmlGas) * g.lastPrice - tot.fuel : null;
+  const tilesHtml = lp
+    ? [
+        tile('Rendimiento gas LP', l.avgKml ? `${num(l.avgKml, 1)} <em>km/l</em>` : '—', l.avgKml ? `Última: ${num(l.lastKml, 1)} km/l · ${money(l.lastPrice)}/L` : 'Faltan cargas de LP con tanque lleno'),
+        tile('Combustible por km', km > 0 ? money(tot.fuel / km) : '—', km > 0 ? `Todo incluido: ${money(tot.all / km)}/km` : ''),
+        tile('Ahorro con LP', saving != null ? money(saving) : '—', saving != null ? `vs. solo gasolina (${num(kmlGas, 1)} km/l)` : kmlGas ? 'Registra una carga de gasolina' : 'Pon tu km/l en gasolina en Ajustes'),
+        tile('Gasolina', money(gasSpend), tot.fuel ? `${num((gasSpend / tot.fuel) * 100)}% del combustible · ${num(g.totalLiters)} L` : ''),
+        tile('Gasto este mes', money(months.at(-1).total), `Mes anterior: ${money(months.at(-2).total)}`),
+        tile('Odómetro', `${num(odo)} <em>km</em>`, km > 0 ? `${num(km)} km registrados` : ''),
+      ]
+    : [
+        tile('Rendimiento promedio', fs.avgKml ? `${num(fs.avgKml, 1)} <em>km/l</em>` : '—', fs.lastKml ? `Última: ${num(fs.lastKml, 1)} km/l` : 'Faltan cargas con tanque lleno'),
+        tile('Costo por km', km > 0 ? money(tot.all / km) : '—', km > 0 ? `Combustible: ${money(tot.fuel / km)}` : ''),
+        tile('Gasto este mes', money(months.at(-1).total), `Mes anterior: ${money(months.at(-2).total)}`),
+        tile('Odómetro', `${num(odo)} <em>km</em>`, km > 0 ? `${num(km)} km registrados` : ''),
+        tile('Precio por litro', fs.lastPrice ? money(fs.lastPrice) : '—', 'Última carga'),
+        tile('Total invertido', money(tot.all), `${num(fs.totalLiters)} L cargados`),
+      ];
   const recent = [
     ...state.fuel.map((x) => ({ x, store: 'fuel' })),
     ...state.maintenance.map((x) => ({ x, store: 'maintenance' })),
@@ -407,15 +463,9 @@ function renderSummary() {
 
   view.innerHTML = `
     ${alerts.map(alertCard).join('')}
-    <section class="tiles">
-      ${tile('Rendimiento promedio', fs.avgKml ? `${num(fs.avgKml, 1)} <em>km/l</em>` : '—', fs.lastKml ? `Última: ${num(fs.lastKml, 1)} km/l` : 'Faltan cargas con tanque lleno')}
-      ${tile('Costo por km', km > 0 ? money(tot.all / km) : '—', km > 0 ? `Combustible: ${money(tot.fuel / km)}` : '')}
-      ${tile('Gasto este mes', money(months.at(-1).total), `Mes anterior: ${money(months.at(-2).total)}`)}
-      ${tile('Odómetro', `${num(odo)} <em>km</em>`, km > 0 ? `${num(km)} km registrados` : '')}
-      ${tile('Precio por litro', fs.lastPrice ? money(fs.lastPrice) : '—', 'Última carga')}
-      ${tile('Total invertido', money(tot.all), `${num(fs.totalLiters)} L cargados`)}
+    <section class="tiles">${tilesHtml.join('')}
     </section>
-    <section class="card"><h3>Rendimiento (km/l)</h3>${lineChart(trend, (v) => num(v, 1) + ' km/l')}</section>
+    <section class="card"><h3>Rendimiento${lp ? " gas LP" : ""} (km/l)</h3>${lineChart(trend, (v) => num(v, 1) + ' km/l')}</section>
     <section class="card"><h3>Gasto mensual</h3>${stackedBars(months)}</section>
     <section class="card"><h3>Actividad reciente</h3><ul class="list flat">${recent.map((r) => row(r.store, r.x)).join('')}</ul></section>`;
   bindRows();
@@ -459,6 +509,8 @@ async function markDone(id) {
   toast('Recordatorio reiniciado');
 }
 
+const sumType = (items, type) => items.filter((x) => fuelTypeOf(x) === type).reduce((s, x) => s + amountOf.fuel(x), 0);
+
 function renderList(store) {
   const items = [...state[store]].sort((a, b) => b.date.localeCompare(a.date) || (+b.odometer || 0) - (+a.odometer || 0));
   const total = items.reduce((s, x) => s + amountOf[store](x), 0);
@@ -469,7 +521,7 @@ function renderList(store) {
     groups.get(k).push(x);
   }
   view.innerHTML = items.length
-    ? `<p class="muted">${items.length} registro${items.length > 1 ? 's' : ''} · ${money(total)}</p>
+    ? `<p class="muted">${items.length} registro${items.length > 1 ? 's' : ''} · ${money(total)}${store === 'fuel' && hasLP() ? ` (Gasolina ${money(sumType(items, 'gasolina'))} · LP ${money(sumType(items, 'lp'))})` : ''}</p>
       ${[...groups].map(([k, xs]) => `<h4 class="group"><span>${cap(fdate(k + '-01', { month: 'long', year: 'numeric' }))}</span><span>${money(xs.reduce((s, x) => s + amountOf[store](x), 0))}</span></h4>
         <ul class="list">${xs.map((x) => row(store, x)).join('')}</ul>`).join('')}`
     : `<div class="empty">${icon(ICON_FOR[store])}<p>Aún no hay registros. Toca <b>+</b> para agregar.</p></div>`;
@@ -492,6 +544,7 @@ function renderReminders() {
       { title: 'Rotación de llantas', everyKm: 10000, everyMonths: '' },
       { title: 'Verificación', everyKm: '', everyMonths: 6 },
       { title: 'Seguro', everyKm: '', everyMonths: 12 },
+      ...(hasLP() ? [{ title: 'Servicio equipo de gas LP', everyKm: 10000, everyMonths: 12 }] : []),
     ];
     for (const x of sugg) await db.put('reminders', { ...base, ...x, id: uid(), updatedAt: Date.now() });
     await refresh();
@@ -510,8 +563,11 @@ function renderSettings() {
         ${f('name', 'Nombre', 'text', 'placeholder="Ej. Mi Versa"')}
         ${f('model', 'Marca / modelo / año')}
         ${f('plate', 'Placas')}
-        <label class="field"><span>Combustible</span><select name="fuelType">${['Magna / Regular', 'Premium', 'Diésel', 'Eléctrico', 'Híbrido'].map((o) => `<option ${o === v.fuelType ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
-        ${f('tank', 'Capacidad del tanque (L)', 'number', 'inputmode="decimal" step="0.1" min="0"')}
+        <label class="check"><input type="checkbox" name="lp" ${v.lp ? 'checked' : ''}><span>También usa gas LP<small>El rendimiento se calcula con el LP; la gasolina cuenta como gasto</small></span></label>
+        <label class="field"><span>Tipo de gasolina</span><select name="fuelType">${['Magna / Regular', 'Premium', 'Diésel', 'Eléctrico', 'Híbrido'].map((o) => `<option ${o === v.fuelType ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
+        ${f('tank', 'Tanque gasolina (L)', 'number', 'inputmode="decimal" step="0.1" min="0"')}
+        ${f('tankLp', 'Tanque gas LP (L)', 'number', 'inputmode="decimal" step="0.1" min="0"')}
+        ${f('kmlGas', 'Rendimiento en gasolina (km/l)', 'number', 'inputmode="decimal" step="0.1" min="0" placeholder="Para calcular el ahorro"')}
         ${f('odometer', 'Odómetro inicial (km)', 'number', 'inputmode="numeric" step="1" min="0"')}
         ${f('currency', 'Moneda (código)', 'text', 'maxlength="3" placeholder="MXN"')}
       </div>
@@ -536,6 +592,7 @@ function renderSettings() {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
     data.currency = (data.currency || 'MXN').toUpperCase();
+    data.lp = data.lp === 'on';
     data.odometer = data.odometer === '' ? '' : +data.odometer;
     await db.setSetting('vehicle', { ...v, ...data });
     await refresh();
@@ -543,9 +600,9 @@ function renderSettings() {
   };
   $('#export').onclick = async () => download(`secondbrain-${today()}.json`, JSON.stringify(await db.exportAll(), null, 2), 'application/json');
   $('#exportCsv').onclick = () => {
-    const cols = ['date', 'odometer', 'liters', 'pricePerLiter', 'total', 'full', 'station', 'notes'];
+    const cols = ['date', 'fuelType', 'odometer', 'liters', 'pricePerLiter', 'total', 'full', 'station', 'notes'];
     const q = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
-    const csv = [cols.join(','), ...[...state.fuel].sort((a, b) => a.date.localeCompare(b.date)).map((x) => cols.map((c) => q(x[c])).join(','))].join('\n');
+    const csv = [cols.join(','), ...[...state.fuel].sort((a, b) => a.date.localeCompare(b.date)).map((x) => cols.map((c) => q(c === 'fuelType' ? FUELS[fuelTypeOf(x)] : x[c])).join(','))].join('\n');
     download(`cargas-${today()}.csv`, '﻿' + csv, 'text/csv');
   };
   $('#import').onchange = async (e) => {
@@ -577,7 +634,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 
 async function refresh() {
   await load();

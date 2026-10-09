@@ -1,5 +1,8 @@
 // Cálculos puros: rendimiento, costos, recordatorios.
 
+export const FUELS = { gasolina: 'Gasolina', lp: 'Gas LP' };
+export const fuelTypeOf = (f) => f.fuelType || 'gasolina';
+
 const byOdo = (a, b) => a.odometer - b.odometer || a.date.localeCompare(b.date);
 
 // Rendimiento por método de "tanque lleno a tanque lleno":
@@ -30,6 +33,14 @@ export function fuelStats(fuel) {
     lastPrice: last ? +last.pricePerLiter || (last.liters ? last.total / last.liters : null) : null,
     totalLiters: list.reduce((s, f) => s + (+f.liters || 0), 0),
   };
+}
+
+// Auto con gas LP como combustible principal: el rendimiento se calcula solo con
+// las cargas de LP; la gasolina (arranque/respaldo) se cuenta como gasto.
+export function fuelStatsByType(fuel) {
+  const out = {};
+  for (const k of Object.keys(FUELS)) out[k] = fuelStats(fuel.filter((f) => fuelTypeOf(f) === k));
+  return out;
 }
 
 export function currentOdometer(state) {
@@ -66,13 +77,15 @@ export function monthlySpend(state, n = 6) {
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    months.push({ key, date: d, fuel: 0, maintenance: 0, expenses: 0 });
+    months.push({ key, date: d, fuel: 0, gasolina: 0, lp: 0, maintenance: 0, expenses: 0 });
   }
   const idx = new Map(months.map((m) => [m.key, m]));
   for (const k of Object.keys(amountOf)) {
     for (const x of state[k]) {
       const m = idx.get((x.date || '').slice(0, 7));
-      if (m) m[k] += amountOf[k](x);
+      if (!m) continue;
+      m[k] += amountOf[k](x);
+      if (k === 'fuel') m[fuelTypeOf(x)] += amountOf[k](x);
     }
   }
   for (const m of months) m.total = m.fuel + m.maintenance + m.expenses;

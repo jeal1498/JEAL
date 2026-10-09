@@ -1,0 +1,131 @@
+// Respaldo automático en una hoja de Google Sheets del usuario (vía Apps Script, gratis).
+// La hoja tiene una pestaña legible por tipo de dato y una pestaña oculta "_respaldo"
+// con la copia exacta (JSON) que se usa para restaurar.
+import * as db from './db.js';
+
+const FUEL = { gasolina: 'Gasolina', lp: 'Gas LP' };
+const REPEAT = { '': 'No', week: 'Cada semana', '2week': 'Cada 2 semanas', month: 'Cada mes' };
+const KIND = { category: 'Todo lo de la categoría', fuel: 'Cargas de combustible' };
+
+// [pestaña, store, [[campo, encabezado, formato?]]]
+const TABLES = [
+  ['Cargas', 'fuel', [['date', 'Fecha'], ['fuelType', 'Combustible', (v) => FUEL[v || 'gasolina']], ['odometer', 'Odómetro'], ['liters', 'Litros'], ['pricePerLiter', 'Precio por litro'], ['total', 'Total'], ['full', 'Tanque lleno', (v) => (v ? 'Sí' : 'No')], ['station', 'Gasolinera'], ['notes', 'Notas']]],
+  ['Servicio', 'maintenance', [['date', 'Fecha'], ['type', 'Tipo'], ['odometer', 'Odómetro'], ['cost', 'Costo'], ['shop', 'Taller'], ['notes', 'Notas']]],
+  ['Gastos vehículo', 'expenses', [['date', 'Fecha'], ['category', 'Categoría'], ['amount', 'Monto'], ['notes', 'Notas']]],
+  ['Avisos', 'reminders', [['title', 'Qué'], ['everyKm', 'Cada (km)'], ['everyMonths', 'Cada (meses)'], ['lastKm', 'Última vez (km)'], ['lastDate', 'Última vez (fecha)'], ['notes', 'Notas']]],
+  ['Ingresos', 'income', [['date', 'Fecha'], ['amount', 'Monto'], ['concept', 'Concepto'], ['notes', 'Notas']]],
+  ['Pagos', 'bills', [['date', 'Fecha límite'], ['concept', 'Concepto'], ['amount', 'Monto'], ['category', 'Categoría'], ['repeat', 'Se repite', (v) => REPEAT[v || '']], ['until', 'Repetir hasta'], ['notes', 'Notas']]],
+  ['Metas', 'goals', [['date', 'Para cuándo'], ['concept', 'Concepto'], ['amount', 'Monto'], ['category', 'Categoría'], ['saved', 'Ya ahorrado'], ['notes', 'Notas']]],
+  ['Presupuestos', 'budgets', [['concept', 'Nombre'], ['amount', 'Tope al mes'], ['category', 'Categoría'], ['kind', 'Qué cuenta', (v) => KIND[v || 'category']], ['notes', 'Notas']]],
+];
+
+// Un texto que empieza con "=" Sheets lo tomaría como fórmula.
+const cell = (v) => (v == null ? '' : typeof v === 'string' && /^[=+@-]/.test(v) ? "'" + v : v);
+
+function tables(data) {
+  const out = TABLES.map(([name, store, cols]) => ({
+    name,
+    headers: cols.map((c) => c[1]),
+    rows: [...(data[store] || [])]
+      .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+      .map((x) => cols.map(([k, , f]) => cell(f ? f(x[k]) : x[k]))),
+  }));
+  const settings = [
+    ...Object.entries(data.vehicle || {}).map(([k, v]) => ['Vehículo', k, cell(v)]),
+    ...Object.entries(data.finance || {}).map(([k, v]) => ['Finanzas', k, cell(v)]),
+  ];
+  out.push({ name: 'Ajustes', headers: ['Módulo', 'Dato', 'Valor'], rows: settings });
+  return out;
+}
+
+export const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(16).padStart(2, '0')).join('');
+
+export async function getConfig() {
+  return (await db.getSetting('backup')) || {};
+}
+export async function setConfig(patch) {
+  const cfg = { ...(await getConfig()), ...patch };
+  await db.setSetting('backup', cfg);
+  return cfg;
+}
+
+// Envía todo a la hoja. Body como text/plain para que el navegador no haga preflight (Apps Script no lo soporta).
+export async function backupNow() {
+  const cfg = await getConfig();
+  if (!cfg.url) throw new Error('Respaldo no configurado');
+  const data = await db.exportAll();
+  try {
+    const res = await fetch(cfg.url, { method: 'POST', body: JSON.stringify({ token: cfg.token, tables: tables(data), raw: JSON.stringify(data) }) });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || 'Error en la hoja');
+    return await setConfig({ last: Date.now(), error: '' });
+  } catch (err) {
+    await setConfig({ error: err.message || 'Sin conexión', failedAt: Date.now() });
+    throw err;
+  }
+}
+
+export async function fetchBackup() {
+  const cfg = await getConfig();
+  const res = await fetch(`${cfg.url}?token=${encodeURIComponent(cfg.token)}`);
+  const out = await res.json();
+  if (!out.ok) throw new Error(out.error || 'Error en la hoja');
+  return out.data;
+}
+
+// Respaldo automático: tras cada cambio (agrupando varios seguidos) y al abrir la app si pasó más de un día.
+let timer;
+export async function scheduleBackup(changed, onDone) {
+  const cfg = await getConfig();
+  if (!cfg.url) return;
+  const stale = !cfg.last || Date.now() - cfg.last > 864e5 || cfg.error;
+  if (!changed && !stale) return;
+  clearTimeout(timer);
+  timer = setTimeout(() => backupNow().then(onDone, onDone), changed ? 4000 : 1500);
+}
+
+export function scriptFor(token) {
+  return `// SecondBrain · respaldo en Google Sheets
+const TOKEN = '${token}';
+
+function doPost(e) {
+  const req = JSON.parse(e.postData.contents);
+  if (req.token !== TOKEN) return out({ ok: false, error: 'Clave incorrecta' });
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  req.tables.forEach(function (t) {
+    const sh = ss.getSheetByName(t.name) || ss.insertSheet(t.name);
+    sh.clearContents();
+    const rows = [t.headers].concat(t.rows);
+    sh.getRange(1, 1, rows.length, t.headers.length).setValues(rows);
+    sh.getRange(1, 1, 1, t.headers.length).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  });
+  // Copia exacta para restaurar (en trozos: una celda admite 50 mil caracteres).
+  const raw = ss.getSheetByName('_respaldo') || ss.insertSheet('_respaldo');
+  raw.clearContents();
+  const parts = [];
+  for (let i = 0; i < req.raw.length; i += 40000) parts.push([req.raw.slice(i, i + 40000)]);
+  const range = raw.getRange(1, 1, parts.length, 1);
+  range.setNumberFormat('@');
+  range.setValues(parts);
+  raw.hideSheet();
+  ['Hoja 1', 'Sheet1'].forEach(function (n) {
+    const s = ss.getSheetByName(n);
+    if (s && s.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(s);
+  });
+  return out({ ok: true });
+}
+
+function doGet(e) {
+  if (e.parameter.token !== TOKEN) return out({ ok: false, error: 'Clave incorrecta' });
+  const raw = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('_respaldo');
+  if (!raw || raw.getLastRow() === 0) return out({ ok: false, error: 'Aún no hay respaldo' });
+  const text = raw.getRange(1, 1, raw.getLastRow(), 1).getValues().map(function (r) { return r[0]; }).join('');
+  return out({ ok: true, data: JSON.parse(text) });
+}
+
+function out(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+`;
+}

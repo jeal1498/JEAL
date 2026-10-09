@@ -300,3 +300,11 @@ textarea { resize: vertical; }
 .progress.over i { background: var(--over); }
 .budget.warn .status { color: var(--soon); }
 .budget.over .status { color: var(--over); font-weight: 600; }
+.steps ol { margin: 0; padding-left: 20px; display: grid; gap: 12px; font-size: 14px; }
+.steps textarea { font: 11px/1.4 ui-monospace, monospace; margin: 8px 0 6px; }
+.bkform { display: flex; gap: 8px; margin-top: 8px; }
+.bkform input { flex: 1; font-size: 14px; }
+button:disabled { opacity: .5; }
+.steps details { margin-top: 8px; }
+.steps details input { margin-top: 6px; font-size: 14px; }
+.steps summary { color: var(--accent); cursor: pointer; }

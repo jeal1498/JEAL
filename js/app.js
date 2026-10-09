@@ -1,4 +1,5 @@
 import * as db from './db.js';
+import * as backup from './backup.js';
 import { CATEGORIES, REPEATS, BUDGET_KINDS, GOAL_WINDOW, VEHICLE_CAT, monthKey, monthDays, addMonths, billsIn, billStatus, simulate, todayPlan } from './finance.js';
 import { fuelStats, fuelStatsByType, FUELS, fuelTypeOf, currentOdometer, firstOdometer, totals, monthlySpend, reminderStatus, amountOf } from './calc.js';
 
@@ -14,6 +15,7 @@ async function load() {
     db.all('fuel'), db.all('maintenance'), db.all('expenses'), db.all('reminders'),
     db.all('income'), db.all('bills'), db.all('goals'), db.all('budgets'), db.getSetting('vehicle'), db.getSetting('finance'),
   ]);
+  state.backup = await backup.getConfig();
   Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, vehicle: vehicle || {}, finance: finance || {} });
 }
 
@@ -44,6 +46,7 @@ const P = {
   alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
+  cloud: '<path d="M17.5 19H7a5 5 0 1 1 1.4-9.8A6 6 0 0 1 20 11.5 3.75 3.75 0 0 1 17.5 19z"/>',
   wallet: '<path d="M20 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15v13H5a2 2 0 0 1-2-2V5"/><path d="M16 13h.01"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
@@ -435,6 +438,7 @@ function render() {
   window.scrollTo(0, 0);
   if (mod === 'vehiculo') renderVehicle(sub);
   else if (mod === 'finanzas') renderFinance(sub);
+  else if (mod === 'respaldo') renderBackup();
   else renderHome();
   bindCharts(view);
 }
@@ -470,6 +474,10 @@ function renderHome() {
         <b>Finanzas</b>
         <small>Meta de hoy ${money(plan.meta)} · ${plan.pending > 0 ? `faltan ${money(plan.pending)} este mes` : 'mes cubierto'}</small>
       </span>
+    </a>
+    <a class="module" href="#/respaldo">
+      <span class="module-icon">${icon('cloud')}</span>
+      <span class="module-body"><b>Respaldo</b><small>${backupStatus()}</small></span>
     </a>
     <div class="module soon"><span class="module-icon">＋</span><span class="module-body"><b>Más módulos</b><small>Próximamente: notas, hábitos…</small></span></div>`;
 }
@@ -971,12 +979,7 @@ function renderSettings() {
     </form>
     <section class="card">
       <h3>Respaldo</h3>
-      <p class="muted small">Tus datos viven solo en este dispositivo. Exporta un respaldo de vez en cuando (por ejemplo a Drive).</p>
-      <div class="actions">
-        <button id="export">Exportar JSON</button>
-        <button id="exportCsv">Exportar CSV de cargas</button>
-        <label class="btn">Importar JSON<input type="file" id="import" accept="application/json,.json" hidden></label>
-      </div>
+      <div class="actions"><a class="btn" href="#/respaldo">Respaldo en Google Sheets y JSON</a><button id="exportCsv">Exportar CSV de cargas</button></div>
     </section>
     <section class="card">
       <h3>Zona de peligro</h3>
@@ -994,13 +997,110 @@ function renderSettings() {
     await refresh();
     toast('Vehículo guardado');
   };
-  $('#export').onclick = async () => download(`secondbrain-${today()}.json`, JSON.stringify(await db.exportAll(), null, 2), 'application/json');
   $('#exportCsv').onclick = () => {
     const cols = ['date', 'fuelType', 'odometer', 'liters', 'pricePerLiter', 'total', 'full', 'station', 'notes'];
     const q = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
     const csv = [cols.join(','), ...[...state.fuel].sort((a, b) => a.date.localeCompare(b.date)).map((x) => cols.map((c) => q(c === 'fuelType' ? FUELS[fuelTypeOf(x)] : x[c])).join(','))].join('\n');
     download(`cargas-${today()}.csv`, '﻿' + csv, 'text/csv');
   };
+  $('#wipe').onclick = async () => {
+    if (!confirm('¿Borrar TODOS los datos? Esto no se puede deshacer.')) return;
+    await db.clearAll();
+    await refresh();
+    toast('Datos borrados');
+  };
+}
+
+// ---------- Respaldo ----------
+const ago = (t) => {
+  const m = Math.round((Date.now() - t) / 6e4);
+  return m < 1 ? 'justo ahora' : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} días`;
+};
+function backupStatus() {
+  const b = state.backup || {};
+  if (!b.url) return '<span class="badge">Sin configurar</span> · tus datos solo están en este teléfono';
+  if (b.error) return `<span class="badge">Falló el respaldo</span> · ${esc(b.error)}${b.last ? ` · último ${ago(b.last)}` : ''}`;
+  return b.last ? `Google Sheets · último respaldo ${ago(b.last)}` : 'Google Sheets · pendiente';
+}
+
+async function renderBackup() {
+  setHeader({ title: 'Respaldo', back: '#/' });
+  tabs.hidden = true;
+  setFab(null);
+  let cfg = await backup.getConfig();
+  if (!cfg.token) cfg = await backup.setConfig({ token: backup.newToken() });
+  const script = backup.scriptFor(cfg.token);
+  view.innerHTML = `
+    <section class="card">
+      <h3>Google Sheets ${cfg.url ? '✓' : ''}</h3>
+      <p class="muted small">${backupStatus()}</p>
+      ${cfg.url ? `<div class="actions"><button class="primary" id="bkNow">Respaldar ahora</button><button id="bkRestore">Restaurar desde Drive</button></div>` : ''}
+    </section>
+    <section class="card steps">
+      <h3>${cfg.url ? 'Configuración' : 'Configurar (una sola vez, ~5 min)'}</h3>
+      <ol>
+        <li>En tu Drive crea una hoja nueva de <b>Google Sheets</b> (ej. "SecondBrain respaldo").</li>
+        <li>En la hoja: <b>Extensiones → Apps Script</b>. Borra lo que haya y pega este código:
+          <textarea readonly rows="4" id="bkScript">${esc(script)}</textarea>
+          <button class="small" id="bkCopy">Copiar código</button></li>
+        <li>Guarda (💾) y luego <b>Implementar → Nueva implementación</b>. En tipo elige <b>Aplicación web</b>; "Ejecutar como": <b>Yo</b>; "Quién tiene acceso": <b>Cualquier persona</b>. Autoriza con tu cuenta (si dice "no verificada": Configuración avanzada → Ir a…).</li>
+        <li>Copia la <b>URL de la aplicación web</b> y pégala aquí:
+          <form id="bkForm"><div class="bkform"><input name="url" type="url" required placeholder="https://script.google.com/macros/s/…/exec" value="${esc(cfg.url || '')}"><button class="primary">Conectar</button></div>
+            <details class="small"><summary>¿Teléfono nuevo? Usa la clave de tu respaldo</summary>
+              <p class="muted small">Ábrela en tu Apps Script (línea <code>const TOKEN</code>) y pégala aquí; así no hace falta cambiar el código.</p>
+              <input name="token" placeholder="Clave del respaldo anterior"></details></form></li>
+      </ol>
+      <p class="muted small">El código incluye una clave privada de este teléfono; solo quien la tenga puede escribir o leer tu respaldo. Después se respalda solo cada vez que guardas algo.</p>
+    </section>
+    <section class="card">
+      <h3>Archivo JSON</h3>
+      <p class="muted small">Copia completa en un archivo. Úsalo como segundo respaldo (por ejemplo una vez al mes) o para pasar tus datos a otro teléfono.</p>
+      <div class="actions">
+        <button id="export">Exportar JSON</button>
+        <label class="btn">Importar JSON<input type="file" id="import" accept="application/json,.json" hidden></label>
+      </div>
+    </section>`;
+
+  const run = async (btn, fn) => {
+    btn.disabled = true;
+    try { await fn(); } catch (err) { alert('No se pudo: ' + (err.message || err)); } finally { btn.disabled = false; state.backup = await backup.getConfig(); if (location.hash === '#/respaldo') render(); }
+  };
+  $('#bkCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(script); toast('Código copiado'); } catch { $('#bkScript').select(); }
+  };
+  $('#bkForm').onsubmit = (e) => {
+    e.preventDefault();
+    const url = e.target.elements.url.value.trim();
+    if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) return alert('La URL debe empezar con https://script.google.com/');
+    const token = e.target.elements.token.value.trim();
+    run(e.submitter || $('button', e.target), async () => {
+      await backup.setConfig(token ? { url, token } : { url });
+      // Si la hoja ya tiene datos (p. ej. teléfono nuevo), nunca se sobrescribe sin preguntar.
+      let remote = null;
+      try { remote = await backup.fetchBackup(); } catch (err) { if (!/Aún no hay respaldo/.test(err.message)) throw err; }
+      const n = remote ? db.STORES.reduce((s, k) => s + (remote[k]?.length || 0), 0) : 0;
+      if (n && confirm(`Tu hoja ya tiene un respaldo con ${n} registros. ¿Restaurarlo en este teléfono?`)) {
+        await db.importAll(remote);
+        await refresh(false);
+        return toast('¡Conectado! Datos restaurados');
+      }
+      if (n && !confirm('¿Reemplazar el respaldo de la hoja con los datos de este teléfono?')) return toast('Conectado, sin cambios');
+      await backup.backupNow();
+      toast('¡Conectado! Respaldo hecho');
+    });
+  };
+  if (cfg.url) {
+    $('#bkNow').onclick = (e) => run(e.target, async () => { await backup.backupNow(); toast('Respaldo hecho'); });
+    $('#bkRestore').onclick = (e) => run(e.target, async () => {
+      const data = await backup.fetchBackup();
+      const n = db.STORES.reduce((s, k) => s + (data[k]?.length || 0), 0);
+      if (!confirm(`El respaldo tiene ${n} registros. Esto reemplazará los datos de este teléfono. ¿Continuar?`)) return;
+      await db.importAll(data);
+      await refresh(false);
+      toast('Datos restaurados');
+    });
+  }
+  $('#export').onclick = async () => download(`secondbrain-${today()}.json`, JSON.stringify(await db.exportAll(), null, 2), 'application/json');
   $('#import').onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1014,12 +1114,6 @@ function renderSettings() {
       alert('No se pudo importar: ' + err.message);
     }
   };
-  $('#wipe').onclick = async () => {
-    if (!confirm('¿Borrar TODOS los datos? Esto no se puede deshacer.')) return;
-    await db.clearAll();
-    await refresh();
-    toast('Datos borrados');
-  };
 }
 
 function download(name, text, type) {
@@ -1030,16 +1124,21 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 
-async function refresh() {
+// changed = hubo un cambio en los datos (dispara el respaldo automático).
+async function refresh(changed = true) {
   await load();
   render();
+  backup.scheduleBackup(changed, async () => {
+    state.backup = await backup.getConfig();
+    if (/^#\/(respaldo)?$/.test(location.hash || '#/')) render();
+  });
 }
 
 window.addEventListener('hashchange', render);
 sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
 
-refresh();
+refresh(false);
 if (navigator.storage?.persist) navigator.storage.persist();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');

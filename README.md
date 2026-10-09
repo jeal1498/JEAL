@@ -19,6 +19,9 @@ PWA personal (sin build, sin servidor). Los datos viven solo en el dispositivo (
 - **Conectado con Vehículo**: cargas, servicios y gastos del vehículo aparecen solos en Pagos; un pago de 🚗 Vehículo capturado en finanzas se guarda en Vehículo. Sin duplicados.
 - **Ajustes**: importar movimientos (JSON) sin borrar nada.
 
+## Respaldo
+En **Respaldo** (inicio): conecta una hoja de Google Sheets de tu Drive (gratis, vía Apps Script). Se respalda sola cada vez que guardas algo, con una pestaña por tipo de dato; **Restaurar desde Drive** recupera todo en otro teléfono. También hay exportar/importar JSON.
+
 ## Uso
 Local: `python3 -m http.server` y abrir `http://localhost:8000`.
 

@@ -7,12 +7,13 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-09, v1.5.0)
+## SecondBrain (estado al 2026-10-09, v1.6.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos **solo en el dispositivo** (IndexedDB, `js/db.js`). Respaldo manual JSON/CSV en Ajustes.
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
 - Publicado en GitHub Pages desde `main` (root): https://jeal1498.github.io/JEAL/
 - **Cada cambio terminado se sube directo a `main`** (lo pidió el usuario). Vercel está desactivado con `vercel.json`.
+- Respaldo (`#/respaldo`, `js/backup.js`): Google Sheets del usuario vía Apps Script (web app, token en el script). POST text/plain (sin preflight) con pestañas legibles + JSON exacto en hoja oculta `_respaldo`; GET restaura. Automático tras cada cambio (`refresh(changed)`) y al abrir si pasó >1 día. Al conectar nunca sobrescribe una hoja con datos sin preguntar.
 - Íconos solo SVG (no se pudieron subir PNG; ver "Git" abajo).
 
 ### Archivos

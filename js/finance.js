@@ -42,30 +42,45 @@ export function occurrences(bill, key) {
   return out.filter((d) => d >= start && (!bill.until || d <= bill.until) && !skip.includes(d));
 }
 
-// Pagos del mes como instancias: { id, date, category, concept, amount, bill | fuel }.
-export function billsIn(state, key, withFuel) {
+export const VEHICLE_CAT = '🚗 Vehículo';
+
+// Lo registrado en el módulo Vehículo es la única fuente: finanzas solo lo lee.
+export function vehicleItems(state) {
+  return [
+    ...state.fuel.map((x) => ({ store: 'fuel', item: x, amount: +x.total || 0, concept: x.fuelType === 'lp' ? 'Gas LP' : 'Gasolina' })),
+    ...state.maintenance.map((x) => ({ store: 'maintenance', item: x, amount: +x.cost || 0, concept: x.type || 'Servicio' })),
+    ...state.expenses.map((x) => ({ store: 'expenses', item: x, amount: +x.amount || 0, concept: x.category || 'Gasto' })),
+  ].filter((v) => v.item.date && v.amount > 0);
+}
+
+// Pago de vehículo capturado en finanzas que ya existe en Vehículo (misma fecha y monto): no se cuenta doble.
+const dupKey = (date, amount) => `${date}|${Math.round(amount * 100)}`;
+
+// Pagos del mes como instancias: { id, date, category, concept, amount, bill | veh }.
+export function billsIn(state, key) {
+  const veh = vehicleItems(state).filter((v) => monthKey(v.item.date) === key);
+  const vehKeys = new Set(veh.map((v) => dupKey(v.item.date, v.amount)));
   const out = [];
   for (const b of state.bills) {
-    for (const date of occurrences(b, key)) out.push({ id: `${b.id}@${date}`, date, category: b.category, concept: b.concept, amount: +b.amount || 0, bill: b });
-  }
-  if (withFuel) {
-    for (const f of state.fuel) {
-      if (monthKey(f.date) === key) out.push({ id: `fuel:${f.id}`, date: f.date, category: '🚗 Vehículo', concept: f.fuelType === 'lp' ? 'Gas LP' : 'Combustible', amount: +f.total || 0, fuel: f });
+    for (const date of occurrences(b, key)) {
+      if (!b.repeat && b.category === VEHICLE_CAT && vehKeys.has(dupKey(date, +b.amount || 0))) continue;
+      out.push({ id: `${b.id}@${date}`, date, category: b.category, concept: b.concept, amount: +b.amount || 0, bill: b });
     }
   }
+  for (const v of veh) out.push({ id: `${v.store}:${v.item.id}`, date: v.item.date, category: VEHICLE_CAT, concept: v.concept, amount: v.amount, veh: v });
   // Mismo día: primero lo que se registró antes (como el orden de filas del Excel).
-  const created = (x) => (x.bill || x.fuel).createdAt || 0;
+  const created = (x) => (x.bill || x.veh.item).createdAt || x.veh?.item.updatedAt || 0;
   return out.sort((a, b) => a.date.localeCompare(b.date) || created(a) - created(b));
 }
 
 // Simula mes a mes desde el primer registro hasta hoy.
 // `before`: solo cuenta ingresos anteriores a esa fecha (para la meta "al empezar el día").
-export function simulate(state, today, { withFuel = false, before = null } = {}) {
+export function simulate(state, today, { before = null } = {}) {
   const cur = monthKey(today);
   const keys = [
     ...state.income.map((x) => x.date),
     ...state.bills.map((x) => x.date),
-    ...(withFuel ? state.fuel.map((x) => x.date) : []),
+    ...vehicleItems(state).map((v) => v.item.date),
   ].filter(Boolean).map(monthKey);
   let key = keys.length ? keys.reduce((a, b) => (a < b ? a : b)) : cur;
   if (key > cur) key = cur;
@@ -82,7 +97,7 @@ export function simulate(state, today, { withFuel = false, before = null } = {})
   let saved = 0;
   for (; key <= cur; key = addMonths(key, 1)) {
     let pool = incomeBy.get(key) || 0;
-    const queue = [...carry, ...billsIn(state, key, withFuel)];
+    const queue = [...carry, ...billsIn(state, key)];
     carry = [];
     for (const b of queue) {
       const p = paid.get(b.id) || 0;
@@ -121,15 +136,15 @@ export function billStatus(b, paidAmt, today) {
 }
 
 // Resumen del mes actual: lo que falta, meta diaria de pagos y de metas.
-export function todayPlan(state, today, withFuel) {
+export function todayPlan(state, today) {
   const key = monthKey(today);
   const end = `${key}-${pad(monthDays(key))}`;
   const daysLeft = monthDays(key) - +today.slice(8) + 1;
   // Meta calculada al empezar el día (sin lo que entró hoy), así "hoy llevas X de Y" tiene sentido.
-  const start = simulate(state, today, { withFuel, before: today });
-  const now = simulate(state, today, { withFuel });
+  const start = simulate(state, today, { before: today });
+  const now = simulate(state, today);
   const pendingOf = (sim) => {
-    const list = [...sim.carry.filter((b) => b.date < `${key}-01`), ...billsIn(state, key, withFuel)];
+    const list = [...sim.carry.filter((b) => b.date < `${key}-01`), ...billsIn(state, key)];
     return list.reduce((s, b) => s + Math.max(0, b.amount - (sim.paid.get(b.id) || 0)), 0);
   };
   const metaBills = pendingOf(start) / daysLeft;

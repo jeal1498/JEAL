@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-09, v1.3.0)
+## SecondBrain (estado al 2026-10-09, v1.4.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos **solo en el dispositivo** (IndexedDB, `js/db.js`). Respaldo manual JSON/CSV en Ajustes.
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -31,7 +31,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 ### Módulo Finanzas (`#/finanzas`)
 - Hoy / Ingresos (calendario) / Pagos (repetición semanal, quincenal, mensual; "Omitir" un día) / Metas.
 - El ingreso de cada mes cubre pagos en orden de fecha (vencidos primero); el sobrante al cerrar el mes va a metas por fecha.
-- Meta de hoy = pendiente del mes / días restantes + cuota de metas a ≤120 días. Combustible del vehículo como pago: opcional (apagado).
+- Meta de hoy = pendiente del mes / días restantes + cuota de metas a ≤120 días. Vehículo es la única fuente de sus gastos: cargas/servicios/gastos salen solos en Pagos (`vehicleItems`); un pago 🚗 en finanzas se captura en Vehículo; pagos 🚗 iguales (fecha+monto) a un registro de Vehículo se ocultan.
 
 ### Agregar un módulo nuevo
 Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en `render()`, sus stores en `db.js` (subir `VERSION` de la DB y crear stores en `onupgradeneeded`) y sus esquemas de formulario.

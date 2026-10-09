@@ -1,5 +1,5 @@
 import * as db from './db.js';
-import { CATEGORIES, REPEATS, GOAL_WINDOW, monthKey, monthDays, addMonths, billsIn, billStatus, simulate, todayPlan } from './finance.js';
+import { CATEGORIES, REPEATS, GOAL_WINDOW, VEHICLE_CAT, monthKey, monthDays, addMonths, billsIn, billStatus, simulate, todayPlan } from './finance.js';
 import { fuelStats, fuelStatsByType, FUELS, fuelTypeOf, currentOdometer, firstOdometer, totals, monthlySpend, reminderStatus, amountOf } from './calc.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -171,7 +171,7 @@ const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
 // ---------- Formulario (hoja inferior) ----------
 const sheet = $('#sheet');
 
-function openForm(store, item = null, { preset = {}, extra = null } = {}) {
+function openForm(store, item = null, { preset = {}, extra = null, onSaved = null } = {}) {
   const schema = SCHEMAS[store];
   const isNew = !item;
   const v = (f) => (item ? item[f.k] ?? '' : f.k in preset ? preset[f.k] : typeof f.def === 'function' ? f.def() : f.def ?? '');
@@ -202,6 +202,9 @@ function openForm(store, item = null, { preset = {}, extra = null } = {}) {
       <header><h2>${isNew ? schema.newLabel || 'Nueva' : 'Editar'}: ${schema.title}</h2>
         <button type="button" class="ghost" data-close aria-label="Cerrar">✕</button></header>
       <div class="grid">${schema.fields.map(field).join('')}</div>
+      ${store === 'bills' ? `<div class="vehlink" hidden><p>Los gastos de 🚗 Vehículo se guardan en el módulo Vehículo para no duplicarlos. ¿Qué fue?</p>
+        <div class="actions"><button type="button" data-veh="fuel">Carga</button><button type="button" data-veh="maintenance">Servicio</button><button type="button" data-veh="expenses">Otro gasto</button></div>
+        <small>Si es algo planeado a futuro, guárdalo aquí como pago normal.</small></div>` : ''}
       <p class="warn" hidden></p>
       <footer>
         ${isNew ? '' : '<button type="button" class="danger" data-delete>Eliminar</button>'}
@@ -211,6 +214,7 @@ function openForm(store, item = null, { preset = {}, extra = null } = {}) {
     </form>`;
   const form = $('form', sheet);
   if (store === 'fuel') wireFuelMath(form);
+  if (store === 'bills') wireVehicleLink(form, item);
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -230,6 +234,7 @@ function openForm(store, item = null, { preset = {}, extra = null } = {}) {
       }
     }
     await db.put(store, data);
+    if (onSaved) await onSaved();
     sheet.close();
     await refresh();
     toast('Guardado');
@@ -248,10 +253,31 @@ function openForm(store, item = null, { preset = {}, extra = null } = {}) {
   if (isNew) setTimeout(() => [...form.querySelectorAll('input[required]')].find((el) => !el.value)?.focus(), 50);
 }
 
+// Pago de vehículo en finanzas → se captura en el módulo Vehículo (única fuente), con fecha y monto ya puestos.
+function wireVehicleLink(form, item) {
+  const box = $('.vehlink', form);
+  const sync = () => (box.hidden = form.elements.category.value !== VEHICLE_CAT);
+  form.elements.category.addEventListener('change', sync);
+  sync();
+  box.querySelectorAll('[data-veh]').forEach((b) => (b.onclick = () => {
+    const { date, amount, concept } = Object.fromEntries(['date', 'amount', 'concept'].map((k) => [k, form.elements[k].value.trim()]));
+    const match = (list) => list.find((t) => concept && t.toLowerCase().includes(concept.toLowerCase())) || 'Otro';
+    const preset = {
+      fuel: { date: date || today(), total: amount },
+      maintenance: { date: date || today(), cost: amount, type: match(MAINT_TYPES), notes: concept },
+      expenses: { date: date || today(), amount, category: match(EXPENSE_TYPES), notes: concept },
+    }[b.dataset.veh];
+    sheet.close();
+    // Si venía de un pago ya guardado, se elimina al guardarlo en Vehículo.
+    openForm(b.dataset.veh, null, { preset, onSaved: item ? () => db.remove('bills', item.id) : null });
+  }));
+}
+
 // Litros × precio = total (y al revés).
 function wireFuelMath(form) {
   const { liters, pricePerLiter, total, fuelType } = form.elements;
   const n = (el) => parseFloat(el.value);
+  if (n(total) && n(pricePerLiter) && !n(liters)) liters.value = (n(total) / n(pricePerLiter)).toFixed(2);
   // Al cambiar de combustible, sugerir su último precio.
   fuelType?.addEventListener('change', () => {
     pricePerLiter.value = lastPriceOf(fuelType.value);
@@ -418,7 +444,7 @@ function renderHome() {
   const pending = alertsFor(odo).filter((a) => a.s.level !== 'ok').length;
   const km = odo - firstOdometer(state);
   const month = monthlySpend(state, 1)[0].total;
-  const plan = todayPlan(state, today(), !!state.finance.fuel);
+  const plan = todayPlan(state, today());
   view.innerHTML = `
     <p class="muted">Módulos</p>
     <a class="module" href="#/vehiculo">
@@ -620,7 +646,6 @@ const FIN_TABS = [
 ];
 let finMonth = null; // mes que se está viendo (YYYY-MM)
 const finRows = new Map(); // id de instancia de pago → pago, para abrirlo al tocarlo
-const withFuel = () => !!state.finance.fuel;
 const pad2 = (n) => String(n).padStart(2, '0');
 const sum = (xs, f) => xs.reduce((s, x) => s + (+f(x) || 0), 0);
 const catEmoji = (c) => (c || '📦').split(' ')[0];
@@ -659,7 +684,7 @@ function billRow(b, paid, t) {
   const daily = st.level !== 'paid' && st.days > 0 ? ` · ${money(st.cuota)}/día` : '';
   return `<li data-bill="${esc(b.id)}" tabindex="0" class="bill ${st.level}">
     <span class="row-icon emoji">${catEmoji(b.category)}</span>
-    <span class="row-body"><b>${esc(b.concept)}${b.bill?.repeat ? ' <span class="rep" title="Se repite">↻</span>' : ''}${b.fuel ? ' <span class="rep">⛽</span>' : ''}</b>
+    <span class="row-body"><b>${esc(b.concept)}${b.bill?.repeat ? ' <span class="rep" title="Se repite">↻</span>' : ''}${b.veh ? ' <span class="rep">· desde Vehículo</span>' : ''}</b>
       <small><span class="status">${label}</span> · ${fdate(b.date, { day: 'numeric', month: 'short' })}${daily}</small></span>
     <span class="row-amount">${money(st.level === 'paid' ? b.amount : st.pending)}${st.level !== 'paid' && paid > 0 ? `<small>de ${money(b.amount)}</small>` : ''}</span></li>`;
 }
@@ -687,10 +712,10 @@ function renderFinToday() {
       </div>`;
     return;
   }
-  const plan = todayPlan(state, t, withFuel());
+  const plan = todayPlan(state, t);
   const { sim, key } = plan;
-  const monthBills = billsIn(state, key, withFuel());
-  const next = billsIn(state, addMonths(key, 1), withFuel());
+  const monthBills = billsIn(state, key);
+  const next = billsIn(state, addMonths(key, 1));
   const upcoming = [...sim.carry.filter((b) => b.date < key + '-01'), ...monthBills, ...next]
     .filter((b) => (sim.paid.get(b.id) || 0) < b.amount).slice(0, 5);
   const earnedMonth = sum(state.income.filter((x) => monthKey(x.date) === key), (x) => x.amount);
@@ -722,7 +747,7 @@ function renderIncome() {
   const byDay = new Map();
   for (const x of list) byDay.set(x.date, (byDay.get(x.date) || 0) + (+x.amount || 0));
   const total = sum(list, (x) => x.amount);
-  const target = sum(billsIn(state, key, withFuel()), (b) => b.amount);
+  const target = sum(billsIn(state, key), (b) => b.amount);
   const offset = new Date(key + '-01T00:00').getDay();
   const n = monthDays(key);
   let cells = ['D', 'L', 'M', 'M', 'J', 'V', 'S', 'Sem'].map((d) => `<span class="dow">${d}</span>`).join('');
@@ -753,8 +778,8 @@ function renderIncome() {
 function renderBills() {
   const key = finMonth;
   const t = today();
-  const sim = simulate(state, t, { withFuel: withFuel() });
-  const list = billsIn(state, key, withFuel());
+  const sim = simulate(state, t);
+  const list = billsIn(state, key);
   const prev = key === monthKey(t) ? sim.carry.filter((b) => b.date < key + '-01') : [];
   const total = sum(list, (b) => b.amount);
   const covered = sum(list, (b) => sim.paid.get(b.id) || 0);
@@ -776,7 +801,7 @@ function renderBills() {
 
 function renderGoals() {
   const t = today();
-  const sim = simulate(state, t, { withFuel: withFuel() });
+  const sim = simulate(state, t);
   const gs = sim.goals;
   if (!gs.length) {
     view.innerHTML = `<div class="empty">${icon('target')}<p>Crea metas como llantas, Navidad o un viaje. Lo que te sobre cada mes se aparta solo para ellas, en orden de fecha.</p></div>`;
@@ -804,26 +829,16 @@ function renderGoals() {
 
 function renderFinSettings() {
   view.innerHTML = `
-    <form class="card form" id="fin">
-      <h3>Opciones</h3>
-      <label class="check"><input type="checkbox" name="fuel" ${state.finance.fuel ? 'checked' : ''}><span>Contar las cargas del vehículo como pagos<small>Cada carga de combustible aparece en Pagos como 🚗 Vehículo. Si la activas, no captures el combustible dos veces.</small></span></label>
-      <footer><button class="primary">Guardar</button></footer>
-    </form>
     <section class="card">
       <h3>Cómo se calcula</h3>
       <p class="muted small">Lo que entra cada mes cubre tus pagos en orden de fecha, empezando por los vencidos. Lo que sobra se aparta para tus metas, también en orden de fecha. La <b>meta de hoy</b> es lo que falta del mes entre los días que quedan, más lo que toca apartar para las metas de los próximos ${GOAL_WINDOW} días.</p>
+      <p class="muted small">Las cargas, servicios y gastos del <b>Vehículo</b> aparecen solos en Pagos. Si capturas un pago de 🚗 Vehículo aquí, se guarda en el módulo Vehículo para no duplicarlo.</p>
     </section>
     <section class="card">
       <h3>Importar movimientos</h3>
       <p class="muted small">Agrega ingresos, pagos y metas desde un archivo JSON sin borrar lo que ya tienes. El respaldo completo está en Ajustes del vehículo.</p>
       <label class="btn">Importar JSON<input type="file" id="finImport" accept="application/json,.json" hidden></label>
     </section>`;
-  $('#fin').onsubmit = async (e) => {
-    e.preventDefault();
-    await db.setSetting('finance', { ...state.finance, fuel: e.target.elements.fuel.checked });
-    await refresh();
-    toast('Guardado');
-  };
   $('#finImport').onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -841,7 +856,7 @@ function bindFin() {
   view.querySelectorAll('[data-bill]').forEach((li) => {
     const b = finRows.get(li.dataset.bill);
     const open = () => {
-      if (b.fuel) return openForm('fuel', b.fuel);
+      if (b.veh) return openForm(b.veh.store, b.veh.item);
       const extra = b.bill.repeat
         ? { label: `Omitir el ${fdate(b.date, { day: 'numeric', month: 'short' })}`, run: () => db.put('bills', { ...b.bill, skip: [...(b.bill.skip || []), b.date], updatedAt: Date.now() }) }
         : null;
@@ -977,7 +992,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 
 async function refresh() {
   await load();

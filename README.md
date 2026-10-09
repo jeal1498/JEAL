@@ -15,7 +15,8 @@ PWA personal (sin build, sin servidor). Los datos viven solo en el dispositivo (
 - **Ingresos**: calendario del mes con total por semana; toca un día para registrar.
 - **Pagos**: con fecha límite y repetición (semanal, quincenal, mensual). El ingreso del mes los cubre en orden de fecha; muestra pagado, pendiente y cuánto juntar por día.
 - **Metas**: lo que sobra cada mes se aparta para las metas en orden de fecha; cuota diaria/semanal/mensual (metas a 120 días o menos).
-- **Ajustes**: contar cargas del vehículo como pagos; importar movimientos (JSON) sin borrar nada.
+- **Conectado con Vehículo**: cargas, servicios y gastos del vehículo aparecen solos en Pagos; un pago de 🚗 Vehículo capturado en finanzas se guarda en Vehículo. Sin duplicados.
+- **Ajustes**: importar movimientos (JSON) sin borrar nada.
 
 ## Uso
 Local: `python3 -m http.server` y abrir `http://localhost:8000`.

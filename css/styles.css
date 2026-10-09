@@ -292,3 +292,7 @@ textarea { resize: vertical; }
 .cal .day.today { border: 2px solid var(--accent); }
 .cal .day.week { background: var(--surface-2); border-color: transparent; place-content: center; }
 .cal button.day { cursor: pointer; }
+.vehlink { margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--surface-2); display: grid; gap: 8px; font-size: 14px; }
+.vehlink[hidden] { display: none; }
+.vehlink p { margin: 0; }
+.vehlink small { color: var(--muted); font-size: 12px; }

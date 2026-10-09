@@ -311,3 +311,26 @@ button:disabled { opacity: .5; }
 .steps details { margin-top: 8px; }
 .steps details input { margin-top: 6px; font-size: 14px; }
 .steps summary { color: var(--accent); cursor: pointer; }
+
+/* Gastos (estilo MonAi) */
+.hero.spent > b { font-size: 40px; }
+.hero button.link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; }
+.vbars { display: flex; gap: 8px; align-items: stretch; overflow-x: auto; margin: 10px -4px 0; padding: 0 4px 2px; scrollbar-width: none; }
+.vbar { flex: 1 0 44px; max-width: 72px; display: grid; grid-template-rows: auto 120px auto; gap: 4px; justify-items: center; background: none; border: 0; padding: 0; font: inherit; color: var(--text-2); cursor: pointer; }
+.vbar small { font-size: 11.5px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.vbar span { width: 100%; height: 120px; display: flex; align-items: flex-end; background: var(--surface-2); border-radius: 10px; overflow: hidden; }
+.vbar i { display: block; width: 100%; background: var(--accent); border-radius: 10px; transition: height .2s; }
+.vbar em { font-style: normal; font-size: 20px; line-height: 1; }
+.vbar.off { opacity: .4; }
+.vbar.on small { color: var(--text); }
+.field.big input::-webkit-inner-spin-button, .field.big input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.field.big input { -moz-appearance: textfield; font-size: 30px; font-weight: 700; padding: 12px 14px; font-variant-numeric: tabular-nums; }
+.cats-pick { border: 0; margin: 0; padding: 0; }
+.cats-pick legend { padding: 0; margin-bottom: 6px; }
+.cats-pick > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.cats-pick label { position: relative; }
+.cats-pick input { position: absolute; opacity: 0; inset: 0; pointer-events: none; }
+.cats-pick span { display: grid; justify-items: center; gap: 2px; padding: 8px 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text-2); font-size: 11px; text-align: center; line-height: 1.15; cursor: pointer; min-height: 58px; overflow-wrap: anywhere; }
+.cats-pick i { font-style: normal; font-size: 20px; }
+.cats-pick input:checked + span { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); color: var(--text); font-weight: 600; }
+.cats-pick input:focus-visible + span { outline: 2px solid var(--accent); }

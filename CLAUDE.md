@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-09, v1.7.1)
+## SecondBrain (estado al 2026-10-09, v1.8.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -22,7 +22,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - `js/finance.js` — finanzas puras: pagos repetidos, reparto del ingreso por fecha, metas, meta diaria.
 - `js/backup.js` — respaldo/restauración en Google Sheets y texto del Apps Script (`scriptFor`).
 - `js/calc.js` — cálculos puros (rendimiento tanque lleno→tanque lleno, gasto mensual, recordatorios).
-- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `budgets`, `settings` (claves `vehicle`, `finance`, `backup`). DB `VERSION` 3.
+- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `budgets`, `spending`, `settings` (claves `vehicle`, `finance`, `backup`). DB `VERSION` 4.
 - `css/styles.css` — tokens en `:root` con modo oscuro; series de gráficas `--s1..--s4` (paleta validada).
 
 ### Módulo Vehículo
@@ -31,7 +31,8 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Servicio, Gastos, Avisos (por km y/o meses, botón "Hecho" los reinicia).
 
 ### Módulo Finanzas (`#/finanzas`)
-- Hoy / Ingresos (calendario) / Pagos (repetición semanal, quincenal, mensual; "Omitir" un día) / Metas.
+- Gastos (inicio, estilo MonAi) / Hoy (`#/finanzas/hoy`) / Ingresos (calendario) / Pagos (repetición semanal, quincenal, mensual; "Omitir" un día) / Metas.
+- Gastos (`spending`): captura rápida (monto grande + cuadrícula de categorías). Vista = `spentIn`: gastos + registros de Vehículo + pagos con fecha ≤ hoy; barras por categoría (tocar filtra) y lista por día. Los gastos entran en `billsIn` como `spend` (cuentan en el reparto y en presupuestos de su categoría); en Pagos se muestran como una sola fila. Categoría 🚗 se redirige a Vehículo.
 - El ingreso de cada mes cubre pagos en orden de fecha (vencidos primero); el sobrante al cerrar el mes va a metas por fecha.
 - Presupuestos (`budgets`): tope mensual; `kind` `fuel` (cargas + pagos 🚗 tipo combustible) o `category`. Lo gastado ya está en la lista; se reserva solo lo que queda, a fin de mes (meses pasados: 0).
 - Meta de hoy = pendiente del mes / días restantes + cuota de metas a ≤120 días. Vehículo es la única fuente de sus gastos: cargas/servicios/gastos salen solos en Pagos (`vehicleItems`); un pago 🚗 en finanzas se captura en Vehículo; pagos 🚗 iguales (fecha+monto) a un registro de Vehículo se ocultan. Registros de Vehículo anteriores al primer mes de finanzas (primer ingreso/pago) no cuentan.

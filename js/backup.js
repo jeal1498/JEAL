@@ -14,6 +14,7 @@ const TABLES = [
   ['Gastos vehículo', 'expenses', [['date', 'Fecha'], ['category', 'Categoría'], ['amount', 'Monto'], ['notes', 'Notas']]],
   ['Avisos', 'reminders', [['title', 'Qué'], ['everyKm', 'Cada (km)'], ['everyMonths', 'Cada (meses)'], ['lastKm', 'Última vez (km)'], ['lastDate', 'Última vez (fecha)'], ['notes', 'Notas']]],
   ['Ingresos', 'income', [['date', 'Fecha'], ['amount', 'Monto'], ['concept', 'Concepto'], ['notes', 'Notas']]],
+  ['Gastos', 'spending', [['date', 'Fecha'], ['concept', 'Concepto'], ['amount', 'Monto'], ['category', 'Categoría'], ['notes', 'Notas']]],
   ['Pagos', 'bills', [['date', 'Fecha límite'], ['concept', 'Concepto'], ['amount', 'Monto'], ['category', 'Categoría'], ['repeat', 'Se repite', (v) => REPEAT[v || '']], ['until', 'Repetir hasta'], ['notes', 'Notas']]],
   ['Metas', 'goals', [['date', 'Para cuándo'], ['concept', 'Concepto'], ['amount', 'Monto'], ['category', 'Categoría'], ['saved', 'Ya ahorrado'], ['notes', 'Notas']]],
   ['Presupuestos', 'budgets', [['concept', 'Nombre'], ['amount', 'Tope al mes'], ['category', 'Categoría'], ['kind', 'Qué cuenta', (v) => KIND[v || 'category']], ['notes', 'Notas']]],

@@ -1,7 +1,7 @@
 // Almacenamiento local (IndexedDB). Todo vive en el dispositivo.
 const DB_NAME = 'secondbrain';
-const VERSION = 3;
-export const STORES = ['fuel', 'maintenance', 'expenses', 'reminders', 'income', 'bills', 'goals', 'budgets'];
+const VERSION = 4;
+export const STORES = ['fuel', 'maintenance', 'expenses', 'reminders', 'income', 'bills', 'goals', 'budgets', 'spending'];
 
 let dbp;
 function open() {

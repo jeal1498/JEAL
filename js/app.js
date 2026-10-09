@@ -1,6 +1,6 @@
 import * as db from './db.js';
 import * as backup from './backup.js';
-import { CATEGORIES, REPEATS, BUDGET_KINDS, GOAL_WINDOW, VEHICLE_CAT, monthKey, monthDays, addMonths, billsIn, billStatus, simulate, todayPlan } from './finance.js';
+import { CATEGORIES, REPEATS, BUDGET_KINDS, GOAL_WINDOW, VEHICLE_CAT, monthKey, monthDays, addMonths, billsIn, spentIn, billStatus, simulate, todayPlan } from './finance.js';
 import { fuelStats, fuelStatsByType, FUELS, fuelTypeOf, currentOdometer, firstOdometer, totals, monthlySpend, reminderStatus, amountOf } from './calc.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -8,15 +8,15 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const today = () => new Date().toLocaleDateString('en-CA');
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
-const state = { fuel: [], maintenance: [], expenses: [], reminders: [], income: [], bills: [], goals: [], budgets: [], vehicle: {}, finance: {} };
+const state = { fuel: [], maintenance: [], expenses: [], reminders: [], income: [], bills: [], goals: [], budgets: [], spending: [], vehicle: {}, finance: {} };
 
 async function load() {
-  const [fuel, maintenance, expenses, reminders, income, bills, goals, budgets, vehicle, finance] = await Promise.all([
+  const [fuel, maintenance, expenses, reminders, income, bills, goals, budgets, spending, vehicle, finance] = await Promise.all([
     db.all('fuel'), db.all('maintenance'), db.all('expenses'), db.all('reminders'),
-    db.all('income'), db.all('bills'), db.all('goals'), db.all('budgets'), db.getSetting('vehicle'), db.getSetting('finance'),
+    db.all('income'), db.all('bills'), db.all('goals'), db.all('budgets'), db.all('spending'), db.getSetting('vehicle'), db.getSetting('finance'),
   ]);
   state.backup = await backup.getConfig();
-  Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, vehicle: vehicle || {}, finance: finance || {} });
+  Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, spending, vehicle: vehicle || {}, finance: finance || {} });
 }
 
 // ---------- Formato ----------
@@ -156,6 +156,16 @@ const SCHEMAS = {
       { k: 'notes', label: 'Notas', type: 'textarea' },
     ],
   },
+  spending: {
+    title: 'Gasto', newLabel: 'Nuevo',
+    fields: [
+      { k: 'amount', label: 'Monto', type: 'number', step: '0.01', req: true, big: true },
+      { k: 'category', label: 'Categoría', type: 'cats', options: CATEGORIES, req: true, def: () => [...state.spending].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]?.category || '🛒 Súper' },
+      { k: 'concept', label: 'Concepto', type: 'text', list: () => uniq(state.spending.map((x) => x.concept)), placeholder: 'Opcional · Ej. Tacos' },
+      { k: 'date', label: 'Fecha', type: 'date', req: true, def: today },
+      { k: 'notes', label: 'Notas', type: 'textarea' },
+    ],
+  },
   budgets: {
     title: 'Presupuesto', newLabel: 'Nuevo',
     fields: [
@@ -192,6 +202,10 @@ function openForm(store, item = null, { preset = {}, extra = null, onSaved = nul
     if (f.show && !f.show()) return '';
     const id = `f-${f.k}`;
     const common = `id="${id}" name="${f.k}" ${f.req ? 'required' : ''} ${f.placeholder ? `placeholder="${esc(f.placeholder)}"` : ''}`;
+    if (f.type === 'cats') {
+      const val = v(f);
+      return `<fieldset class="field wide cats-pick"><legend>${f.label}</legend><div>${f.options.map((o, i) => `<label><input type="radio" name="${f.k}" value="${esc(o)}" ${o === val ? 'checked' : ''} ${f.req && !i ? 'required' : ''}><span><i>${catEmoji(o)}</i>${esc(o.split(' ').slice(1).join(' '))}</span></label>`).join('')}</div></fieldset>`;
+    }
     if (f.type === 'checkbox') {
       return `<label class="check"><input type="checkbox" ${common} ${v(f) ? 'checked' : ''}><span>${f.label}${f.hint ? `<small>${f.hint}</small>` : ''}</span></label>`;
     }
@@ -209,7 +223,7 @@ function openForm(store, item = null, { preset = {}, extra = null, onSaved = nul
     }
     // Sugerencias visibles (el datalist casi no se ve en el teléfono): botones con lo ya capturado.
     const sugg = f.list && f.list().length ? `<div class="sugg" data-for="${f.k}"></div>` : '';
-    return `<label class="field ${f.type === 'textarea' || sugg ? 'wide' : ''}" for="${id}"><span>${f.label}</span>${input}</label>${sugg}`;
+    return `<label class="field ${f.type === 'textarea' || sugg || f.big ? 'wide' : ''} ${f.big ? 'big' : ''}" for="${id}"><span>${f.label}</span>${input}</label>${sugg}`;
   };
 
   sheet.innerHTML = `
@@ -217,9 +231,9 @@ function openForm(store, item = null, { preset = {}, extra = null, onSaved = nul
       <header><h2>${isNew ? schema.newLabel || 'Nueva' : 'Editar'}: ${schema.title}</h2>
         <button type="button" class="ghost" data-close aria-label="Cerrar">✕</button></header>
       <div class="grid">${schema.fields.map(field).join('')}</div>
-      ${store === 'bills' ? `<div class="vehlink" hidden><p>Los gastos de 🚗 Vehículo se guardan en el módulo Vehículo para no duplicarlos. ¿Qué fue?</p>
+      ${store === 'bills' || store === 'spending' ? `<div class="vehlink" hidden><p>Los gastos de 🚗 Vehículo se guardan en el módulo Vehículo para no duplicarlos. ¿Qué fue?</p>
         <div class="actions"><button type="button" data-veh="fuel">Carga</button><button type="button" data-veh="maintenance">Servicio</button><button type="button" data-veh="expenses">Otro gasto</button></div>
-        <small>Si es algo planeado a futuro, guárdalo aquí como pago normal.</small></div>` : ''}
+        ${store === 'bills' ? '<small>Si es algo planeado a futuro, guárdalo aquí como pago normal.</small>' : ''}</div>` : ''}
       <p class="warn" hidden></p>
       <footer>
         ${isNew ? '' : '<button type="button" class="danger" data-delete>Eliminar</button>'}
@@ -229,7 +243,7 @@ function openForm(store, item = null, { preset = {}, extra = null, onSaved = nul
     </form>`;
   const form = $('form', sheet);
   if (store === 'fuel') wireFuelMath(form);
-  if (store === 'bills') wireVehicleLink(form, item);
+  if (store === 'bills' || store === 'spending') wireVehicleLink(form, store, item);
   schema.fields.filter((f) => f.list).forEach((f) => wireSuggestions(form, store, f, isNew));
 
   form.addEventListener('submit', async (e) => {
@@ -239,6 +253,12 @@ function openForm(store, item = null, { preset = {}, extra = null, onSaved = nul
       const el = form.elements[f.k];
       if (!el) continue;
       data[f.k] = f.type === 'checkbox' ? el.checked : f.type === 'number' ? (el.value === '' ? '' : +el.value) : el.value.trim();
+    }
+    if (store === 'spending' && data.category === VEHICLE_CAT) {
+      const warn = $('.warn', form);
+      warn.textContent = 'Elige arriba si fue carga, servicio u otro gasto del vehículo.';
+      warn.hidden = false;
+      return;
     }
     if (store === 'fuel' && isNew) {
       const prev = Math.max(0, ...state.fuel.map((f) => +f.odometer));
@@ -292,9 +312,9 @@ function wireSuggestions(form, store, f, isNew) {
       const last = state[store].filter((x) => x[f.k] === el.value).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (b.createdAt || 0) - (a.createdAt || 0))[0];
       for (const k of ['amount', 'category']) {
         const input = form.elements[k];
-        if (last && input && last[k] !== '' && last[k] != null && (k === 'category' ? [...input.options].some((o) => o.value === last[k]) : input.value === '')) {
+        if (last && input && last[k] !== '' && last[k] != null && (k === 'category' ? [...(input.options || input)].some((o) => o.value === last[k]) : input.value === '')) {
           input.value = last[k];
-          input.dispatchEvent(new Event('change'));
+          form.dispatchEvent(new Event('change'));
         }
       }
     }
@@ -304,10 +324,10 @@ function wireSuggestions(form, store, f, isNew) {
 }
 
 // Pago de vehículo en finanzas → se captura en el módulo Vehículo (única fuente), con fecha y monto ya puestos.
-function wireVehicleLink(form, item) {
+function wireVehicleLink(form, store, item) {
   const box = $('.vehlink', form);
   const sync = () => (box.hidden = form.elements.category.value !== VEHICLE_CAT);
-  form.elements.category.addEventListener('change', sync);
+  form.addEventListener('change', sync);
   sync();
   box.querySelectorAll('[data-veh]').forEach((b) => (b.onclick = () => {
     const { date, amount, concept } = Object.fromEntries(['date', 'amount', 'concept'].map((k) => [k, form.elements[k].value.trim()]));
@@ -319,7 +339,7 @@ function wireVehicleLink(form, item) {
     }[b.dataset.veh];
     sheet.close();
     // Si venía de un pago ya guardado, se elimina al guardarlo en Vehículo.
-    openForm(b.dataset.veh, null, { preset, onSaved: item ? () => db.remove('bills', item.id) : null });
+    openForm(b.dataset.veh, null, { preset, onSaved: item ? () => db.remove(store, item.id) : null });
   }));
 }
 
@@ -509,7 +529,7 @@ function renderHome() {
       <span class="module-icon">${icon('wallet')}</span>
       <span class="module-body">
         <b>Finanzas</b>
-        <small>Meta de hoy ${money(plan.meta)} · ${plan.pending > 0 ? `faltan ${money(plan.pending)} este mes` : 'mes cubierto'}</small>
+        <small>Gastado ${money(sum(spentIn(state, plan.key), (x) => x.amount))} este mes · Meta de hoy ${money(plan.meta)} · ${plan.pending > 0 ? `faltan ${money(plan.pending)} este mes` : 'mes cubierto'}</small>
       </span>
     </a>
     <a class="module" href="#/respaldo">
@@ -694,12 +714,14 @@ function renderReminders() {
 
 // ---------- Finanzas ----------
 const FIN_TABS = [
-  { id: '', label: 'Hoy', icon: 'sun' },
+  { id: '', label: 'Gastos', icon: 'chart', store: 'spending' },
+  { id: 'hoy', label: 'Hoy', icon: 'sun' },
   { id: 'ingresos', label: 'Ingresos', icon: 'calendar', store: 'income' },
   { id: 'pagos', label: 'Pagos', icon: 'receipt', store: 'bills' },
   { id: 'metas', label: 'Metas', icon: 'target', store: 'goals' },
 ];
 let finMonth = null; // mes que se está viendo (YYYY-MM)
+let finCat = null; // categoría elegida en la gráfica de gastos
 const finRows = new Map(); // id de instancia de pago → pago, para abrirlo al tocarlo
 const pad2 = (n) => String(n).padStart(2, '0');
 const sum = (xs, f) => xs.reduce((s, x) => s + (+f(x) || 0), 0);
@@ -728,7 +750,8 @@ function renderFinance(sub) {
   if (tab.id === 'ingresos') renderIncome();
   else if (tab.id === 'pagos') renderBills();
   else if (tab.id === 'metas') renderGoals();
-  else renderFinToday();
+  else if (tab.id === 'hoy') renderFinToday();
+  else renderSpending();
   bindFin();
 }
 
@@ -774,6 +797,48 @@ function catCard(list) {
     <div class="cat"><span>${esc(c)} <small>${num((v / total) * 100)}%</small></span><b>${money(v)}</b>${bar(v / rows[0][1])}</div>`).join('')}</div></section>`;
 }
 
+// Gastos del mes al estilo MonAi: total grande, barras por categoría y movimientos por día.
+function renderSpending() {
+  const key = finMonth;
+  const t = today();
+  const all = spentIn(state, key, t);
+  const by = new Map();
+  for (const x of all) by.set(x.category, (by.get(x.category) || 0) + x.amount);
+  const cats = [...by].sort((a, b) => b[1] - a[1]);
+  if (finCat && !by.has(finCat)) finCat = null;
+  const list = all.filter((x) => !finCat || x.category === finCat).sort((a, b) => b.date.localeCompare(a.date) || ((b.spend || b.veh?.item || b.bill).createdAt || 0) - ((a.spend || a.veh?.item || a.bill).createdAt || 0));
+  const total = sum(all, (x) => x.amount);
+  const earned = sum(state.income.filter((x) => monthKey(x.date) === key), (x) => x.amount);
+  const max = cats[0]?.[1] || 1;
+  const days = new Map();
+  for (const x of list) (days.get(x.date) || days.set(x.date, []).get(x.date)).push(x);
+  const spendRow = (x) => {
+    finRows.set(x.id, x);
+    const tag = x.bill ? 'Pago' : '';
+    const note = x.spend?.notes || x.bill?.notes || '';
+    return `<li data-bill="${esc(x.id)}" tabindex="0">
+      <span class="row-icon emoji">${catEmoji(x.category)}</span>
+      <span class="row-body"><b>${esc(x.concept)}</b><small>${esc((x.category || '').split(' ').slice(1).join(' '))}${tag ? ` · ${tag}` : ''}${note ? ` · ${esc(note)}` : ''}</small></span>
+      <span class="row-amount">${money(x.amount)}</span></li>`;
+  };
+  view.innerHTML = `
+    ${monthNav()}
+    <section class="hero spent">
+      <small>${finCat ? esc(finCat) : 'Gastado'} en ${fdate(key + '-01', { month: 'long' })}</small>
+      <b>${money(finCat ? by.get(finCat) : total)}</b>
+      ${finCat ? `<span>${num((by.get(finCat) / total) * 100)}% del total · <button class="link" data-cat="${esc(finCat)}">ver todo</button></span>`
+        : earned ? `<span>Entró ${money(earned)} · ${earned >= total ? `te quedan ${money(earned - total)}` : `gastaste ${money(total - earned)} más`}</span>` : ''}
+      ${cats.length ? `<div class="vbars">${cats.map(([c, v]) => `
+        <button class="vbar${finCat === c ? ' on' : ''}${finCat && finCat !== c ? ' off' : ''}" data-cat="${esc(c)}" aria-label="${esc(c)}: ${money(v)}">
+          <small>${compact(v)}</small><span><i style="height:${Math.max(4, (v / max) * 100).toFixed(1)}%"></i></span><em>${catEmoji(c)}</em></button>`).join('')}</div>` : ''}
+    </section>
+    ${list.length ? [...days].map(([d, xs]) => `
+      <h4 class="group"><span>${d === t ? 'Hoy' : cap(fdate(d, { weekday: 'long', day: 'numeric', month: 'short' }))}</span><span>${money(sum(xs, (x) => x.amount))}</span></h4>
+      <ul class="list">${xs.map(spendRow).join('')}</ul>`).join('')
+    : `<div class="empty">${icon('receipt')}<p>Anota cada gasto con <b>＋</b>: monto, categoría y listo. Aquí verás cuánto llevas en el mes y en qué se va.</p></div>`}
+    ${list.length ? '<p class="muted small center">Incluye cargas y gastos del vehículo y tus pagos con fecha hasta hoy.</p>' : ''}`;
+}
+
 function renderFinToday() {
   const t = today();
   if (!state.income.length && !state.bills.length && !state.goals.length && !state.budgets.length) {
@@ -792,7 +857,7 @@ function renderFinToday() {
   const monthBills = billsIn(state, key);
   const next = billsIn(state, addMonths(key, 1));
   const upcoming = [...sim.carry.filter((b) => b.date < key + '-01'), ...monthBills, ...next]
-    .filter((b) => !b.budget && (sim.paid.get(b.id) || 0) < b.amount).slice(0, 5);
+    .filter((b) => !b.budget && !b.spend && (sim.paid.get(b.id) || 0) < b.amount).slice(0, 5);
   const earnedMonth = sum(state.income.filter((x) => monthKey(x.date) === key), (x) => x.amount);
   const saved = sum(sim.goals, (g) => g.collected);
   const goalsTotal = sum(sim.goals, (g) => g.amount);
@@ -856,8 +921,9 @@ function renderBills() {
   const t = today();
   const sim = simulate(state, t);
   const all = billsIn(state, key);
-  const list = all.filter((b) => !b.budget);
-  const prev = key === monthKey(t) ? sim.carry.filter((b) => b.date < key + '-01') : [];
+  const list = all.filter((b) => !b.budget && !b.spend);
+  const spends = all.filter((b) => b.spend);
+  const prev = key === monthKey(t) ? sim.carry.filter((b) => b.date < key + '-01' && !b.spend) : [];
   const total = sum(all, (b) => b.amount);
   const covered = sum(all, (b) => sim.paid.get(b.id) || 0);
   view.innerHTML = `
@@ -873,6 +939,7 @@ function renderBills() {
         <ul class="list">${prev.map((b) => billRow(b, sim.paid.get(b.id) || 0, t)).join('')}</ul>` : ''}
       ${list.length ? `<h4 class="group"><span>${monthLabel(key)}</span><span>${list.length} pago${list.length === 1 ? '' : 's'}</span></h4>
         <ul class="list">${list.map((b) => billRow(b, sim.paid.get(b.id) || 0, t)).join('')}</ul>` : ''}
+      ${spends.length ? `<a class="module" href="#/finanzas"><span class="module-icon">${icon('chart')}</span><span class="module-body"><b>Gastos del día a día</b><small>${spends.length} gasto${spends.length === 1 ? '' : 's'} · ${money(sum(spends, (b) => b.amount))}</small></span></a>` : ''}
       ${catCard(all)}`
     : `<div class="empty">${icon('receipt')}<p>Agrega tus pagos: colegiatura, servicios, tandas, tarjetas… Si se repite, márcalo y aparecerá solo cada mes.</p></div>`}`;
 }
@@ -935,6 +1002,7 @@ function bindFin() {
     const b = finRows.get(li.dataset.bill);
     const open = () => {
       if (b.veh) return openForm(b.veh.store, b.veh.item);
+      if (b.spend) return openForm('spending', b.spend);
       const extra = b.bill.repeat
         ? { label: `Omitir el ${fdate(b.date, { day: 'numeric', month: 'short' })}`, run: () => db.put('bills', { ...b.bill, skip: [...(b.bill.skip || []), b.date], updatedAt: Date.now() }) }
         : null;
@@ -956,6 +1024,7 @@ function bindFin() {
   view.querySelectorAll('[data-day]').forEach((el) => (el.onclick = () => openForm('income', null, { preset: { date: el.dataset.day } })));
   view.querySelectorAll('[data-new]').forEach((el) => (el.onclick = () => openForm(el.dataset.new)));
   view.querySelectorAll('[data-m]').forEach((el) => (el.onclick = () => { finMonth = addMonths(finMonth, +el.dataset.m); render(); }));
+  view.querySelectorAll('[data-cat]').forEach((el) => (el.onclick = () => { finCat = finCat === el.dataset.cat ? null : el.dataset.cat; render(); }));
   bindRows();
 }
 
@@ -1176,7 +1245,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '1.7.1';
+const VERSION = '1.8.0';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

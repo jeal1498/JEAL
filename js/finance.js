@@ -4,7 +4,7 @@
 // fecha, empezando por los que quedaron pendientes de meses anteriores. Lo que sobra
 // se aparta para las metas, también en orden de fecha.
 
-export const CATEGORIES = ['🚗 Vehículo', '👤 Yo', '👩 Karen', '👧 Julieta', '👨‍👩‍👧‍👦 Familia', '💡 Servicios', '🏛️ Finanzas', '🏠 Casa', '🛒 Súper', '📦 Otro'];
+export const CATEGORIES = ['🚗 Vehículo', '👤 Yo', '👩 Karen', '👧 Julieta', '👨‍👩‍👧‍👦 Familia', '💡 Servicios', '🏛️ Finanzas', '🏠 Casa', '🛒 Súper', '🍽️ Comida fuera', '📦 Otro'];
 export const REPEATS = [
   { v: '', l: 'No se repite' },
   { v: 'week', l: 'Cada semana' },
@@ -50,7 +50,7 @@ export function occurrences(bill, key) {
 export const VEHICLE_CAT = '🚗 Vehículo';
 
 // Mes en que empezó el control de finanzas (primer ingreso o pago).
-const financeStart = (state) => [...state.income, ...state.bills].map((x) => x.date).filter(Boolean).map(monthKey).sort()[0];
+const financeStart = (state) => [...state.income, ...state.bills, ...(state.spending || [])].map((x) => x.date).filter(Boolean).map(monthKey).sort()[0];
 
 // Lo registrado en el módulo Vehículo es la única fuente: finanzas solo lo lee.
 // Lo anterior al inicio de finanzas (historial del vehículo) no cuenta: se pagó con dinero que no está registrado.
@@ -75,7 +75,7 @@ function budgetCounts(g, x) {
   return x.category === g.category;
 }
 
-// Pagos del mes como instancias: { id, date, category, concept, amount, bill | veh | budget }.
+// Pagos del mes como instancias: { id, date, category, concept, amount, bill | veh | spend | budget }.
 export function billsIn(state, key, today = localToday()) {
   const veh = vehicleItems(state).filter((v) => monthKey(v.item.date) === key);
   const vehKeys = new Set(veh.map((v) => dupKey(v.item.date, v.amount)));
@@ -87,6 +87,10 @@ export function billsIn(state, key, today = localToday()) {
     }
   }
   for (const v of veh) out.push({ id: `${v.store}:${v.item.id}`, date: v.item.date, category: VEHICLE_CAT, concept: v.concept, amount: v.amount, veh: v });
+  // Gastos del día a día: ya salieron, cuentan como un pago más (y contra el presupuesto de su categoría).
+  for (const s of state.spending || []) {
+    if (s.date && monthKey(s.date) === key) out.push({ id: `spend:${s.id}`, date: s.date, category: s.category, concept: s.concept || s.category, amount: +s.amount || 0, spend: s });
+  }
   // Presupuesto mensual: lo gastado ya está en la lista; solo se reserva lo que queda (a fin de mes).
   // En meses pasados no se reserva nada: lo que no se gastó, no se debe.
   const end = `${key}-${pad(monthDays(key))}`;
@@ -97,8 +101,13 @@ export function billsIn(state, key, today = localToday()) {
     out.push({ id: `budget:${g.id}@${key}`, date: end, category: g.category, concept: g.concept, amount: left, budget: g, spent, limit });
   }
   // Mismo día: primero lo que se registró antes (como el orden de filas del Excel).
-  const created = (x) => (x.bill || x.veh?.item || x.budget).createdAt || x.veh?.item.updatedAt || 0;
+  const created = (x) => (x.bill || x.veh?.item || x.spend || x.budget).createdAt || x.veh?.item.updatedAt || 0;
   return out.sort((a, b) => a.date.localeCompare(b.date) || created(a) - created(b));
+}
+
+// Lo que ya salió en el mes: gastos, registros del vehículo y pagos con fecha hasta hoy.
+export function spentIn(state, key, today = localToday()) {
+  return billsIn(state, key, today).filter((x) => !x.budget && x.amount > 0 && (x.spend || x.veh || x.date <= today));
 }
 
 // Simula mes a mes desde el primer registro hasta hoy.
@@ -109,6 +118,7 @@ export function simulate(state, today, { before = null } = {}) {
     ...state.income.map((x) => x.date),
     ...state.bills.map((x) => x.date),
     ...vehicleItems(state).map((v) => v.item.date),
+    ...(state.spending || []).map((x) => x.date),
   ].filter(Boolean).map(monthKey);
   let key = keys.length ? keys.reduce((a, b) => (a < b ? a : b)) : cur;
   if (key > cur) key = cur;

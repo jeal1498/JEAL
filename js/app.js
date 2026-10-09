@@ -48,7 +48,7 @@ const icon = (n) => `<svg viewBox="0 0 24 24" class="i" aria-hidden="true">${P[n
 const hasLP = () => !!state.vehicle.lp || state.fuel.some((f) => fuelTypeOf(f) === 'lp');
 const lastFuelType = () => {
   const last = [...state.fuel].sort((a, b) => a.date.localeCompare(b.date) || a.odometer - b.odometer).at(-1);
-  return last ? fuelTypeOf(last) : 'gasolina';
+  return last ? fuelTypeOf(last) : state.vehicle.lp ? 'lp' : 'gasolina';
 };
 const lastPriceOf = (type) => {
   const p = fuelStats(state.fuel.filter((f) => fuelTypeOf(f) === type)).lastPrice;
@@ -381,7 +381,7 @@ function renderHome() {
       <span class="module-icon">${icon('car')}</span>
       <span class="module-body">
         <b>${esc(state.vehicle.name || 'Vehículo')}</b>
-        <small>${km > 0 ? money(totals(state).all / km) + '/km · ' : ''}${money(month)} este mes${pending ? ` · <span class="badge">${pending} aviso${pending > 1 ? 's' : ''}</span>` : ''}</small>
+        ${!state.vehicle.name ? '<small>Toca para configurarlo</small>' : `<small>${km > 0 ? money(totals(state).all / km) + '/km · ' : ''}${money(month)} este mes${pending ? ` · <span class="badge">${pending} aviso${pending > 1 ? 's' : ''}</span>` : ''}</small>`}
       </span>
     </a>
     <div class="module soon"><span class="module-icon">＋</span><span class="module-body"><b>Más módulos</b><small>Próximamente: notas, finanzas, hábitos…</small></span></div>`;
@@ -395,6 +395,13 @@ function renderVehicle(sub) {
     tabs.hidden = true;
     setFab(null);
     return renderSettings();
+  }
+  // Primero se configura el vehículo; sin eso no tiene sentido registrar cargas.
+  if (!state.vehicle.name) {
+    setHeader({ title: 'Configura tu vehículo', back: '#/' });
+    tabs.hidden = true;
+    setFab(null);
+    return renderSetup();
   }
   setHeader({ title: name, back: '#/', action: { href: '#/vehiculo/ajustes', icon: 'sliders', label: 'Ajustes' } });
   tabs.hidden = false;
@@ -422,7 +429,6 @@ function renderSummary() {
         <h2>Empieza registrando una carga</h2>
         <p>Cada vez que cargues combustible anota el <b>odómetro</b>, los <b>litros</b> y el <b>total</b>. Si llenas el tanque, a partir de la segunda carga verás tu rendimiento real.</p>
         <button class="primary" id="first">Registrar carga</button>
-        <a class="link" href="#/vehiculo/ajustes">Configurar vehículo</a>
       </div>`;
     $('#first').onclick = () => openForm('fuel');
     return;
@@ -553,6 +559,41 @@ function renderReminders() {
   bindRows();
 }
 
+function renderSetup() {
+  const f = (k, label, type, extra = '') => `<label class="field"><span>${label}</span><input name="${k}" type="${type}" ${extra}></label>`;
+  view.innerHTML = `
+    <p class="muted">Antes de registrar cargas, cuéntame de tu vehículo. Podrás cambiarlo después en Ajustes.</p>
+    <form class="card form" id="setup">
+      <div class="grid">
+        ${f('name', 'Nombre', 'text', 'required placeholder="Ej. Mi Versa"')}
+        ${f('model', 'Marca / modelo / año', 'text', 'placeholder="Ej. Nissan Versa 2018"')}
+        ${f('plate', 'Placas', 'text')}
+        ${f('odometer', 'Kilometraje actual', 'number', 'required inputmode="numeric" step="1" min="0" placeholder="Lo que marca el tablero"')}
+        <label class="check"><input type="checkbox" name="lp" id="setup-lp"><span>Usa gas LP<small>El rendimiento se calcula con el LP; la gasolina cuenta como gasto</small></span></label>
+        <div class="grid lp-only" hidden style="grid-column: 1 / -1">
+          ${f('tankLp', 'Tanque gas LP (L)', 'number', 'inputmode="decimal" step="0.1" min="0"')}
+          ${f('kmlGas', 'Rendimiento con gasolina (km/l)', 'number', 'inputmode="decimal" step="0.1" min="0" placeholder="Para calcular el ahorro"')}
+        </div>
+        ${f('tank', 'Tanque gasolina (L)', 'number', 'inputmode="decimal" step="0.1" min="0"')}
+      </div>
+      <footer><button class="primary">Guardar y continuar</button></footer>
+    </form>`;
+  const form = $('#setup');
+  $('#setup-lp').onchange = (e) => ($('.lp-only', form).hidden = !e.target.checked);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(form));
+    data.name = data.name.trim();
+    data.lp = data.lp === 'on';
+    data.odometer = +data.odometer;
+    data.currency = 'MXN';
+    await db.setSetting('vehicle', { ...state.vehicle, ...data });
+    await refresh();
+    toast('¡Listo! Ya puedes registrar cargas');
+  };
+  setTimeout(() => form.elements.name.focus(), 50);
+}
+
 function renderSettings() {
   const v = state.vehicle;
   const f = (k, label, type = 'text', extra = '') => `<label class="field"><span>${label}</span><input name="${k}" type="${type}" value="${esc(v[k] ?? '')}" ${extra}></label>`;
@@ -560,7 +601,7 @@ function renderSettings() {
     <form class="card form" id="veh">
       <h3>Vehículo</h3>
       <div class="grid">
-        ${f('name', 'Nombre', 'text', 'placeholder="Ej. Mi Versa"')}
+        ${f('name', 'Nombre', 'text', 'required placeholder="Ej. Mi Versa"')}
         ${f('model', 'Marca / modelo / año')}
         ${f('plate', 'Placas')}
         <label class="check"><input type="checkbox" name="lp" ${v.lp ? 'checked' : ''}><span>También usa gas LP<small>El rendimiento se calcula con el LP; la gasolina cuenta como gasto</small></span></label>
@@ -634,7 +675,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 async function refresh() {
   await load();

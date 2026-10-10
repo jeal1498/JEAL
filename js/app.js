@@ -57,6 +57,7 @@ const P = {
   wallet: '<path d="M20 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15v13H5a2 2 0 0 1-2-2V5"/><path d="M16 13h.01"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
 };
 const icon = (n) => `<svg viewBox="0 0 24 24" class="i" aria-hidden="true">${P[n]}</svg>`;
@@ -483,6 +484,7 @@ function render() {
   if (mod === 'vehiculo') renderVehicle(sub);
   else if (mod === 'finanzas') renderFinance(sub);
   else if (mod === 'respaldo') renderBackup();
+  else if (mod === 'buscar') renderSearch();
   else renderHome();
   bindCharts(view);
 }
@@ -495,7 +497,7 @@ function alertsFor(odo) {
 const rank = (s) => ({ overdue: 0, soon: 1, ok: 2 })[s.level] * 1e6 + Math.min(s.kmLeft ?? 1e5, (s.daysLeft ?? 1e4) * 30);
 
 function renderHome() {
-  setHeader({ title: 'SecondBrain' });
+  setHeader({ title: 'SecondBrain', action: { href: '#/buscar', icon: 'search', label: 'Buscar' } });
   setFab(null);
   tabs.hidden = true;
   const odo = currentOdometer(state);
@@ -524,6 +526,74 @@ function renderHome() {
       <span class="module-body"><b>Respaldo</b><small>${backupStatus()}</small></span>
     </a>
     <div class="module soon"><span class="module-icon">＋</span><span class="module-body"><b>Más módulos</b><small>Próximamente: notas, hábitos…</small></span></div>`;
+}
+
+// ---------- Buscador general ----------
+// Busca en todo lo guardado (Vehículo y Finanzas); cada palabra debe aparecer en el registro.
+const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const SEARCH = [
+  { store: 'fuel', label: 'Cargas', icon: 'fuel', show: (x) => ({ title: `${x.fuelType === 'lp' ? 'Gas LP' : 'Gasolina'} · ${num(x.liters, 2)} L`, amount: x.total }) },
+  { store: 'maintenance', label: 'Servicio', icon: 'wrench', show: (x) => ({ title: x.type || 'Servicio', amount: x.cost }) },
+  { store: 'expenses', label: 'Gastos del vehículo', icon: 'receipt', show: (x) => ({ title: x.category || 'Gasto', amount: x.amount }) },
+  { store: 'reminders', label: 'Avisos', icon: 'bell', show: (x) => ({ title: x.title, date: x.lastDate }) },
+  { store: 'income', label: 'Ingresos', icon: 'wallet', show: (x) => ({ title: x.concept || 'Ingreso', amount: x.amount }) },
+  { store: 'bills', label: 'Pagos', icon: 'calendar', show: (x) => ({ title: `${catEmoji(x.category)} ${x.concept}`, amount: x.amount }) },
+  { store: 'goals', label: 'Metas', icon: 'target', show: (x) => ({ title: `${catEmoji(x.category)} ${x.concept}`, amount: x.amount }) },
+];
+const SKIP_KEYS = new Set(['id', 'createdAt', 'updatedAt', 'skip']);
+function haystack(g, x) {
+  const parts = [g.label];
+  for (const [k, v] of Object.entries(x)) {
+    if (SKIP_KEYS.has(k) || v == null || typeof v === 'object') continue;
+    parts.push(v);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) parts.push(fdate(v, { day: 'numeric', month: 'long', year: 'numeric' }));
+    if (k === 'fuelType') parts.push(v === 'lp' ? 'gas lp' : 'gasolina');
+  }
+  return fold(parts.join(' '));
+}
+let searchQ = '';
+const searchHits = [];
+function searchResults(q) {
+  // "$1,490" → "1490": los montos se guardan sin formato.
+  const terms = fold(q).replace(/(\d)[,\s](?=\d{3}\b)/g, '$1').replace(/\$/g, '').split(/\s+/).filter(Boolean);
+  searchHits.length = 0;
+  if (!terms.length) return '<p class="muted small">Escribe para buscar en cargas, servicios, gastos, avisos, ingresos, pagos y metas. Ej. <i>llantas</i>, <i>octubre</i>, <i>1490</i>.</p>';
+  let html = '';
+  for (const g of SEARCH) {
+    const found = state[g.store].filter((x) => { const h = haystack(g, x); return terms.every((t) => h.includes(t)); })
+      .sort((a, b) => String(b.date || b.lastDate || '').localeCompare(a.date || a.lastDate || ''));
+    if (!found.length) continue;
+    html += `<p class="muted small">${g.label} (${found.length})</p><ul class="list">${found.slice(0, 30).map((x) => {
+      const s = g.show(x);
+      const date = x.date || s.date;
+      searchHits.push({ store: g.store, item: x });
+      return `<li data-hit="${searchHits.length - 1}" tabindex="0">
+        <span class="row-icon">${icon(g.icon)}</span>
+        <span class="row-body"><b>${esc(s.title)}</b><small>${date ? fdate(date) : ''}${x.notes ? `${date ? ' · ' : ''}${esc(x.notes)}` : ''}</small></span>
+        <span class="row-amount">${s.amount != null && s.amount !== '' ? money(+s.amount) : ''}</span></li>`;
+    }).join('')}</ul>${found.length > 30 ? `<p class="muted small">…y ${found.length - 30} más. Escribe algo más específico.</p>` : ''}`;
+  }
+  return html || '<p class="muted">Sin resultados.</p>';
+}
+function renderSearch() {
+  setHeader({ title: 'Buscar', back: '#/' });
+  setFab(null);
+  tabs.hidden = true;
+  view.innerHTML = `<input type="search" id="q" class="search" placeholder="Buscar en todo…" autocomplete="off" value="${esc(searchQ)}" aria-label="Buscar">
+    <div id="hits"></div>`;
+  const input = $('#q', view);
+  const hits = $('#hits', view);
+  const update = () => {
+    hits.innerHTML = searchResults(searchQ);
+    hits.querySelectorAll('[data-hit]').forEach((li) => {
+      const open = () => { const h = searchHits[li.dataset.hit]; openForm(h.store, h.item); };
+      li.onclick = open;
+      li.onkeydown = (e) => { if (e.key === 'Enter') open(); };
+    });
+  };
+  input.oninput = () => { searchQ = input.value; update(); };
+  update();
+  if (!searchQ) input.focus();
 }
 
 function renderVehicle(sub) {
@@ -1217,7 +1287,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '2.1.5';
+const VERSION = '2.2.0';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

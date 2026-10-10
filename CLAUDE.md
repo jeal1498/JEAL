@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-09, v2.1.0)
+## SecondBrain (estado al 2026-10-09, v2.1.1)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -27,7 +27,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 
 ### Módulo Vehículo
 - Primero pide configurar el vehículo (`renderSetup`); sin nombre no deja registrar.
-- Cargas con `fuelType` `gasolina|lp`. Con LP activo: km/l solo con cargas LP; gasolina = gasto; "Ahorro con LP" usa `vehicle.kmlGas`.
+- Cargas con `fuelType` `gasolina|lp`. Con LP activo: km/l solo con cargas LP; gasolina = gasto; "Ahorro con LP": km/l gasolina = `vehicle.kmlGas` (opcional en Ajustes) o el de sus cargas de gasolina o LP×1.25 estimado. No se pide en la configuración inicial.
 - Servicio, Gastos, Avisos (por km y/o meses, botón "Hecho" los reinicia).
 
 ### Módulo Finanzas (`#/finanzas`) — réplica de su Excel (v2, pedido por ella: "así tal cual me funciona")

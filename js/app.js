@@ -582,13 +582,16 @@ function renderSummary() {
   const g = byType.gasolina, l = byType.lp;
   const gasSpend = state.fuel.filter((f) => fuelTypeOf(f) === 'gasolina').reduce((s, f) => s + amountOf.fuel(f), 0);
   // Ahorro = lo que habría costado recorrer esos km solo con gasolina − lo que realmente se gastó en combustible.
-  const kmlGas = +state.vehicle.kmlGas;
+  // Rendimiento en gasolina: el que puso en Ajustes; si no, el de sus cargas de gasolina;
+  // si tampoco hay, se estima con el de LP (el LP rinde ~20% menos km/l que la gasolina).
+  const kmlGas = +state.vehicle.kmlGas || g.avgKml || (l.avgKml ? l.avgKml * 1.25 : 0);
+  const kmlGasEst = !+state.vehicle.kmlGas && !g.avgKml;
   const saving = km > 0 && kmlGas && g.lastPrice ? (km / kmlGas) * g.lastPrice - tot.fuel : null;
   const tilesHtml = lp
     ? [
         tile('Rendimiento gas LP', l.avgKml ? `${num(l.avgKml, 1)} <em>km/l</em>` : '—', l.avgKml ? `Última: ${num(l.lastKml, 1)} km/l · ${money(l.lastPrice)}/L` : 'Faltan cargas de LP con tanque lleno'),
         tile('Combustible por km', km > 0 ? money(tot.fuel / km) : '—', km > 0 ? `Todo incluido: ${money(tot.all / km)}/km` : ''),
-        tile('Ahorro con LP', saving != null ? money(saving) : '—', saving != null ? `vs. solo gasolina (${num(kmlGas, 1)} km/l)` : kmlGas ? 'Registra una carga de gasolina' : 'Pon tu km/l en gasolina en Ajustes'),
+        tile('Ahorro con LP', saving != null ? money(saving) : '—', saving != null ? `vs. solo gasolina (${kmlGasEst ? '≈' : ''}${num(kmlGas, 1)} km/l${kmlGasEst ? ' estimado' : ''})` : !g.lastPrice ? 'Registra una carga de gasolina para saber su precio' : 'Faltan cargas de LP con tanque lleno'),
         tile('Gasolina', money(gasSpend), tot.fuel ? `${num((gasSpend / tot.fuel) * 100)}% del combustible · ${num(g.totalLiters)} L` : ''),
         tile('Gasto este mes', money(months.at(-1).total), `Mes anterior: ${money(months.at(-2).total)}`),
         tile('Odómetro', `${num(odo)} <em>km</em>`, km > 0 ? `${num(km)} km registrados` : ''),
@@ -1005,7 +1008,6 @@ function renderSetup() {
         <label class="check"><input type="checkbox" name="lp" id="setup-lp"><span>Usa gas LP<small>El rendimiento se calcula con el LP; la gasolina cuenta como gasto</small></span></label>
         <div class="grid lp-only" hidden style="grid-column: 1 / -1">
           ${f('tankLp', 'Tanque gas LP (L)', 'number', 'inputmode="decimal" step="0.1" min="0"')}
-          ${f('kmlGas', 'Rendimiento con gasolina (km/l)', 'number', 'inputmode="decimal" step="0.1" min="0" placeholder="Para calcular el ahorro"')}
         </div>
         ${f('tank', 'Tanque gasolina (L)', 'number', 'inputmode="decimal" step="0.1" min="0"')}
       </div>
@@ -1041,7 +1043,7 @@ function renderSettings() {
         <label class="field"><span>Tipo de gasolina</span><select name="fuelType">${['Magna / Regular', 'Premium', 'Diésel', 'Eléctrico', 'Híbrido'].map((o) => `<option ${o === v.fuelType ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
         ${f('tank', 'Tanque gasolina (L)', 'number', 'inputmode="decimal" step="0.1" min="0"')}
         ${f('tankLp', 'Tanque gas LP (L)', 'number', 'inputmode="decimal" step="0.1" min="0"')}
-        ${f('kmlGas', 'Rendimiento en gasolina (km/l)', 'number', 'inputmode="decimal" step="0.1" min="0" placeholder="Para calcular el ahorro"')}
+        ${f('kmlGas', 'Rendimiento en gasolina (km/l, opcional)', 'number', 'inputmode="decimal" step="0.1" min="0" placeholder="Si no lo sabes, la app lo estima"')}
         ${f('odometer', 'Odómetro inicial (km)', 'number', 'inputmode="numeric" step="1" min="0"')}
         ${f('currency', 'Moneda (código)', 'text', 'maxlength="3" placeholder="MXN"')}
       </div>
@@ -1209,7 +1211,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '2.1.0';
+const VERSION = '2.1.1';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

@@ -49,14 +49,17 @@ export async function exportAll() {
 
 export async function importAll(data) {
   if (!data || data.app !== 'secondbrain') throw new Error('Archivo no válido');
+  // Solo se reemplaza lo que viene en el archivo: un archivo parcial (p. ej. solo finanzas)
+  // no borra las cargas ni los datos del vehículo.
   await tx([...STORES, 'settings'], 'readwrite', (t) => {
     for (const s of STORES) {
+      if (!Array.isArray(data[s])) continue;
       const os = t.objectStore(s);
       os.clear();
-      for (const item of data[s] || []) os.put(item);
+      for (const item of data[s]) os.put(item);
     }
-    t.objectStore('settings').put(data.vehicle || {}, 'vehicle');
-    t.objectStore('settings').put(data.finance || {}, 'finance');
+    if (data.vehicle) t.objectStore('settings').put(data.vehicle, 'vehicle');
+    if (data.finance) t.objectStore('settings').put(data.finance, 'finance');
   });
 }
 

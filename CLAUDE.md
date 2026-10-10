@@ -7,14 +7,14 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-10, v2.1.4)
+## SecondBrain (estado al 2026-10-10, v2.1.5)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
 - Publicado en GitHub Pages desde `main` (root): https://jeal1498.github.io/JEAL/
 - **Cada cambio terminado se sube directo a `main`** (lo pidió el usuario). Vercel está desactivado con `vercel.json`.
 - Respaldo (`#/respaldo`, `js/backup.js`): Google Sheets del usuario vía Apps Script (web app, token en el script). POST text/plain (sin preflight) con pestañas legibles (incl. "Apartado por mes") + JSON exacto en hoja oculta `_respaldo`; GET restaura. Automático tras cada cambio (`refresh(changed)`) y al abrir si pasó >1 día. Al conectar nunca sobrescribe una hoja con datos sin preguntar.
-- Archivos: **Agregar** (`db.mergeData`) suma sin borrar; acepta `delete: {store: [ids]}`, `replace: [stores]` (vacía esos stores antes) y `vehicle: {...}` (se combina con los ajustes). **Importar** (`db.importAll`) solo reemplaza si el archivo es respaldo completo (`exportedAt`); si no, hace merge. Aun así reemplaza solo los stores/ajustes que trae.
+- Archivos: **Agregar** (`db.mergeData`) suma sin borrar; acepta `delete: {store: [ids]}`, `deleteWhere: {store: {campo: valor}}`, `replace: [stores]` (vacía esos stores antes) y `vehicle: {...}` (se combina con los ajustes). **Importar** (`db.importAll`) solo reemplaza si el archivo es respaldo completo (`exportedAt`); si no, hace merge. Aun así reemplaza solo los stores/ajustes que trae.
 - Íconos solo SVG (no se pudieron subir PNG; ver "Git" abajo).
 
 ### Archivos
@@ -48,7 +48,8 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 - Finanzas = su Excel tal cual (hojas 1026/1126/1226 + BUDGET FAMILIAR): 75 pagos oct–dic sin repetición (ids `xl-<hoja>-<fila>`, Combustible como renglones), 5 ingresos de oct (`xl-in-<fecha>`, el 30/9 con `month`), 10 metas (`xl-meta-<fila>`), sin tope de combustible, apartado por mes vacío. Verificado oct: Objetivo 37,176 / Generado 8,990 / Faltante 28,186; diaria del budget = Excel.
 - Cargas LP: 11 `hist-lp-0..10` (15-jul a 9-sep; 15-jul no-llena) + 13 `lp-YYYY-MM-DD` (12-sep a 9-oct, de sus tickets; 20-sep sin km en ticket → 88,340 estimado y no-llena). Llenado no viene en los tickets: se marcaron llenas.
 - Archivos que se le dieron (en el scratchpad de la sesión, no en el repo): `secondbrain-completo.json` (vehículo + 11 cargas + finanzas con `replace`) y `cargas-sep-oct.json` (13 cargas). Por accidentes con "Importar" perdió datos dos veces; se le indicó subir ambos con **Agregar** (probado: 24 cargas, sin duplicados).
-- **Pendiente que decida:** las 3 cargas de octubre ($1,415.45) se suman encima de los renglones "Combustible" del Excel (oct sube a 38,591). Opción 1: quitar esos renglones y usar cargas reales + tope $6,700. Opción 2: no contar las cargas de octubre. También preguntó si existen las cargas hist de 15/7, 18/7, 25/7, 1/8 y 9/9 (no venían en sus tickets).
+- **Decidió (10-oct): opción 1** — combustible = cargas reales del Cavalier. Se le dio `combustible-real.json` (`deleteWhere` bills concept "Combustible" + budget `tope-combustible` $6,700 kind `fuel`); confirmar que lo subió con Agregar.
+- Cargas hist de 15/7, 18/7, 25/7, 1/8 y 9/9: no está seguro si existen; se dejan (no cuentan en finanzas, son anteriores a oct).
 - Respaldo en Google Sheets **conectado y funcionando**. Si cambia el código del Apps Script debe hacer "Nueva versión" en la implementación; "Clave incorrecta" = TOKEN distinto al de la app.
 - Para pasarle datos: JSON `{app:'secondbrain', <store>: [...]}` con ids estables y `createdAt`; decirle siempre **Respaldo → Agregar desde archivo**.
 

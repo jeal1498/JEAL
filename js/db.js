@@ -65,9 +65,16 @@ export async function importAll(data) {
 
 // Agrega los registros de un archivo sin borrar nada (salvo los ids que indique `delete`,
 // o todo lo de los stores que indique `replace`, p. ej. para volver a cargar las finanzas).
+// `deleteWhere: {store: {campo: valor}}` borra los registros que coinciden (texto sin importar mayúsculas).
 export async function mergeData(data) {
   if (!data || data.app !== 'secondbrain') throw new Error('Archivo no válido');
   let n = 0;
+  const norm = (v) => String(v ?? '').trim().toLowerCase();
+  for (const [s, where] of Object.entries(data.deleteWhere || {})) {
+    if (!STORES.includes(s)) continue;
+    const ids = (await all(s)).filter((x) => Object.entries(where).every(([k, v]) => norm(x[k]) === norm(v))).map((x) => x.id);
+    if (ids.length) await tx(s, 'readwrite', (t) => ids.forEach((id) => t.objectStore(s).delete(id)));
+  }
   await tx([...STORES, 'settings'], 'readwrite', (t) => {
     // Datos del vehículo: se combinan con los que ya hay.
     if (data.vehicle && typeof data.vehicle === 'object') {

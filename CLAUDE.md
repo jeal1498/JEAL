@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-09, v2.1.3)
+## SecondBrain (estado al 2026-10-09, v2.1.4)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -47,7 +47,7 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 - Respaldo en Google Sheets **conectado y funcionando**. Si cambia el código del Apps Script debe hacer "Nueva versión" en la implementación; "Clave incorrecta" = TOKEN distinto al de la app.
 - Para pasarle datos: generar JSON `{app:'secondbrain', <store>: [...]}` con ids estables y `createdAt`; ella lo sube en Respaldo → **Agregar** (no borra). `delete: {<store>: [ids]}` para quitar; `replace: [stores]` vacía esos stores antes de agregar; `vehicle: {...}` se combina con los ajustes del vehículo.
 - 2026-10-10: se le dio `finanzas-excel.json` (replace income/bills/goals/budgets) con hojas 1026/1126/1226 y BUDGET FAMILIAR tal cual (pagos sin repetición, Combustible como renglones, sin tope). Verificado: oct Objetivo 37,176 / Generado 8,990 / Faltante 28,186; diaria del budget = Excel. Ids `xl-*`.
-- 2026-10-10: subió `finanzas-excel.json` con **Importar** (reemplazo total) y se borraron sus 11 cargas y los ajustes del vehículo. Se le pasó `vehiculo-cavalier.json` (Cavalier, Chevrolet Cavalier, UTN260R, 90,810 km, LP 60 L, gasolina 41 L). Después se le dio `secondbrain-completo.json` (Agregar): vehículo + 11 cargas `hist-lp-*` (sin replace, ids estables) + finanzas del Excel con `replace`; probado que subirlo sobre archivos viejos o dos veces no duplica. Desde v2.1.3 `importAll` solo reemplaza los stores/ajustes que trae el archivo.
+- 2026-10-10: subió `finanzas-excel.json` con **Importar** (reemplazo total) y se borraron sus 11 cargas y los ajustes del vehículo. Se le pasó `vehiculo-cavalier.json` (Cavalier, Chevrolet Cavalier, UTN260R, 90,810 km, LP 60 L, gasolina 41 L). Después se le dio `secondbrain-completo.json` (Agregar): vehículo + 11 cargas `hist-lp-*` (sin replace, ids estables) + finanzas del Excel con `replace`; probado que subirlo sobre archivos viejos o dos veces no duplica. Desde v2.1.3 `importAll` solo reemplaza los stores/ajustes que trae el archivo; desde v2.1.4 "Importar" con un archivo que no es respaldo completo (sin `exportedAt`) hace merge. 2026-10-10 se le dio `cargas-sep-oct.json` (13 cargas `lp-YYYY-MM-DD`); al subirlo perdió datos: se le indicó re-subir completo + cargas con Agregar.
 - Ingreso con `month: 'YYYY-MM'` cuenta en esa hoja aunque su fecha sea de otro mes (el 30/9 $1,490 cuenta en octubre, como el Excel).
 
 ## Probar

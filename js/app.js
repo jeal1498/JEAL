@@ -1134,7 +1134,7 @@ async function renderBackup() {
         <label class="btn">Importar JSON<input type="file" id="import" accept="application/json,.json" hidden></label>
         <label class="btn">Agregar desde archivo<input type="file" id="merge" accept="application/json,.json" hidden></label>
       </div>
-      <p class="muted small"><b>Importar</b> reemplaza todo; <b>Agregar</b> suma los registros del archivo sin borrar nada.</p>
+      <p class="muted small"><b>Importar</b> reemplaza todo con un respaldo completo; <b>Agregar</b> suma los registros del archivo sin borrar nada. Si no estás segura, usa Agregar.</p>
     </section>`;
 
   $('#merge').onchange = async (e) => {
@@ -1193,7 +1193,13 @@ async function renderBackup() {
     if (!file) return;
     try {
       const data = JSON.parse(await file.text());
-      if (!confirm('Esto reemplazará todos los datos actuales. ¿Continuar?')) return;
+      // Solo un respaldo completo (exportado por la app) reemplaza todo; cualquier otro archivo se agrega sin borrar.
+      if (!data.exportedAt) {
+        const n = await db.mergeData(data);
+        await refresh();
+        return toast(`No es un respaldo completo: se agregaron ${n} registros sin borrar nada`);
+      }
+      if (!confirm('Esto reemplazará todos los datos actuales por los del respaldo. ¿Continuar?')) return;
       await db.importAll(data);
       await refresh();
       toast('Datos importados');
@@ -1211,7 +1217,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '2.1.3';
+const VERSION = '2.1.4';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

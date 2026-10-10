@@ -1,8 +1,8 @@
-// Cálculos puros de finanzas: pagos repetidos, reparto del ingreso y metas.
-//
-// Reparto (igual que el Excel): el ingreso de cada mes cubre los pagos en orden de
-// fecha, empezando por los que quedaron pendientes de meses anteriores. Lo que sobra
-// se aparta para las metas, también en orden de fecha.
+// Cálculos puros de finanzas, igual que las hojas del Excel del usuario:
+// - Hoja del mes: lo generado en el mes abona los pagos del mes en orden de fecha.
+//   Meta diaria = faltante / días que quedan del mes (contando hoy).
+// - Budget familiar: lo apartado a mano cada mes abona las metas en orden de fecha.
+//   Diaria = suma de cuotas de las metas a ≤120 días; mensual = diaria × 24.
 
 export const CATEGORIES = ['🚗 Vehículo', '👤 Yo', '👩 Karen', '👧 Julieta', '👨‍👩‍👧‍👦 Familia', '💡 Servicios', '🏛️ Finanzas', '🏠 Casa', '🛒 Súper', '🍽️ Comida fuera', '📦 Otro'];
 export const REPEATS = [
@@ -15,7 +15,8 @@ export const BUDGET_KINDS = [
   { v: 'category', l: 'Todo lo de la categoría' },
   { v: 'fuel', l: 'Cargas de combustible' },
 ];
-export const GOAL_WINDOW = 120; // días: solo las metas cercanas cuentan para la meta diaria
+export const GOAL_WINDOW = 120; // días: solo las metas cercanas cuentan para la diaria
+export const WORK_DAYS = 24; // días de trabajo al mes (mensual = diaria × 24, como el Excel)
 
 const pad = (n) => String(n).padStart(2, '0');
 const parse = (s) => new Date(s + 'T00:00');
@@ -50,7 +51,7 @@ export function occurrences(bill, key) {
 export const VEHICLE_CAT = '🚗 Vehículo';
 
 // Mes en que empezó el control de finanzas (primer ingreso o pago).
-const financeStart = (state) => [...state.income, ...state.bills, ...(state.spending || [])].map((x) => x.date).filter(Boolean).map(monthKey).sort()[0];
+const financeStart = (state) => [...state.income, ...state.bills].map((x) => x.date).filter(Boolean).map(monthKey).sort()[0];
 
 // Lo registrado en el módulo Vehículo es la única fuente: finanzas solo lo lee.
 // Lo anterior al inicio de finanzas (historial del vehículo) no cuenta: se pagó con dinero que no está registrado.
@@ -75,7 +76,7 @@ function budgetCounts(g, x) {
   return x.category === g.category;
 }
 
-// Pagos del mes como instancias: { id, date, category, concept, amount, bill | veh | spend | budget }.
+// Pagos del mes como renglones: { id, date, category, concept, amount, bill | veh | budget }.
 export function billsIn(state, key, today = localToday()) {
   const veh = vehicleItems(state).filter((v) => monthKey(v.item.date) === key);
   const vehKeys = new Set(veh.map((v) => dupKey(v.item.date, v.amount)));
@@ -87,12 +88,8 @@ export function billsIn(state, key, today = localToday()) {
     }
   }
   for (const v of veh) out.push({ id: `${v.store}:${v.item.id}`, date: v.item.date, category: VEHICLE_CAT, concept: v.concept, amount: v.amount, veh: v });
-  // Gastos del día a día: ya salieron, cuentan como un pago más (y contra el presupuesto de su categoría).
-  for (const s of state.spending || []) {
-    if (s.date && monthKey(s.date) === key) out.push({ id: `spend:${s.id}`, date: s.date, category: s.category, concept: s.concept || s.category, amount: +s.amount || 0, spend: s });
-  }
-  // Presupuesto mensual: lo gastado ya está en la lista; solo se reserva lo que queda (a fin de mes).
-  // En meses pasados no se reserva nada: lo que no se gastó, no se debe.
+  // Tope mensual (p. ej. combustible): las cargas ya están en la lista; se reserva lo que falta, a fin de mes.
+  // En meses pasados no se reserva nada.
   const end = `${key}-${pad(monthDays(key))}`;
   for (const g of state.budgets || []) {
     const limit = +g.amount || 0;
@@ -101,68 +98,33 @@ export function billsIn(state, key, today = localToday()) {
     out.push({ id: `budget:${g.id}@${key}`, date: end, category: g.category, concept: g.concept, amount: left, budget: g, spent, limit });
   }
   // Mismo día: primero lo que se registró antes (como el orden de filas del Excel).
-  const created = (x) => (x.bill || x.veh?.item || x.spend || x.budget).createdAt || x.veh?.item.updatedAt || 0;
+  const created = (x) => (x.bill || x.veh?.item || x.budget).createdAt || x.veh?.item.updatedAt || 0;
   return out.sort((a, b) => a.date.localeCompare(b.date) || created(a) - created(b));
 }
 
-// Lo que ya salió en el mes: gastos, registros del vehículo y pagos con fecha hasta hoy.
-export function spentIn(state, key, today = localToday()) {
-  return billsIn(state, key, today).filter((x) => !x.budget && x.amount > 0 && (x.spend || x.veh || x.date <= today));
-}
+const incomeIn = (state, key, pred = () => true) =>
+  state.income.filter((x) => x.date && monthKey(x.date) === key && pred(x)).reduce((s, x) => s + (+x.amount || 0), 0);
 
-// Simula mes a mes desde el primer registro hasta hoy.
-// `before`: solo cuenta ingresos anteriores a esa fecha (para la meta "al empezar el día").
-export function simulate(state, today, { before = null } = {}) {
-  const cur = monthKey(today);
-  const keys = [
-    ...state.income.map((x) => x.date),
-    ...state.bills.map((x) => x.date),
-    ...vehicleItems(state).map((v) => v.item.date),
-    ...(state.spending || []).map((x) => x.date),
-  ].filter(Boolean).map(monthKey);
-  let key = keys.length ? keys.reduce((a, b) => (a < b ? a : b)) : cur;
-  if (key > cur) key = cur;
-
-  const incomeBy = new Map();
-  for (const x of state.income) {
-    if (!x.date || x.date > today || (before && x.date >= before)) continue;
-    const k = monthKey(x.date);
-    incomeBy.set(k, (incomeBy.get(k) || 0) + (+x.amount || 0));
-  }
-
+// Abona `pool` a los renglones en orden (columna ABONADO del Excel).
+function cascade(items, pool) {
   const paid = new Map();
-  let carry = [];
-  let saved = 0;
-  for (; key <= cur; key = addMonths(key, 1)) {
-    let pool = incomeBy.get(key) || 0;
-    const queue = [...carry, ...billsIn(state, key, today)];
-    carry = [];
-    for (const b of queue) {
-      const p = paid.get(b.id) || 0;
-      const pay = Math.min(b.amount - p, pool);
-      if (pay > 0) { paid.set(b.id, p + pay); pool -= pay; }
-      if ((paid.get(b.id) || 0) < b.amount) carry.push(b);
-    }
-    saved += pool; // al cerrar el mes lo sobrante se va a metas (el mes actual, de forma provisional)
+  for (const x of items) {
+    const pay = Math.max(0, Math.min(x.amount, pool));
+    paid.set(x.id, pay);
+    pool -= pay;
   }
-
-  let left = saved;
-  const goals = [...state.goals].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999')).map((g) => {
-    const amount = +g.amount || 0;
-    const have = Math.min(+g.saved || 0, amount);
-    const add = Math.min(amount - have, left);
-    left -= add;
-    const collected = have + add;
-    const pending = amount - collected;
-    const days = g.date ? daysBetween(today, g.date) : null;
-    const cuota = pending > 0 && days > 0 && days <= GOAL_WINDOW ? pending / days : 0;
-    return { g, amount, collected, pending, days, cuota };
-  });
-
-  return { paid, carry, saved, free: left, goals };
+  return paid;
 }
 
-// Estado de un pago dado lo cubierto.
+// Hoja del mes: OBJETIVO, GENERADO, FALTANTE y abonado de cada pago.
+export function monthPlan(state, key, today = localToday()) {
+  const items = billsIn(state, key, today).filter((x) => x.amount > 0);
+  const objetivo = items.reduce((s, x) => s + x.amount, 0);
+  const generado = incomeIn(state, key);
+  return { key, items, objetivo, generado, faltante: objetivo - generado, paid: cascade(items, generado) };
+}
+
+// Estado de un pago dado lo abonado (columnas TOTAL, DÍAS y CUOTA).
 export function billStatus(b, paidAmt, today) {
   const pending = Math.max(0, b.amount - paidAmt);
   const days = daysBetween(today, b.date);
@@ -173,20 +135,34 @@ export function billStatus(b, paidAmt, today) {
   return { pending, paid: paidAmt, days, level, cuota: pending <= 0 ? 0 : days > 0 ? pending / days : pending };
 }
 
-// Resumen del mes actual: lo que falta, meta diaria de pagos y de metas.
-export function todayPlan(state, today) {
+// META DIARIA del mes actual. Se calcula con lo generado antes de hoy, así "hoy llevas X de Y" tiene sentido.
+export function todayPlan(state, today = localToday()) {
   const key = monthKey(today);
-  const end = `${key}-${pad(monthDays(key))}`;
+  const plan = monthPlan(state, key, today);
   const daysLeft = monthDays(key) - +today.slice(8) + 1;
-  // Meta calculada al empezar el día (sin lo que entró hoy), así "hoy llevas X de Y" tiene sentido.
-  const start = simulate(state, today, { before: today });
-  const now = simulate(state, today);
-  const pendingOf = (sim) => {
-    const list = [...sim.carry.filter((b) => b.date < `${key}-01`), ...billsIn(state, key, today)];
-    return list.reduce((s, b) => s + Math.max(0, b.amount - (sim.paid.get(b.id) || 0)), 0);
-  };
-  const metaBills = pendingOf(start) / daysLeft;
-  const metaGoals = start.goals.reduce((s, x) => s + x.cuota, 0);
-  const earnedToday = state.income.filter((x) => x.date === today).reduce((s, x) => s + (+x.amount || 0), 0);
-  return { key, end, daysLeft, metaBills, metaGoals, meta: metaBills + metaGoals, earnedToday, pending: pendingOf(now), sim: now };
+  const before = incomeIn(state, key, (x) => x.date < today);
+  const earnedToday = incomeIn(state, key, (x) => x.date === today);
+  const meta = Math.max(0, plan.objetivo - before) / daysLeft;
+  return { ...plan, daysLeft, meta, earnedToday, pending: Math.max(0, plan.faltante) };
+}
+
+// Budget familiar: lo apartado cada mes (settings.finance.savings = { 'YYYY-MM': monto }) abona las metas por fecha.
+export function goalsPlan(state, today = localToday()) {
+  const savings = state.finance?.savings || {};
+  const generado = Object.values(savings).reduce((s, v) => s + (+v || 0), 0);
+  let left = generado;
+  const goals = [...state.goals].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999')).map((g) => {
+    const amount = +g.amount || 0;
+    const have = Math.min(+g.saved || 0, amount);
+    const add = Math.max(0, Math.min(amount - have, left));
+    left -= add;
+    const collected = have + add;
+    const pending = amount - collected;
+    const days = g.date ? daysBetween(today, g.date) : null;
+    const cuota = pending > 0 && days > 0 && days <= GOAL_WINDOW ? pending / days : 0;
+    return { g, amount, collected, pending, days, cuota };
+  });
+  const objetivo = goals.reduce((s, x) => s + x.amount, 0);
+  const daily = goals.reduce((s, x) => s + x.cuota, 0);
+  return { savings, generado, objetivo, faltante: objetivo - goals.reduce((s, x) => s + x.collected, 0), goals, daily, weekly: daily * 7, monthly: daily * WORK_DAYS, yearly: daily * WORK_DAYS * 12 };
 }

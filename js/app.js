@@ -23,6 +23,15 @@ async function load() {
     await db.remove('spending', x.id);
     bills.push(bill);
   }
+  // "Saldo de <mes>" capturado el último día del mes (como en el Excel) cuenta para el mes siguiente:
+  // se mueve al día 1 del siguiente, igual que "Pasar sobrante".
+  for (const x of income) {
+    if (x.fromMonth || !/^saldo de/i.test(x.concept || '') || !x.date) continue;
+    const key = monthKey(x.date);
+    if (+x.date.slice(8) !== monthDays(key)) continue;
+    Object.assign(x, { fromMonth: key, date: `${addMonths(key, 1)}-01`, updatedAt: Date.now() });
+    await db.put('income', x);
+  }
   Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, vehicle: vehicle || {}, finance: finance || {} });
 }
 
@@ -1206,7 +1215,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '2.0.0';
+const VERSION = '2.0.1';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

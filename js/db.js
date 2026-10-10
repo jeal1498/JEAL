@@ -65,7 +65,14 @@ export async function importAll(data) {
 export async function mergeData(data) {
   if (!data || data.app !== 'secondbrain') throw new Error('Archivo no válido');
   let n = 0;
-  await tx(STORES, 'readwrite', (t) => {
+  await tx([...STORES, 'settings'], 'readwrite', (t) => {
+    // Datos del vehículo: se combinan con los que ya hay.
+    if (data.vehicle && typeof data.vehicle === 'object') {
+      const st = t.objectStore('settings');
+      const req = st.get('vehicle');
+      req.onsuccess = () => st.put({ ...(req.result || {}), ...data.vehicle }, 'vehicle');
+      n++;
+    }
     for (const s of STORES) {
       if ((data.replace || []).includes(s)) t.objectStore(s).clear();
       for (const id of data.delete?.[s] || []) t.objectStore(s).delete(id);

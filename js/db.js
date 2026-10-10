@@ -60,12 +60,14 @@ export async function importAll(data) {
   });
 }
 
-// Agrega los registros de un archivo sin borrar nada (salvo los ids que indique `delete`).
+// Agrega los registros de un archivo sin borrar nada (salvo los ids que indique `delete`,
+// o todo lo de los stores que indique `replace`, p. ej. para volver a cargar las finanzas).
 export async function mergeData(data) {
   if (!data || data.app !== 'secondbrain') throw new Error('Archivo no válido');
   let n = 0;
   await tx(STORES, 'readwrite', (t) => {
     for (const s of STORES) {
+      if ((data.replace || []).includes(s)) t.objectStore(s).clear();
       for (const id of data.delete?.[s] || []) t.objectStore(s).delete(id);
       for (const item of data[s] || []) { t.objectStore(s).put(item); n++; }
     }

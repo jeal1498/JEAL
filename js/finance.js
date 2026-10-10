@@ -102,8 +102,11 @@ export function billsIn(state, key, today = localToday()) {
   return out.sort((a, b) => a.date.localeCompare(b.date) || created(a) - created(b));
 }
 
+// Mes (hoja) al que cuenta un ingreso: el de su fecha, salvo que diga otro
+// (como el 30/9 que el Excel suma en la hoja de octubre).
+export const incomeMonth = (x) => x.month || monthKey(x.date);
 const incomeIn = (state, key, pred = () => true) =>
-  state.income.filter((x) => x.date && monthKey(x.date) === key && pred(x)).reduce((s, x) => s + (+x.amount || 0), 0);
+  state.income.filter((x) => x.date && incomeMonth(x) === key && pred(x)).reduce((s, x) => s + (+x.amount || 0), 0);
 
 // Abona `pool` a los renglones en orden (columna ABONADO del Excel).
 function cascade(items, pool) {

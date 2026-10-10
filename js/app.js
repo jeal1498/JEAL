@@ -1,6 +1,6 @@
 import * as db from './db.js';
 import * as backup from './backup.js';
-import { CATEGORIES, REPEATS, BUDGET_KINDS, GOAL_WINDOW, WORK_DAYS, VEHICLE_CAT, monthKey, monthDays, addMonths, billsIn, billStatus, monthPlan, todayPlan, goalsPlan } from './finance.js';
+import { CATEGORIES, REPEATS, BUDGET_KINDS, GOAL_WINDOW, WORK_DAYS, VEHICLE_CAT, monthKey, monthDays, addMonths, billsIn, billStatus, monthPlan, todayPlan, goalsPlan, incomeMonth } from './finance.js';
 import { fuelStats, fuelStatsByType, FUELS, fuelTypeOf, currentOdometer, firstOdometer, totals, monthlySpend, reminderStatus, amountOf } from './calc.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -22,15 +22,6 @@ async function load() {
     await db.put('bills', bill);
     await db.remove('spending', x.id);
     bills.push(bill);
-  }
-  // "Saldo de <mes>" capturado el último día del mes (como en el Excel) cuenta para el mes siguiente:
-  // se mueve al día 1 del siguiente, igual que "Pasar sobrante".
-  for (const x of income) {
-    if (x.fromMonth || !/^saldo de/i.test(x.concept || '') || !x.date) continue;
-    const key = monthKey(x.date);
-    if (+x.date.slice(8) !== monthDays(key)) continue;
-    Object.assign(x, { fromMonth: key, date: `${addMonths(key, 1)}-01`, updatedAt: Date.now() });
-    await db.put('income', x);
   }
   Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, vehicle: vehicle || {}, finance: finance || {} });
 }
@@ -803,7 +794,7 @@ function renderMonth() {
   const key = finMonth;
   const t = today();
   const plan = monthPlan(state, key, t);
-  const incomes = state.income.filter((x) => monthKey(x.date) === key).sort((a, b) => a.date.localeCompare(b.date));
+  const incomes = state.income.filter((x) => x.date && incomeMonth(x) === key).sort((a, b) => a.date.localeCompare(b.date));
   const byDay = new Map();
   for (const x of incomes) byDay.set(x.date, (byDay.get(x.date) || 0) + (+x.amount || 0));
   const offset = new Date(key + '-01T00:00').getDay();
@@ -813,8 +804,11 @@ function renderMonth() {
     let week = 0;
     for (let d = 0; d < 7; d++) {
       const day = w * 7 + d - offset + 1;
-      if (day < 1 || day > n) { cells += '<span class="day out"></span>'; continue; }
-      const date = `${key}-${pad2(day)}`;
+      const dt = new Date(+key.slice(0, 4), +key.slice(5, 7) - 1, day);
+      const date = `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+      // Días de otro mes: vacíos, salvo que tengan algo que cuenta para esta hoja (como el 30/9 en octubre).
+      if ((day < 1 || day > n) && !byDay.get(date)) { cells += '<span class="day out"></span>'; continue; }
+      if (day < 1 || day > n) { week += byDay.get(date); cells += `<span class="day has"><small>${dt.getDate()}/${dt.getMonth() + 1}</small>${compact(byDay.get(date))}</span>`; continue; }
       const v = byDay.get(date) || 0;
       week += v;
       cells += `<button class="day${date === t ? ' today' : ''}${v ? ' has' : ''}" data-day="${date}" aria-label="${fdate(date)}: ${money(v)}"><small>${day}</small>${v ? compact(v) : ''}</button>`;
@@ -1215,7 +1209,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '2.0.1';
+const VERSION = '2.1.0';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

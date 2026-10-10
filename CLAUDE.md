@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-09, v2.0.1)
+## SecondBrain (estado al 2026-10-09, v2.1.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -45,7 +45,9 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 - Ya cargó en su teléfono (vía "Agregar desde archivo"): 11 cargas de gas LP jul–sep 2026, ingresos/pagos de octubre 2026 y metas de su Excel (pestañas `10/26` y `BUDGET FAMILIAR`), presupuesto Combustible $6,000/mes. **No volver a generarle esos archivos.**
 - Supuestos a confirmar si pregunta: Colegiatura y Gym mensuales, Psicóloga (👤 Yo) semanal; carga del 15-jul marcada como no-llena.
 - Respaldo en Google Sheets **conectado y funcionando**. Si cambia el código del Apps Script debe hacer "Nueva versión" en la implementación; "Clave incorrecta" = TOKEN distinto al de la app.
-- Para pasarle datos: generar JSON `{app:'secondbrain', <store>: [...]}` con ids estables y `createdAt`; ella lo sube en Respaldo → **Agregar** (no borra). `delete: {<store>: [ids]}` para quitar.
+- Para pasarle datos: generar JSON `{app:'secondbrain', <store>: [...]}` con ids estables y `createdAt`; ella lo sube en Respaldo → **Agregar** (no borra). `delete: {<store>: [ids]}` para quitar; `replace: [stores]` vacía esos stores antes de agregar.
+- 2026-10-10: se le dio `finanzas-excel.json` (replace income/bills/goals/budgets) con hojas 1026/1126/1226 y BUDGET FAMILIAR tal cual (pagos sin repetición, Combustible como renglones, sin tope). Verificado: oct Objetivo 37,176 / Generado 8,990 / Faltante 28,186; diaria del budget = Excel. Ids `xl-*`.
+- Ingreso con `month: 'YYYY-MM'` cuenta en esa hoja aunque su fecha sea de otro mes (el 30/9 $1,490 cuenta en octubre, como el Excel).
 
 ## Probar
 `python3 -m http.server 8765` y Playwright con Chromium en `/opt/pw-browsers/chromium` (`playwright-core` en el scratchpad). Revisar capturas a 390px, claro y oscuro.

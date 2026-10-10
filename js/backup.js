@@ -16,6 +16,10 @@ const TABLES = [
   ['Ingresos', 'income', [['date', 'Fecha'], ['amount', 'Monto'], ['concept', 'Concepto'], ['notes', 'Notas']]],
   ['Pagos', 'bills', [['date', 'Fecha límite'], ['concept', 'Concepto'], ['amount', 'Monto'], ['category', 'Categoría'], ['repeat', 'Se repite', (v) => REPEAT[v || '']], ['until', 'Repetir hasta'], ['notes', 'Notas']]],
   ['Metas', 'goals', [['date', 'Para cuándo'], ['concept', 'Concepto'], ['amount', 'Monto'], ['category', 'Categoría'], ['saved', 'Ya ahorrado'], ['notes', 'Notas']]],
+  ['Notas', 'notes', [['title', 'Título'], ['body', 'Nota'], ['tags', 'Etiquetas'], ['pinned', 'Fijada', (v) => (v ? 'Sí' : '')]]],
+  ['Pendientes', 'tasks', [['due', 'Para cuándo'], ['title', 'Qué'], ['done', 'Hecho', (v) => (v ? 'Sí' : 'No')], ['doneAt', 'Hecho el'], ['notes', 'Notas']]],
+  ['Hábitos', 'habits', [['name', 'Hábito'], ['emoji', 'Emoji'], ['done', 'Días cumplidos', (v) => (v || []).length], ['done', 'Último', (v) => (v || []).slice(-1)[0] || '']]],
+  ['Diario', 'journal', [['date', 'Fecha'], ['mood', 'Ánimo'], ['text', 'Texto']]],
   ['Presupuestos', 'budgets', [['concept', 'Nombre'], ['amount', 'Tope al mes'], ['category', 'Categoría'], ['kind', 'Qué cuenta', (v) => KIND[v || 'category']], ['notes', 'Notas']]],
 ];
 

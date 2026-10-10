@@ -8,12 +8,13 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const today = () => new Date().toLocaleDateString('en-CA');
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
-const state = { fuel: [], maintenance: [], expenses: [], reminders: [], income: [], bills: [], goals: [], budgets: [], vehicle: {}, finance: {} };
+const state = { fuel: [], maintenance: [], expenses: [], reminders: [], income: [], bills: [], goals: [], budgets: [], notes: [], tasks: [], habits: [], journal: [], vehicle: {}, finance: {} };
 
 async function load() {
-  const [fuel, maintenance, expenses, reminders, income, bills, goals, budgets, spending, vehicle, finance] = await Promise.all([
+  const [fuel, maintenance, expenses, reminders, income, bills, goals, budgets, spending, notes, tasks, habits, journal, vehicle, finance] = await Promise.all([
     db.all('fuel'), db.all('maintenance'), db.all('expenses'), db.all('reminders'),
-    db.all('income'), db.all('bills'), db.all('goals'), db.all('budgets'), db.all('spending'), db.getSetting('vehicle'), db.getSetting('finance'),
+    db.all('income'), db.all('bills'), db.all('goals'), db.all('budgets'), db.all('spending'),
+    db.all('notes'), db.all('tasks'), db.all('habits'), db.all('journal'), db.getSetting('vehicle'), db.getSetting('finance'),
   ]);
   state.backup = await backup.getConfig();
   // Los gastos de la vista estilo MonAi (ya retirada) pasan a ser pagos del mes.
@@ -23,7 +24,7 @@ async function load() {
     await db.remove('spending', x.id);
     bills.push(bill);
   }
-  Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, vehicle: vehicle || {}, finance: finance || {} });
+  Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, notes, tasks, habits, journal, vehicle: vehicle || {}, finance: finance || {} });
 }
 
 // ---------- Formato ----------
@@ -57,6 +58,9 @@ const P = {
   wallet: '<path d="M20 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15v13H5a2 2 0 0 1-2-2V5"/><path d="M16 13h.01"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  note: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
+  tasks: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="m8 12 3 3 5-6"/>',
+  heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
 };
@@ -185,6 +189,30 @@ const SCHEMAS = {
       { k: 'notes', label: 'Notas', type: 'textarea' },
     ],
   },
+  notes: {
+    title: 'Nota',
+    fields: [
+      { k: 'title', label: 'Título', type: 'text', req: true, placeholder: 'Ej. Ideas para el cumpleaños' },
+      { k: 'body', label: 'Nota', type: 'textarea', rows: 8 },
+      { k: 'tags', label: 'Etiquetas (separadas por coma)', type: 'text', placeholder: 'Ej. casa, ideas', big: true },
+      { k: 'pinned', label: 'Fijar arriba', type: 'checkbox' },
+    ],
+  },
+  tasks: {
+    title: 'Pendiente', newLabel: 'Nuevo',
+    fields: [
+      { k: 'title', label: 'Qué hay que hacer', type: 'text', req: true, placeholder: 'Ej. Pagar la luz', big: true },
+      { k: 'due', label: 'Para cuándo (opcional)', type: 'date' },
+      { k: 'notes', label: 'Notas', type: 'textarea' },
+    ],
+  },
+  habits: {
+    title: 'Hábito', newLabel: 'Nuevo',
+    fields: [
+      { k: 'name', label: 'Hábito', type: 'text', req: true, placeholder: 'Ej. Tomar 2 L de agua' },
+      { k: 'emoji', label: 'Emoji (opcional)', type: 'text', placeholder: '💧' },
+    ],
+  },
 };
 
 const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
@@ -208,7 +236,7 @@ function openForm(store, item = null, { preset = {}, extra = null, onSaved = nul
       const opts = f.options.map((o) => (typeof o === 'string' ? { v: o, l: o } : o));
       input = `<select ${common}>${opts.map((o) => `<option value="${esc(o.v)}" ${o.v === v(f) ? 'selected' : ''}>${esc(o.l)}</option>`).join('')}</select>`;
     } else if (f.type === 'textarea') {
-      input = `<textarea ${common} rows="2">${esc(v(f))}</textarea>`;
+      input = `<textarea ${common} rows="${f.rows || 2}">${esc(v(f))}</textarea>`;
     } else {
       const list = f.list ? `list="dl-${f.k}"` : '';
       const mode = f.type === 'number' ? `inputmode="${f.step === '1' ? 'numeric' : 'decimal'}" step="${f.step}" min="0"` : '';
@@ -485,6 +513,9 @@ function render() {
   else if (mod === 'finanzas') renderFinance(sub);
   else if (mod === 'respaldo') renderBackup();
   else if (mod === 'buscar') renderSearch();
+  else if (mod === 'notas') renderNotes();
+  else if (mod === 'pendientes') renderTasks();
+  else if (mod === 'dia') renderDay();
   else renderHome();
   bindCharts(view);
 }
@@ -521,11 +552,23 @@ function renderHome() {
         <small>Meta diaria ${money(plan.meta)} · ${plan.pending > 0 ? `faltan ${money(plan.pending)} este mes` : 'mes cubierto'}</small>
       </span>
     </a>
+    <a class="module" href="#/pendientes">
+      <span class="module-icon">${icon('tasks')}</span>
+      <span class="module-body"><b>Pendientes</b><small>${tasksSummary()}</small></span>
+    </a>
+    <a class="module" href="#/notas">
+      <span class="module-icon">${icon('note')}</span>
+      <span class="module-body"><b>Notas</b><small>${state.notes.length ? `${state.notes.length} nota${state.notes.length > 1 ? 's' : ''}` : 'Guarda lo que quieras recordar'}</small></span>
+    </a>
+    <a class="module" href="#/dia">
+      <span class="module-icon">${icon('heart')}</span>
+      <span class="module-body"><b>Mi día</b><small>${daySummary()}</small></span>
+    </a>
     <a class="module" href="#/respaldo">
       <span class="module-icon">${icon('cloud')}</span>
       <span class="module-body"><b>Respaldo</b><small>${backupStatus()}</small></span>
     </a>
-    <div class="module soon"><span class="module-icon">＋</span><span class="module-body"><b>Más módulos</b><small>Próximamente: notas, hábitos…</small></span></div>`;
+    <div class="module soon"><span class="module-icon">＋</span><span class="module-body"><b>Más módulos</b><small>Próximamente</small></span></div>`;
 }
 
 // ---------- Buscador general ----------
@@ -539,8 +582,12 @@ const SEARCH = [
   { store: 'income', label: 'Ingresos', icon: 'wallet', show: (x) => ({ title: x.concept || 'Ingreso', amount: x.amount }) },
   { store: 'bills', label: 'Pagos', icon: 'calendar', show: (x) => ({ title: `${catEmoji(x.category)} ${x.concept}`, amount: x.amount }) },
   { store: 'goals', label: 'Metas', icon: 'target', show: (x) => ({ title: `${catEmoji(x.category)} ${x.concept}`, amount: x.amount }) },
+  { store: 'notes', label: 'Notas', icon: 'note', show: (x) => ({ title: x.title, sub: x.body }) },
+  { store: 'tasks', label: 'Pendientes', icon: 'tasks', show: (x) => ({ title: (x.done ? '✓ ' : '') + x.title, date: x.due }) },
+  { store: 'journal', label: 'Diario', icon: 'heart', show: (x) => ({ title: `${x.mood || ''} ${fdate(x.date, { weekday: 'long', day: 'numeric', month: 'long' })}`.trim(), sub: x.text }), open: (x) => { dayDate = x.date; location.hash = '#/dia'; } },
+  { store: 'habits', label: 'Hábitos', icon: 'check', show: (x) => ({ title: `${x.emoji || ''} ${x.name}`.trim() }) },
 ];
-const SKIP_KEYS = new Set(['id', 'createdAt', 'updatedAt', 'skip']);
+const SKIP_KEYS = new Set(['id', 'createdAt', 'updatedAt', 'skip', 'doneAt']);
 function haystack(g, x) {
   const parts = [g.label];
   for (const [k, v] of Object.entries(x)) {
@@ -565,11 +612,12 @@ function searchResults(q) {
     if (!found.length) continue;
     html += `<p class="muted small">${g.label} (${found.length})</p><ul class="list">${found.slice(0, 30).map((x) => {
       const s = g.show(x);
-      const date = x.date || s.date;
-      searchHits.push({ store: g.store, item: x });
+      const date = g.store === 'journal' ? '' : x.date || s.date;
+      const extra = s.sub ?? x.notes;
+      searchHits.push({ g, item: x });
       return `<li data-hit="${searchHits.length - 1}" tabindex="0">
         <span class="row-icon">${icon(g.icon)}</span>
-        <span class="row-body"><b>${esc(s.title)}</b><small>${date ? fdate(date) : ''}${x.notes ? `${date ? ' · ' : ''}${esc(x.notes)}` : ''}</small></span>
+        <span class="row-body"><b>${esc(s.title)}</b><small>${date ? fdate(date) : ''}${extra ? `${date ? ' · ' : ''}${esc(extra)}` : ''}</small></span>
         <span class="row-amount">${s.amount != null && s.amount !== '' ? money(+s.amount) : ''}</span></li>`;
     }).join('')}</ul>${found.length > 30 ? `<p class="muted small">…y ${found.length - 30} más. Escribe algo más específico.</p>` : ''}`;
   }
@@ -586,7 +634,7 @@ function renderSearch() {
   const update = () => {
     hits.innerHTML = searchResults(searchQ);
     hits.querySelectorAll('[data-hit]').forEach((li) => {
-      const open = () => { const h = searchHits[li.dataset.hit]; openForm(h.store, h.item); };
+      const open = () => { const h = searchHits[li.dataset.hit]; h.g.open ? h.g.open(h.item) : openForm(h.g.store, h.item); };
       li.onclick = open;
       li.onkeydown = (e) => { if (e.key === 'Enter') open(); };
     });
@@ -594,6 +642,163 @@ function renderSearch() {
   input.oninput = () => { searchQ = input.value; update(); };
   update();
   if (!searchQ) input.focus();
+}
+
+// ---------- Pendientes ----------
+const dayDiff = (a, b) => Math.round((new Date(a + 'T00:00') - new Date(b + 'T00:00')) / 864e5);
+function tasksSummary() {
+  const open = state.tasks.filter((x) => !x.done);
+  if (!open.length) return 'Nada pendiente';
+  const t = today();
+  const late = open.filter((x) => x.due && x.due < t).length;
+  const now = open.filter((x) => x.due === t).length;
+  const parts = [`${open.length} pendiente${open.length > 1 ? 's' : ''}`];
+  if (now) parts.push(`${now} para hoy`);
+  if (late) parts.push(`<span class="badge">${late} vencido${late > 1 ? 's' : ''}</span>`);
+  return parts.join(' · ');
+}
+function taskRow(x) {
+  const t = today();
+  const d = x.due ? dayDiff(x.due, t) : null;
+  const when = x.done ? `Hecho ${fdate(x.doneAt, { day: 'numeric', month: 'short' })}` : d === null ? '' : d < 0 ? `<span class="badge">Vencido · ${fdate(x.due, { day: 'numeric', month: 'short' })}</span>` : d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : fdate(x.due, { weekday: 'short', day: 'numeric', month: 'short' });
+  const sub = [when, x.notes ? esc(x.notes) : ''].filter(Boolean).join(' · ');
+  return `<li data-task="${x.id}" tabindex="0" class="${x.done ? 'done' : ''}">
+    <button class="tick ${x.done ? 'on' : ''}" data-tick="${x.id}" aria-label="${x.done ? 'Marcar como no hecho' : 'Marcar como hecho'}">${icon('check')}</button>
+    <span class="row-body"><b>${esc(x.title)}</b>${sub ? `<small>${sub}</small>` : ''}</span></li>`;
+}
+function renderTasks() {
+  setHeader({ title: 'Pendientes', back: '#/' });
+  setFab('tasks');
+  tabs.hidden = true;
+  const t = today();
+  const open = state.tasks.filter((x) => !x.done).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || (a.createdAt || 0) - (b.createdAt || 0));
+  const done = state.tasks.filter((x) => x.done).sort((a, b) => String(b.doneAt || '').localeCompare(a.doneAt || ''));
+  const groups = [
+    ['Vencidos', open.filter((x) => x.due && x.due < t)],
+    ['Hoy', open.filter((x) => x.due === t)],
+    ['Próximos', open.filter((x) => x.due && x.due > t)],
+    ['Sin fecha', open.filter((x) => !x.due)],
+  ].filter(([, xs]) => xs.length);
+  view.innerHTML = !state.tasks.length
+    ? `<div class="empty">${icon('tasks')}<h2>Sin pendientes</h2><p>Anota lo que tengas que hacer. Con fecha, te avisa aquí y en Inicio cuando toque.</p><button class="primary" data-new="tasks">＋ Nuevo pendiente</button></div>`
+    : `${groups.map(([l, xs]) => `<p class="group"><span>${l}</span><span>${xs.length}</span></p><ul class="list">${xs.map(taskRow).join('')}</ul>`).join('') || '<p class="muted">Todo hecho 🎉</p>'}
+      ${done.length ? `<details class="card"><summary>Hechos (${done.length})</summary><ul class="list flat">${done.slice(0, 50).map(taskRow).join('')}</ul></details>` : ''}`;
+  bindMine();
+}
+async function toggleTask(id) {
+  const x = state.tasks.find((y) => y.id === id);
+  await db.put('tasks', { ...x, done: !x.done, doneAt: x.done ? '' : today(), updatedAt: Date.now() });
+  await refresh();
+}
+
+// ---------- Notas ----------
+let noteTag = '';
+const tagsOf = (x) => String(x.tags || '').split(',').map((t) => t.trim()).filter(Boolean);
+function renderNotes() {
+  setHeader({ title: 'Notas', back: '#/' });
+  setFab('notes');
+  tabs.hidden = true;
+  const all = uniq(state.notes.flatMap(tagsOf));
+  if (noteTag && !all.includes(noteTag)) noteTag = '';
+  const notes = state.notes.filter((x) => !noteTag || tagsOf(x).includes(noteTag))
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0));
+  view.innerHTML = !state.notes.length
+    ? `<div class="empty">${icon('note')}<h2>Sin notas</h2><p>Guarda ideas, datos o lo que quieras recordar. Ponles etiquetas para encontrarlas rápido.</p><button class="primary" data-new="notes">＋ Nueva nota</button></div>`
+    : `${all.length ? `<div class="chips">${['', ...all].map((t) => `<button class="${t === noteTag ? 'on' : ''}" data-tagf="${esc(t)}">${t ? esc(t) : 'Todas'}</button>`).join('')}</div>` : ''}
+      <ul class="list">${notes.map((x) => `<li data-store="notes" data-id="${x.id}" tabindex="0">
+        <span class="row-body"><b>${x.pinned ? '📌 ' : ''}${esc(x.title)}</b>
+          <small>${x.body ? esc(x.body.replace(/\s+/g, ' ')) : fdate(new Date(x.updatedAt || x.createdAt).toLocaleDateString('en-CA'))}</small>
+          ${tagsOf(x).length ? `<span class="tags">${tagsOf(x).map((t) => `<i>${esc(t)}</i>`).join('')}</span>` : ''}</span></li>`).join('')}</ul>`;
+  view.querySelectorAll('[data-tagf]').forEach((b) => (b.onclick = () => { noteTag = b.dataset.tagf; renderNotes(); }));
+  bindMine();
+}
+
+// ---------- Mi día: diario + hábitos ----------
+let dayDate = '';
+const MOODS = ['😞', '😕', '😐', '🙂', '😄'];
+const addDays = (d, n) => { const x = new Date(d + 'T00:00'); x.setDate(x.getDate() + n); return x.toLocaleDateString('en-CA'); };
+function streak(h, from = today()) {
+  const done = new Set(h.done || []);
+  let d = done.has(from) ? from : addDays(from, -1);
+  let n = 0;
+  while (done.has(d)) { n++; d = addDays(d, -1); }
+  return n;
+}
+function daySummary() {
+  const t = today();
+  const parts = [];
+  if (state.habits.length) parts.push(`Hábitos ${state.habits.filter((h) => (h.done || []).includes(t)).length}/${state.habits.length} hoy`);
+  const j = state.journal.find((x) => x.date === t);
+  parts.push(j ? `Diario ${j.mood || '✓'}` : 'Escribe cómo te fue hoy');
+  return parts.join(' · ');
+}
+function renderDay() {
+  setHeader({ title: 'Mi día', back: '#/' });
+  setFab(null);
+  tabs.hidden = true;
+  const t = today();
+  if (!dayDate || dayDate > t) dayDate = t;
+  const d = dayDate;
+  const j = state.journal.find((x) => x.date === d) || {};
+  const label = d === t ? 'Hoy' : d === addDays(t, -1) ? 'Ayer' : cap(fdate(d, { weekday: 'long', day: 'numeric', month: 'short' }));
+  const past = state.journal.filter((x) => x.date !== d && (x.text || x.mood)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 14);
+  view.innerHTML = `
+    <div class="monthnav"><button class="ghost" data-dd="-1" aria-label="Día anterior">‹</button><b>${label}</b><button class="ghost" data-dd="1" aria-label="Día siguiente" ${d >= t ? 'disabled' : ''}>›</button></div>
+    <section class="card">
+      <h3>Hábitos</h3>
+      ${state.habits.length ? `<ul class="list flat">${[...state.habits].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map((h) => {
+        const on = (h.done || []).includes(d);
+        const s = streak(h, d);
+        return `<li data-store="habits" data-id="${h.id}" tabindex="0">
+          <button class="tick ${on ? 'on' : ''}" data-habit="${h.id}" aria-label="${on ? 'Desmarcar' : 'Marcar'} ${esc(h.name)}">${icon('check')}</button>
+          <span class="row-body"><b>${h.emoji ? esc(h.emoji) + ' ' : ''}${esc(h.name)}</b><small>${s ? `🔥 ${s} día${s > 1 ? 's' : ''} seguidos` : 'Sin racha'}</small></span></li>`;
+      }).join('')}</ul>` : '<p class="muted small">Agrega los hábitos que quieras marcar cada día.</p>'}
+      <button class="small" data-new="habits">＋ Hábito</button>
+    </section>
+    <section class="card">
+      <h3>Diario</h3>
+      <div class="moods" role="radiogroup" aria-label="¿Cómo te sentiste?">${MOODS.map((m) => `<button class="${j.mood === m ? 'on' : ''}" data-mood="${m}" role="radio" aria-checked="${j.mood === m}">${m}</button>`).join('')}</div>
+      <textarea id="jtext" rows="5" placeholder="¿Cómo te fue? ¿Qué pasó hoy?">${esc(j.text || '')}</textarea>
+      <div class="actions jactions"><button class="primary" data-jsave>Guardar</button></div>
+    </section>
+    ${past.length ? `<p class="group"><span>Días anteriores</span></p><ul class="list">${past.map((x) => `<li data-jday="${x.date}" tabindex="0">
+      <span class="row-icon emoji">${x.mood || '📝'}</span>
+      <span class="row-body"><b>${cap(fdate(x.date, { weekday: 'long', day: 'numeric', month: 'short' }))}</b><small>${esc(x.text || '')}</small></span></li>`).join('')}</ul>` : ''}`;
+  let mood = j.mood || '';
+  view.querySelectorAll('[data-mood]').forEach((b) => (b.onclick = () => {
+    mood = mood === b.dataset.mood ? '' : b.dataset.mood;
+    view.querySelectorAll('[data-mood]').forEach((o) => { o.classList.toggle('on', o.dataset.mood === mood); o.setAttribute('aria-checked', o.dataset.mood === mood); });
+  }));
+  $('[data-jsave]', view).onclick = async () => {
+    const text = $('#jtext', view).value.trim();
+    const id = `dia-${d}`;
+    if (!text && !mood) await db.remove('journal', id);
+    else await db.put('journal', { ...j, id, date: d, mood, text, createdAt: j.createdAt || Date.now(), updatedAt: Date.now() });
+    await refresh();
+    toast('Guardado');
+  };
+  view.querySelectorAll('[data-dd]').forEach((b) => (b.onclick = () => { dayDate = addDays(d, +b.dataset.dd); renderDay(); }));
+  view.querySelectorAll('[data-jday]').forEach((li) => (li.onclick = () => { dayDate = li.dataset.jday; renderDay(); }));
+  bindMine();
+}
+async function toggleHabit(id) {
+  const h = state.habits.find((x) => x.id === id);
+  const done = new Set(h.done || []);
+  if (done.has(dayDate)) done.delete(dayDate); else done.add(dayDate);
+  await db.put('habits', { ...h, done: [...done].sort(), updatedAt: Date.now() });
+  await refresh();
+}
+
+function bindMine() {
+  bindRows();
+  view.querySelectorAll('[data-new]').forEach((el) => (el.onclick = () => openForm(el.dataset.new)));
+  view.querySelectorAll('[data-task]').forEach((li) => {
+    const open = () => openForm('tasks', state.tasks.find((x) => x.id === li.dataset.task));
+    li.onclick = open;
+    li.onkeydown = (e) => { if (e.key === 'Enter') open(); };
+  });
+  view.querySelectorAll('[data-tick]').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); toggleTask(b.dataset.tick); }));
+  view.querySelectorAll('[data-habit]').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); toggleHabit(b.dataset.habit); }));
 }
 
 function renderVehicle(sub) {
@@ -1287,7 +1492,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '2.2.0';
+const VERSION = '2.3.0';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

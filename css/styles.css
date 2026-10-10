@@ -336,3 +336,19 @@ details.card[open] summary { margin-bottom: 6px; }
 
 /* Buscador */
 .search { margin: 0 0 14px; background: var(--surface); }
+
+/* Pendientes, notas, mi día */
+.tick { flex: none; width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid var(--line); background: transparent; color: transparent; }
+.tick .i { width: 16px; height: 16px; stroke-width: 3; }
+.tick.on { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.list li.done .row-body b { text-decoration: line-through; color: var(--text-2); font-weight: 500; }
+.chips { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 12px; padding-bottom: 2px; scrollbar-width: none; }
+.chips button { flex: none; font-size: 13px; padding: 6px 12px; border-radius: 999px; background: var(--surface); }
+.chips button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.tags i { font-style: normal; font-size: 11px; color: var(--text-2); background: var(--surface-2); border-radius: 6px; padding: 1px 7px; }
+.moods { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 10px; }
+.moods button { flex: 1; font-size: 24px; padding: 6px 0; background: transparent; filter: grayscale(1); opacity: .55; }
+.moods button.on { filter: none; opacity: 1; background: var(--surface-2); border-color: var(--accent); }
+.jactions { justify-content: flex-end; margin-top: 10px; }
+.card .list.flat { margin-bottom: 8px; }

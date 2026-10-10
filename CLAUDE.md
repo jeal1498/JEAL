@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-10, v2.2.0)
+## SecondBrain (estado al 2026-10-10, v2.3.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -19,11 +19,11 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 
 ### Archivos
 - `index.html` — shell (header, `#view`, tabs, FAB, `<dialog>` de formularios).
-- `js/app.js` — router por hash (`#/`, `#/vehiculo/<tab>`, `#/finanzas/<tab>`, `#/respaldo`, `#/buscar`), vistas, formularios por esquema (`SCHEMAS`), gráficas SVG propias.
+- `js/app.js` — router por hash (`#/`, `#/vehiculo/<tab>`, `#/finanzas/<tab>`, `#/respaldo`, `#/buscar`, `#/pendientes`, `#/notas`, `#/dia`), vistas, formularios por esquema (`SCHEMAS`), gráficas SVG propias.
 - `js/finance.js` — finanzas puras: pagos repetidos, reparto del ingreso por fecha, metas, meta diaria.
 - `js/backup.js` — respaldo/restauración en Google Sheets y texto del Apps Script (`scriptFor`).
 - `js/calc.js` — cálculos puros (rendimiento tanque lleno→tanque lleno, gasto mensual, recordatorios).
-- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `budgets`, `spending` (en desuso: al cargar se convierte en `bills`), `settings` (claves `vehicle`, `finance` (incl. `savings` {'YYYY-MM': monto}), `backup`). DB `VERSION` 4.
+- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `budgets`, `spending` (en desuso: al cargar se convierte en `bills`), `notes`, `tasks`, `habits`, `journal`, `settings` (claves `vehicle`, `finance` (incl. `savings` {'YYYY-MM': monto}), `backup`). DB `VERSION` 5.
 - `css/styles.css` — tokens en `:root` con modo oscuro; series de gráficas `--s1..--s4` (paleta validada).
 
 ### Módulo Vehículo
@@ -39,6 +39,12 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ingreso con `month: 'YYYY-MM'` cuenta en esa hoja aunque su fecha sea de otro mes (el 30/9 $1,490 cuenta en octubre, como el Excel); se muestra en el calendario de esa hoja.
 - Budget familiar (`goalsPlan`): lo **apartado a mano** cada mes (`finance.savings`) abona metas por fecha. Diaria = cuotas de metas a ≤120 días; semanal ×7, mensual ×24, anual ×24×12 (igual que el Excel).
 - Se retiraron la vista estilo MonAi y los presupuestos por categoría (no le gustaron).
+
+### Pendientes, Notas, Mi día (v2.3.0)
+- **Pendientes** (`tasks`: title, due opcional, done, doneAt): grupos Vencidos/Hoy/Próximos/Sin fecha + Hechos; círculo para marcar.
+- **Notas** (`notes`: title, body, tags "a, b", pinned): filtro por etiqueta (chips), fijadas arriba.
+- **Mi día**: navegar por día (no futuro). Hábitos (`habits`: name, emoji, done ['YYYY-MM-DD']) con racha 🔥; Diario (`journal`, id `dia-YYYY-MM-DD`: mood de 5 emojis + text).
+- Todo entra al buscador y al respaldo (pestañas Notas/Pendientes/Hábitos/Diario; el Apps Script crea pestañas solo, no requiere nueva versión).
 
 ### Buscador (`#/buscar`, lupa en Inicio)
 - `renderSearch`/`SEARCH` en `app.js`: busca en todos los stores (menos budgets) sin acentos, todas las palabras deben aparecer; incluye fechas en texto ("octubre") y montos ("$1,490" → 1490). Tocar abre el formulario. Al agregar un módulo, súmalo a `SEARCH`.
@@ -64,5 +70,5 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 - Pushes de `.github/workflows/` fueron rechazados (token sin scope `workflow`).
 
 ## Ideas pendientes
-- Otros módulos para el SecondBrain: captura rápida, notas, pendientes, diario/hábitos (le propuse estos; eligió primero el buscador).
+- Captura rápida (anotar en 1 toque y luego convertir en nota/pendiente): propuesta, no elegida aún.
 - Leer tickets de gas por foto (hoy ella manda fotos y se genera el JSON a mano).

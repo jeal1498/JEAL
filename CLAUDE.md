@@ -69,7 +69,14 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 - Respaldo en Google Sheets **conectado y funcionando**. Si cambia el código del Apps Script debe hacer "Nueva versión" en la implementación; "Clave incorrecta" = TOKEN distinto al de la app.
 - Para pasarle datos: JSON `{app:'secondbrain', <store>: [...]}` con ids estables y `createdAt`; decirle siempre **Respaldo → Agregar desde archivo**.
 
-- Proyectos (14-oct): se le dio `proyectos.json` (`proj-checa`: repo `jeal1498/checa-web`, app Android para conductores Uber/DiDi; `proj-reservas`: idea de plataforma de reservas directas para conductores, en estado "idea"). Repo privado `jeal1498/Mi-Ruta` sin identificar.
+- Proyectos (14-oct): `proyectos.json` con `proj-checa` (app Android en repo privado `jeal1498/Mi-Ruta`, web en `jeal1498/checa-web`) y `proj-reservas` = **Cartera de clientes**. El usuario de CHECA es **Eduardo (Lalo)** según el CLAUDE.md de Mi-Ruta; aquí se ha escrito «ella»: usar lenguaje neutro.
+
+## Cartera de clientes (`cartera/`, tercer proyecto, v1.0)
+- PWA aparte para conductores: gestionar su cartera de **clientes privados** (los que les piden viajes por fuera de Uber/DiDi). No es venta de tarjetas impresas ni captar pasajeros de la app.
+- Publicada en https://jeal1498.github.io/JEAL/cartera/ . Archivos: `index.html`, `app.js`, `styles.css`, `sw.js` (**subir `CACHE`** en cada cambio), `manifest.webmanifest`, `icon.svg`.
+- Datos en `localStorage` clave `cartera`: `clients` (name, phone, places, rate, notes), `trips` (clientId, date, time, from, to, km, price, status `agendado|hecho|cancelado`, pay `''|efectivo|transferencia|tarjeta`; hecho + pay '' = me debe), `settings` (driver, lada 52, perKm, bank). Exportar/cargar copia JSON (merge por id).
+- Pestañas: Agenda (sin cerrar/hoy/mañana/semana; Confirmar y "Ya llegué" por WhatsApp; Terminar → ¿cómo te pagó?), Clientes (buscar, filtros Me deben / +30 días; ficha con WhatsApp, Llamar, Nuevo viaje, Repetir), Cobros (por cliente, recordatorio por WhatsApp), Resumen (mes, mejores clientes, forma de pago, para reactivar). Precio sugerido: último del mismo cliente+ruta o km × perKm.
+- Siguientes etapas: cuenta en la nube (Supabase, como CHECA), link de reserva para el cliente + anticipo con Mercado Pago.
 
 ## Probar
 `python3 -m http.server 8765` y Playwright con Chromium en `/opt/pw-browsers/chromium` (`playwright-core` en el scratchpad). Revisar capturas a 390px, claro y oscuro.

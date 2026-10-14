@@ -1,0 +1,14 @@
+{
+  "name": "Cartera de clientes",
+  "short_name": "Cartera",
+  "description": "Agenda, viajes, cobros y WhatsApp de tus clientes privados.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f6f5",
+  "theme_color": "#16a34a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }],
+  "shortcuts": [{ "name": "Nuevo viaje", "url": "./#/nuevo" }]
+}

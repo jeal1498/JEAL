@@ -69,6 +69,8 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 - Respaldo en Google Sheets **conectado y funcionando**. Si cambia el código del Apps Script debe hacer "Nueva versión" en la implementación; "Clave incorrecta" = TOKEN distinto al de la app.
 - Para pasarle datos: JSON `{app:'secondbrain', <store>: [...]}` con ids estables y `createdAt`; decirle siempre **Respaldo → Agregar desde archivo**.
 
+- Proyectos (14-oct): se le dio `proyectos.json` (`proj-checa`: repo `jeal1498/checa-web`, app Android para conductores Uber/DiDi; `proj-reservas`: idea de plataforma de reservas directas para conductores, en estado "idea"). Repo privado `jeal1498/Mi-Ruta` sin identificar.
+
 ## Probar
 `python3 -m http.server 8765` y Playwright con Chromium en `/opt/pw-browsers/chromium` (`playwright-core` en el scratchpad). Revisar capturas a 390px, claro y oscuro.
 

@@ -1,9 +1,10 @@
 // Cartera: clientes privados del conductor (agenda, viajes, cobros y WhatsApp).
 // Todo se guarda en este teléfono (localStorage). Sin build ni dependencias.
+import { searchPlaces, route, directionsLink, mapSvg } from './maps.js';
 
 // ---------- Datos ----------
 const KEY = 'cartera';
-const DEFAULTS = { clients: [], trips: [], settings: { driver: '', lada: '52', perKm: '', bank: '' } };
+const DEFAULTS = { clients: [], trips: [], settings: { driver: '', lada: '52', bank: '', base: 35, perKm: 10, perMin: 1.5, minimum: 80 } };
 let data = load();
 function load() {
   try {
@@ -59,6 +60,16 @@ const MSG = {
   hello: (c) => `Hola ${firstName(c)}, ¿cómo estás? Te recuerdo que sigo a tus órdenes para tus viajes. Cuando lo necesites, escríbeme y lo agendamos.${sign()}`,
 };
 
+// ---------- Tarifa ----------
+const numOr = (v, d) => (v === '' || v == null || isNaN(+v) ? d : +v);
+function tarifa() {
+  const s = data.settings;
+  return { base: numOr(s.base, 35), perKm: numOr(s.perKm, 10), perMin: numOr(s.perMin, 1.5), minimum: numOr(s.minimum, 80) };
+}
+const rawPrice = (km, min) => { const t = tarifa(); return t.base + km * t.perKm + min * t.perMin; };
+const suggestPrice = (km, min) => Math.max(tarifa().minimum, Math.round(rawPrice(km, min) / 10) * 10);
+const priceMath = (km, min) => { const t = tarifa(); return `Banderazo ${money(t.base)} + ${km} km × $${t.perKm} + ${min} min × $${t.perMin} = ${money(rawPrice(km, min))}${rawPrice(km, min) < t.minimum ? ` · mínimo ${money(t.minimum)}` : ''}`; };
+
 // ---------- Íconos ----------
 const P = {
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
@@ -76,6 +87,7 @@ const P = {
   pin: '<path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
   cash: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>',
   left: '<path d="M15 18l-6-6 6-6"/>',
+  nav: '<path d="M3 11l19-9-9 19-2-8z"/>',
   right: '<path d="M9 18l6-6-6-6"/>',
 };
 const icon = (n) => `<svg viewBox="0 0 24 24" class="i" aria-hidden="true">${P[n]}</svg>`;
@@ -137,12 +149,13 @@ function tripCard(t, { showDate = false, showClient = true } = {}) {
     actions = `<a class="wa" href="${waLink(c, MSG.confirm(c, t))}" target="_blank" rel="noopener">${icon('wa')}Confirmar</a>
       ${t.date === today() ? `<a class="wa" href="${waLink(c, MSG.arrived(c, t))}" target="_blank" rel="noopener">${icon('pin')}Ya llegué</a>` : ''}`;
   }
+  if (t.status === 'agendado' && t.fromPt && t.toPt) actions += `<a href="${directionsLink(t.fromPt, t.toPt)}" target="_blank" rel="noopener">${icon('nav')}Ruta</a>`;
   if (t.status === 'agendado') actions += `<button data-finish="${t.id}">${icon('check')}Terminar</button>`;
   if (owed(t)) actions += `<button data-paid="${t.id}">${icon('cash')}Cobrado</button>`;
   return `<article class="trip ${late ? 'late' : ''} ${t.status !== 'agendado' ? 'done' : ''}" data-trip="${t.id}" tabindex="0">
     <div class="when">${t.time ? hour12(t.time).replace(/ (am|pm)/, '') : '—'}<small>${showDate ? fdate(t.date, { day: 'numeric', month: 'short' }) : t.time ? hour12(t.time).slice(-2) : ''}</small></div>
     <div>${showClient ? `<div class="who">${esc(c.name)}</div>` : ''}
-      <div class="route">${t.from || t.to ? `${esc(t.from || '…')} → ${esc(t.to || '…')}` : '<span class="muted">Sin ruta</span>'}</div>
+      <div class="way">${t.from || t.to ? `${esc(t.from || '…')} → ${esc(t.to || '…')}` : '<span class="muted">Sin ruta</span>'}</div>
       ${late ? '<span class="badge warn">¿Se hizo?</span>' : ''}</div>
     <div class="price">${money(t.price)}${pay}</div>
     ${actions ? `<div class="actions">${actions}</div>` : ''}
@@ -225,7 +238,7 @@ function sleeping(c) {
 function drawClientList() {
   const q = fold(clientQuery).split(/\s+/).filter(Boolean);
   const list = data.clients
-    .filter((c) => q.every((w) => fold([c.name, c.phone, c.places, c.notes].join(' ')).includes(w)))
+    .filter((c) => q.every((w) => fold([c.name, c.phone, c.places, c.notes, ...(c.services || []).map((sv) => `${sv.name} ${sv.a?.label} ${sv.b?.label}`)].join(' ')).includes(w)))
     .filter((c) => (clientFilter === 'debe' ? debtOf(c.id) > 0 : clientFilter === 'dormidos' ? sleeping(c) : true))
     .map((c) => ({ c, last: lastTrip(c.id), n: tripsOf(c.id).filter((t) => t.status === 'hecho').length, debt: debtOf(c.id) }))
     .sort((a, b) => (b.last?.date || '').localeCompare(a.last?.date || '') || a.c.name.localeCompare(b.c.name, 'es'));
@@ -265,6 +278,9 @@ function renderClient(id) {
       <div class="tile"><small>Total</small><b>${money(done.reduce((s, t) => s + +t.price, 0))}</b><span>${done.length ? 'prom. ' + money(done.reduce((s, t) => s + +t.price, 0) / done.length) : '—'}</span></div>
       <div class="tile ${debt ? 'warn' : ''}"><small>Me debe</small><b>${money(debt)}</b><span>${debt ? `<a href="#/cobros">cobrar</a>` : 'al día'}</span></div>
     </section>
+    ${(c.services || []).length ? `<p class="group"><span>Sus servicios</span><em>agendar en un toque</em></p>
+      <div class="qs">${c.services.map((sv) => `<div class="q"><b>${esc(sv.name || 'Servicio')}</b><small>${esc(sv.a?.label || '…')} → ${esc(sv.b?.label || '…')}</small>
+        <span class="meta">${sv.km ? `${sv.km} km · ${sv.min} min · ` : ''}<span class="amt">${money(svcPrice(sv))}</span></span><button data-book="${sv.id}">Agendar</button></div>`).join('')}</div>` : ''}
     ${c.places || c.rate || c.notes ? `<section class="card"><dl class="kv">
       ${c.places ? `<dt>Lugares</dt><dd>${esc(c.places)}</dd>` : ''}
       ${c.rate ? `<dt>Tarifa</dt><dd>${esc(c.rate)}</dd>` : ''}
@@ -273,8 +289,9 @@ function renderClient(id) {
     <p class="group"><span>Historial</span><em>${trips.length}</em></p>
     ${trips.length ? trips.map((t) => tripCard(t, { showDate: true, showClient: false })).join('') : '<div class="card muted">Aún no hay viajes con este cliente.</div>'}`;
   $('[data-new]', view).onclick = () => tripForm(null, { clientId: id });
+  view.querySelectorAll('[data-book]').forEach((b) => (b.onclick = () => tripForm(null, fromService(c, c.services.find((x) => x.id === b.dataset.book)))));
   const rep = $('[data-repeat]', view);
-  if (last) rep.onclick = () => tripForm(null, { clientId: id, from: last.from, to: last.to, price: last.price, time: last.time, km: last.km });
+  if (last) rep.onclick = () => tripForm(null, { clientId: id, from: last.from, to: last.to, fromPt: last.fromPt, toPt: last.toPt, price: last.price, time: last.time, km: last.km, min: last.min, path: last.path });
   const e2 = $('[data-editc2]', view);
   if (e2) e2.onclick = () => clientForm(c);
   bindTrips();
@@ -348,7 +365,12 @@ function renderSettings() {
     <form class="card" id="cfg" style="display:grid;gap:12px">
       <label class="field">Tu nombre (firma de los mensajes)<input name="driver" value="${esc(s.driver)}" placeholder="Ej. Lalo"></label>
       <label class="field">Datos para transferencia (opcional)<input name="bank" value="${esc(s.bank)}" placeholder="Ej. BBVA · CLABE 0123…"><small>Se agregan al mensaje de cobro.</small></label>
-      <label class="field">Precio sugerido por km (opcional)<input name="perKm" type="number" inputmode="decimal" step="0.5" min="0" value="${esc(s.perKm)}" placeholder="Ej. 12"><small>Si capturas los km de un viaje, te sugiere el precio.</small></label>
+      <fieldset class="tarifa"><legend>Tu tarifa <small>para el precio sugerido</small></legend>
+        <label class="field">Banderazo<input name="base" type="number" inputmode="decimal" step="1" min="0" value="${esc(tarifa().base)}"></label>
+        <label class="field">Por km<input name="perKm" type="number" inputmode="decimal" step="0.5" min="0" value="${esc(tarifa().perKm)}"></label>
+        <label class="field">Por minuto<input name="perMin" type="number" inputmode="decimal" step="0.1" min="0" value="${esc(tarifa().perMin)}"></label>
+        <label class="field">Mínimo<input name="minimum" type="number" inputmode="decimal" step="10" min="0" value="${esc(tarifa().minimum)}"></label>
+        <small class="muted" id="tex"></small></fieldset>
       <label class="field">Lada del país para WhatsApp<input name="lada" inputmode="numeric" value="${esc(s.lada)}" placeholder="52"></label>
       <button class="primary">Guardar</button>
     </form>
@@ -357,10 +379,19 @@ function renderSettings() {
       <div class="actions"><button data-export>Descargar copia</button><label class="actions"><button type="button" data-import>Cargar copia</button></label></div>
       <input type="file" accept="application/json,.json" hidden id="file"></section>
     <p class="muted" style="text-align:center;font-size:12px">${data.clients.length} clientes · ${data.trips.length} viajes · v1.0</p>`;
+  const tex = () => {
+    const f = new FormData($('#cfg'));
+    const t = { base: numOr(f.get('base'), 0), perKm: numOr(f.get('perKm'), 0), perMin: numOr(f.get('perMin'), 0), minimum: numOr(f.get('minimum'), 0) };
+    const raw = t.base + 18 * t.perKm + 30 * t.perMin;
+    $('#tex').textContent = `Ejemplo: 18 km y 30 min = ${money(Math.max(t.minimum, Math.round(raw / 10) * 10))}`;
+  };
+  $('#cfg').oninput = tex;
+  tex();
   $('#cfg').onsubmit = (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
-    data.settings = { ...s, driver: f.get('driver').trim(), bank: f.get('bank').trim(), perKm: f.get('perKm'), lada: f.get('lada').replace(/\D/g, '') || '52' };
+    data.settings = { ...s, driver: f.get('driver').trim(), bank: f.get('bank').trim(), lada: f.get('lada').replace(/\D/g, '') || '52',
+      base: numOr(f.get('base'), 35), perKm: numOr(f.get('perKm'), 10), perMin: numOr(f.get('perMin'), 1.5), minimum: numOr(f.get('minimum'), 0) };
     save();
     toast('Guardado');
   };
@@ -409,8 +440,9 @@ function clientForm(c = null, { onSaved } = {}) {
   openSheet(`<h2>${c ? 'Editar cliente' : 'Nuevo cliente'}</h2>
     ${field('Nombre', `<input name="name" required value="${esc(c?.name)}" placeholder="Ej. Sra. Laura">`, true)}
     ${field('Teléfono (WhatsApp)', `<input name="phone" type="tel" inputmode="tel" value="${esc(c?.phone)}" placeholder="10 dígitos">`, true)}
-    ${field('Lugares frecuentes <small>uno por renglón</small>', `<textarea name="places" rows="3" placeholder="Casa: Col. Centro, calle…\nTrabajo: Hospital General">${esc(c?.places)}</textarea>`, true)}
-    ${field('Tarifa acordada', `<input name="rate" value="${esc(c?.rate)}" placeholder="Ej. $250 al aeropuerto">`, true)}
+    <div class="sec wide"><b>Servicios frecuentes</b><small>precio con tu tarifa</small></div>
+    <div class="wide svcs" id="svcs"></div>
+    <button type="button" class="add wide" data-addsvc>＋ Agregar servicio frecuente</button>
     ${field('Notas', `<textarea name="notes" rows="2" placeholder="Ej. Viaja con su perrito, paga por transferencia">${esc(c?.notes)}</textarea>`, true)}
     ${buttons(!!c)}`, (form) => {
     wireCommon(form, () => {
@@ -426,10 +458,24 @@ function clientForm(c = null, { onSaved } = {}) {
       location.hash = '#/clientes';
       refresh();
     };
+    const svcs = structuredClone(c?.services || []);
+    const box = $('#svcs', form);
+    const drawSvcs = () => {
+      box.innerHTML = '';
+      svcs.forEach((sv) => box.append(serviceCard(sv, () => { svcs.splice(svcs.indexOf(sv), 1); drawSvcs(); }, () => client(c?.id))));
+    };
+    drawSvcs();
+    $('[data-addsvc]', form).onclick = () => {
+      const home = svcs[0]?.a || null;
+      svcs.push({ id: uid(), name: '', a: home, b: null, price: null });
+      drawSvcs();
+      box.lastElementChild.querySelector(home ? '[data-pt=b]' : '[data-pt=a]').focus();
+    };
     form.onsubmit = () => {
       const f = new FormData(form);
       const x = { ...(c || { id: uid(), createdAt: Date.now() }), updatedAt: Date.now() };
-      for (const k of ['name', 'phone', 'places', 'rate', 'notes']) x[k] = f.get(k).trim();
+      for (const k of ['name', 'phone', 'notes']) x[k] = f.get(k).trim();
+      x.services = svcs.filter((sv) => sv.b || sv.name).map((sv) => ({ ...sv, name: sv.name || autoName(sv) }));
       if (c) Object.assign(c, x);
       else data.clients.push(x);
       sheet.close();
@@ -443,11 +489,115 @@ function clientForm(c = null, { onSaved } = {}) {
 
 const PAYS = [['', 'Me debe'], ['efectivo', 'Efectivo'], ['transferencia', 'Transferencia'], ['tarjeta', 'Tarjeta']];
 const seg = (name, opts, val) => `<div class="seg" role="radiogroup">${opts.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}" ${v === val ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
-function placesFor(clientId) {
-  const c = client(clientId);
-  const own = String(c?.places || '').split('\n').map((l) => l.replace(/^[^:]{1,20}:\s*/, '').trim());
-  const used = data.trips.filter((t) => !clientId || t.clientId === clientId).flatMap((t) => [t.from, t.to]);
-  return [...new Set([...own, ...used].filter(Boolean))];
+
+// ---------- Punto A y punto B ----------
+// Lugares ya usados (servicios y viajes) aparecen primero, sin internet.
+function knownPlaces(clientId) {
+  const out = new Map();
+  const add = (p) => { if (p?.label && p.lat != null && !out.has(p.label)) out.set(p.label, p); };
+  const cs = clientId ? [client(clientId)] : data.clients;
+  cs.forEach((c) => (c?.services || []).forEach((sv) => { add(sv.a); add(sv.b); }));
+  data.trips.filter((t) => !clientId || t.clientId === clientId).forEach((t) => { add(t.fromPt); add(t.toPt); });
+  if (clientId) knownPlaces().forEach((p) => add(p));
+  return [...out.values()];
+}
+const nearPoint = () => knownPlaces()[0] || null;
+const autoName = (sv) => [sv.a?.label, sv.b?.label].map((l) => (l || '…').split(',')[0]).join(' → ');
+const svcPrice = (sv) => sv.price ?? (sv.km ? suggestPrice(sv.km, sv.min) : 0);
+const fromService = (c, sv) => ({ clientId: c.id, from: sv.a?.label || '', to: sv.b?.label || '', fromPt: sv.a, toPt: sv.b, km: sv.km || '', min: sv.min || '', path: sv.path, price: svcPrice(sv) });
+
+function placeInput(pt, which, placeholder) {
+  return `<div class="stop"><span class="dot ${which}"></span><input data-pt="${which}" value="${esc(pt?.label || '')}" placeholder="${placeholder}" autocomplete="off" enterkeyhint="search"></div>`;
+}
+// Sugerencias al escribir; al elegir una, guarda el punto con sus coordenadas.
+function wirePlace(input, clientId, onPick) {
+  let timer, box;
+  const close = () => { box?.remove(); box = null; };
+  const show = (items, note) => {
+    close();
+    if (!items.length && !note) return;
+    box = document.createElement('div');
+    box.className = 'sugg';
+    box.innerHTML = items.map((p, i) => `<button type="button" data-i="${i}"><span>${esc(p.label)}</span><small>${esc(p.sub || 'Usado antes')}</small></button>`).join('') + (note ? `<div class="g">${note}</div>` : '');
+    box.onpointerdown = (e) => e.preventDefault();
+    box.onclick = (e) => {
+      const b = e.target.closest('[data-i]');
+      if (!b) return;
+      const p = items[+b.dataset.i];
+      input.value = p.label;
+      close();
+      onPick({ label: p.label, lat: p.lat, lon: p.lon });
+    };
+    input.parentElement.append(box);
+  };
+  input.addEventListener('input', () => {
+    onPick(null, true);
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (!q) return close();
+    const words = fold(q).split(/\s+/);
+    const local = knownPlaces(clientId).filter((p) => words.every((w) => fold(p.label + ' ' + (p.sub || '')).includes(w))).slice(0, 3);
+    show(local, q.length >= 3 ? 'Buscando en el mapa…' : '');
+    if (q.length < 3) return;
+    timer = setTimeout(async () => {
+      try {
+        const found = (await searchPlaces(q, nearPoint())).filter((r) => !local.some((l) => l.label === r.label));
+        if (input.value.trim() !== q || document.activeElement !== input) return;
+        show([...local, ...found].slice(0, 6), found.length ? 'Mapa: OpenStreetMap' : 'Sin resultados en el mapa. Agrega colonia o ciudad.');
+      } catch {
+        if (input.value.trim() === q) show(local, 'Sin conexión: puedes escribir la dirección y el precio a mano.');
+      }
+    }, 650);
+  });
+  input.addEventListener('blur', () => setTimeout(close, 150));
+}
+// Distancia, tiempo, mapa y precio sugerido de A a B.
+async function fillRoute(el, a, b) {
+  if (!a || !b) { el.innerHTML = '<div class="empty-route">Elige el punto A y el punto B de la lista para ver distancia, tiempo y precio.</div>'; return null; }
+  el.innerHTML = '<div class="empty-route">Calculando ruta…</div>';
+  try {
+    const r = await route(a, b);
+    el.innerHTML = `${mapSvg(r.path, `Ruta de ${esc(a.label)} a ${esc(b.label)}`)}
+      <div class="stats"><div><small>Distancia</small><b>${r.km} km</b></div><div><small>Tiempo</small><b>${r.min} min</b></div><div class="price"><small>Sugerido</small><b>${money(suggestPrice(r.km, r.min))}</b></div></div>
+      <div class="how">${priceMath(r.km, r.min)} · <a href="${directionsLink(a, b)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
+    return r;
+  } catch {
+    el.innerHTML = '<div class="empty-route">No se pudo calcular la ruta (¿sin internet?). Pon el precio a mano.</div>';
+    return null;
+  }
+}
+
+function serviceCard(sv, onRemove, getClient) {
+  const el = document.createElement('section');
+  el.className = 'svc';
+  el.innerHTML = `<div class="svc-head"><input data-name value="${esc(sv.name)}" placeholder="Nombre · ej. Casa → Aeropuerto" aria-label="Nombre del servicio"><button type="button" data-rm>Quitar</button></div>
+    <div class="route">${placeInput(sv.a, 'a', 'Punto A · ¿de dónde sale?')}${placeInput(sv.b, 'b', 'Punto B · ¿a dónde va?')}</div>
+    <div data-route></div>
+    <div class="price-row"><label><span>Tu precio $</span><input data-price type="number" inputmode="numeric" min="0" step="10" value="${sv.price ?? ''}" placeholder="${sv.km ? suggestPrice(sv.km, sv.min) : ''}"></label><small class="muted">vacío = sugerido</small></div>`;
+  const nameIn = $('[data-name]', el);
+  const priceIn = $('[data-price]', el);
+  const routeEl = $('[data-route]', el);
+  const update = async () => {
+    const r = await fillRoute(routeEl, sv.a, sv.b);
+    Object.assign(sv, r ? { km: r.km, min: r.min, path: r.path } : { km: '', min: '', path: null });
+    priceIn.placeholder = r ? suggestPrice(r.km, r.min) : '';
+    if (!nameIn.value.trim() && sv.a && sv.b) nameIn.value = sv.name = autoName(sv);
+  };
+  for (const which of ['a', 'b']) {
+    wirePlace($(`[data-pt=${which}]`, el), getClient()?.id, (p, typing) => {
+      sv[which] = p;
+      if (!typing || !p) update();
+    });
+  }
+  nameIn.oninput = () => { sv.name = nameIn.value.trim(); };
+  priceIn.oninput = () => { sv.price = priceIn.value === '' ? null : +priceIn.value; };
+  $('[data-rm]', el).onclick = onRemove;
+  if (sv.a && sv.b) {
+    // Ya calculada: dibuja sin volver a pedir la ruta.
+    if (sv.path) routeEl.innerHTML = `${mapSvg(sv.path)}<div class="stats"><div><small>Distancia</small><b>${sv.km} km</b></div><div><small>Tiempo</small><b>${sv.min} min</b></div><div class="price"><small>Sugerido</small><b>${money(suggestPrice(sv.km, sv.min))}</b></div></div><div class="how">${priceMath(sv.km, sv.min)} · <a href="${directionsLink(sv.a, sv.b)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
+    else update();
+  } else fillRoute(routeEl, sv.a, sv.b);
+  return el;
 }
 
 function tripForm(t = null, preset = {}) {
@@ -457,10 +607,10 @@ function tripForm(t = null, preset = {}) {
     ${field('Cliente', `<select name="clientId" required>${opts.length ? '' : '<option value="" disabled selected>Agrega un cliente</option>'}${opts.map((c) => `<option value="${c.id}" ${c.id === v.clientId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}<option value="__new">＋ Cliente nuevo…</option></select>`, true)}
     ${field('Fecha', `<input name="date" type="date" required value="${esc(v.date)}">`)}
     ${field('Hora', `<input name="time" type="time" value="${esc(v.time)}">`)}
-    ${field('De', `<input name="from" list="places" value="${esc(v.from)}" placeholder="Origen">`, true)}
-    ${field('A', `<input name="to" list="places" value="${esc(v.to)}" placeholder="Destino">`, true)}
-    <datalist id="places"></datalist>
-    ${field('Km <small>(opcional)</small>', `<input name="km" type="number" inputmode="decimal" step="0.1" min="0" value="${esc(v.km)}">`)}
+    <div class="chips wide" id="svcchips"></div>
+    <div class="route wide">${placeInput(v.fromPt || (v.from ? { label: v.from } : null), 'a', 'Punto A · origen')}${placeInput(v.toPt || (v.to ? { label: v.to } : null), 'b', 'Punto B · destino')}</div>
+    <div class="wide svc" id="troute" hidden></div>
+    ${field('Km', `<input name="km" type="number" inputmode="decimal" step="0.1" min="0" value="${esc(v.km)}">`)}
     ${field('Precio', `<input name="price" type="number" inputmode="decimal" step="1" min="0" required value="${esc(v.price)}">`)}
     <small class="field wide muted" id="hint"></small>
     <span class="field wide">Estado</span>${seg('status', [['agendado', 'Agendado'], ['hecho', 'Hecho'], ['cancelado', 'Cancelado']], v.status)}
@@ -475,15 +625,50 @@ function tripForm(t = null, preset = {}) {
     let prevClient = sel.value;
     let priceTyped = !!t;
     els.price.addEventListener('input', () => { priceTyped = true; });
-    const fillPlaces = () => { $('#places', form).innerHTML = placesFor(sel.value).map((p) => `<option value="${esc(p)}">`).join(''); };
+    const fromIn = $('[data-pt=a]', form);
+    const toIn = $('[data-pt=b]', form);
+    const rt = { fromPt: v.fromPt || null, toPt: v.toPt || null, min: v.min || '', path: v.path || null };
+    const routeEl = $('#troute', form);
     const suggest = () => {
-      const same = data.trips.filter((x) => x.clientId === sel.value && x.id !== t?.id && x.status !== 'cancelado' && x.from === els.from.value.trim() && x.to === els.to.value.trim() && (x.from || x.to)).sort(byWhen).pop();
-      const perKm = +data.settings.perKm;
+      const same = data.trips.filter((x) => x.clientId === sel.value && x.id !== t?.id && x.status !== 'cancelado' && x.from === fromIn.value.trim() && x.to === toIn.value.trim() && (x.from || x.to)).sort(byWhen).pop();
+      const km = +els.km.value;
+      const min = +rt.min || Math.round(km * 2);
       const tips = [];
       if (same) tips.push(`La última vez: ${money(same.price)}`);
-      if (perKm && +els.km.value) tips.push(`Por km: ${money(perKm * els.km.value)}`);
+      if (km) tips.push(`Con tu tarifa: ${money(suggestPrice(km, min))}`);
       hint.textContent = tips.join(' · ');
-      if (!priceTyped && (same || (perKm && +els.km.value))) els.price.value = Math.round(same ? same.price : perKm * els.km.value);
+      if (!priceTyped && (same || km)) els.price.value = same ? same.price : suggestPrice(km, min);
+    };
+    const recalc = async () => {
+      routeEl.hidden = !(rt.fromPt && rt.toPt);
+      if (routeEl.hidden) { rt.min = ''; rt.path = null; return; }
+      const r = await fillRoute(routeEl, rt.fromPt, rt.toPt);
+      if (r) { els.km.value = r.km; rt.min = r.min; rt.path = r.path; suggest(); }
+    };
+    wirePlace(fromIn, sel.value, (p, typing) => { rt.fromPt = p; if (!typing || !p) { recalc(); suggest(); } });
+    wirePlace(toIn, sel.value, (p, typing) => { rt.toPt = p; if (!typing || !p) { recalc(); suggest(); } });
+    if (rt.fromPt && rt.toPt) {
+      routeEl.hidden = false;
+      if (rt.path) routeEl.innerHTML = `${mapSvg(rt.path)}<div class="how">${els.km.value} km · ${rt.min} min · <a href="${directionsLink(rt.fromPt, rt.toPt)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
+      else recalc();
+    }
+    // Servicios frecuentes del cliente: un toque llena A, B y precio.
+    const fillPlaces = () => {
+      const svs = client(sel.value)?.services || [];
+      const chips = $('#svcchips', form);
+      chips.innerHTML = svs.map((sv) => `<button type="button" data-sv="${sv.id}">${esc(sv.name || autoName(sv))}</button>`).join('');
+      chips.hidden = !svs.length;
+      chips.querySelectorAll('[data-sv]').forEach((b) => (b.onclick = () => {
+        const sv = svs.find((x) => x.id === b.dataset.sv);
+        const f = fromService(client(sel.value), sv);
+        fromIn.value = f.from; toIn.value = f.to;
+        Object.assign(rt, { fromPt: f.fromPt, toPt: f.toPt, min: f.min, path: f.path });
+        els.km.value = f.km; els.price.value = f.price; priceTyped = true;
+        chips.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+        routeEl.hidden = !(f.fromPt && f.toPt);
+        if (f.path) routeEl.innerHTML = `${mapSvg(f.path)}<div class="how">${f.km} km · ${f.min} min · <a href="${directionsLink(f.fromPt, f.toPt)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
+        hint.textContent = `Servicio frecuente: ${money(f.price)}`;
+      }));
     };
     const showPay = () => { paybox.hidden = form.querySelector('[name=status]:checked').value !== 'hecho'; };
     sel.onchange = () => {
@@ -497,13 +682,13 @@ function tripForm(t = null, preset = {}) {
       suggest();
     };
     form.querySelectorAll('[name=status]').forEach((r) => (r.onchange = showPay));
-    for (const k of ['from', 'to', 'km']) els[k].addEventListener('input', suggest);
+    els.km.addEventListener('input', () => { rt.min = ''; suggest(); });
     fillPlaces(); suggest(); showPay();
     function readForm() {
       const f = new FormData(form);
       return {
         clientId: f.get('clientId'), date: f.get('date'), time: f.get('time') || '',
-        from: f.get('from').trim(), to: f.get('to').trim(), km: f.get('km'),
+        from: fromIn.value.trim(), to: toIn.value.trim(), fromPt: rt.fromPt, toPt: rt.toPt, km: f.get('km'), min: rt.min, path: rt.path,
         price: +f.get('price') || 0,
         status: f.get('status'), pay: f.get('status') === 'hecho' ? f.get('pay') || '' : '', notes: f.get('notes').trim(),
       };

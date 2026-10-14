@@ -71,11 +71,12 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 
 - Proyectos (14-oct): `proyectos.json` con `proj-checa` (app Android en repo privado `jeal1498/Mi-Ruta`, web en `jeal1498/checa-web`) y `proj-reservas` = **Cartera de clientes**. El usuario de CHECA es **Eduardo (Lalo)** según el CLAUDE.md de Mi-Ruta; aquí se ha escrito «ella»: usar lenguaje neutro.
 
-## Cartera de clientes (`cartera/`, tercer proyecto, v1.0)
+## Cartera de clientes (`cartera/`, tercer proyecto, v1.1)
 - PWA aparte para conductores: gestionar su cartera de **clientes privados** (los que les piden viajes por fuera de Uber/DiDi). No es venta de tarjetas impresas ni captar pasajeros de la app.
 - Publicada en https://jeal1498.github.io/JEAL/cartera/ . Archivos: `index.html`, `app.js`, `styles.css`, `sw.js` (**subir `CACHE`** en cada cambio), `manifest.webmanifest`, `icon.svg`.
 - Datos en `localStorage` clave `cartera`: `clients` (name, phone, places, rate, notes), `trips` (clientId, date, time, from, to, km, price, status `agendado|hecho|cancelado`, pay `''|efectivo|transferencia|tarjeta`; hecho + pay '' = me debe), `settings` (driver, lada 52, perKm, bank). Exportar/cargar copia JSON (merge por id).
 - Pestañas: Agenda (sin cerrar/hoy/mañana/semana; Confirmar y "Ya llegué" por WhatsApp; Terminar → ¿cómo te pagó?), Clientes (buscar, filtros Me deben / +30 días; ficha con WhatsApp, Llamar, Nuevo viaje, Repetir), Cobros (por cliente, recordatorio por WhatsApp), Resumen (mes, mejores clientes, forma de pago, para reactivar). Precio sugerido: último del mismo cliente+ruta o km × perKm.
+- v1.1 **Servicios frecuentes** (`client.services`: name, a/b {label,lat,lon}, km, min, path, price|null=sugerido) y punto A→B en viajes (`fromPt`, `toPt`, `min`, `path`). `maps.js`: Nominatim (búsqueda, debounce 650 ms, sesgo cerca de lugares usados) + OSRM (ruta; tiempo ×1.25 por tráfico), mini mapa SVG sin mosaicos, link "Ver en Google Maps"/"Ruta". Google Maps pendiente: falta clave del usuario (cambiar solo `maps.js`). Tarifa en Ajustes: banderazo 35 + 10/km + 1.5/min, mínimo 80, redondeo a $10.
 - Siguientes etapas: cuenta en la nube (Supabase, como CHECA), link de reserva para el cliente + anticipo con Mercado Pago.
 
 ## Probar

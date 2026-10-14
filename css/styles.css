@@ -372,3 +372,13 @@ a.tile { color: var(--text); text-decoration: none; }
 .modtile .module-icon .i { width: 20px; height: 20px; }
 .modtile small { color: var(--text-2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .list.flat:last-child { margin-bottom: 0; }
+
+/* Proyectos */
+.projects .row-body { gap: 4px; }
+.pstatus { font-style: normal; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: 2px; background: var(--surface-2); color: var(--text-2); }
+.pstatus.s-activo { background: var(--accent); color: var(--accent-ink); }
+.plinks { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 2px; }
+.plinks a { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 999px; background: var(--surface-2); color: var(--accent); text-decoration: none; }
+.plinks .i { width: 14px; height: 14px; }
+.projects .row-body small { white-space: normal; overflow: visible; text-overflow: clip; }
+.pnotes { white-space: pre-line !important; }

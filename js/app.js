@@ -8,13 +8,13 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const today = () => new Date().toLocaleDateString('en-CA');
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
-const state = { fuel: [], maintenance: [], expenses: [], reminders: [], income: [], bills: [], goals: [], budgets: [], notes: [], tasks: [], habits: [], journal: [], vehicle: {}, finance: {} };
+const state = { fuel: [], maintenance: [], expenses: [], reminders: [], income: [], bills: [], goals: [], budgets: [], notes: [], tasks: [], habits: [], journal: [], projects: [], vehicle: {}, finance: {} };
 
 async function load() {
-  const [fuel, maintenance, expenses, reminders, income, bills, goals, budgets, spending, notes, tasks, habits, journal, vehicle, finance] = await Promise.all([
+  const [fuel, maintenance, expenses, reminders, income, bills, goals, budgets, spending, notes, tasks, habits, journal, projects, vehicle, finance] = await Promise.all([
     db.all('fuel'), db.all('maintenance'), db.all('expenses'), db.all('reminders'),
     db.all('income'), db.all('bills'), db.all('goals'), db.all('budgets'), db.all('spending'),
-    db.all('notes'), db.all('tasks'), db.all('habits'), db.all('journal'), db.getSetting('vehicle'), db.getSetting('finance'),
+    db.all('notes'), db.all('tasks'), db.all('habits'), db.all('journal'), db.all('projects'), db.getSetting('vehicle'), db.getSetting('finance'),
   ]);
   state.backup = await backup.getConfig();
   // Los gastos de la vista estilo MonAi (ya retirada) pasan a ser pagos del mes.
@@ -24,7 +24,7 @@ async function load() {
     await db.remove('spending', x.id);
     bills.push(bill);
   }
-  Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, notes, tasks, habits, journal, vehicle: vehicle || {}, finance: finance || {} });
+  Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, notes, tasks, habits, journal, projects, vehicle: vehicle || {}, finance: finance || {} });
 }
 
 // ---------- Formato ----------
@@ -62,6 +62,8 @@ const P = {
   tasks: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="m8 12 3 3 5-6"/>',
   heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
   target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
 };
 const icon = (n) => `<svg viewBox="0 0 24 24" class="i" aria-hidden="true">${P[n]}</svg>`;
@@ -82,6 +84,7 @@ const fuelTag = (x) => (hasLP() ? `<span class="tag ${fuelTypeOf(x)}">${fuelType
 const MAINT_TYPES = ['Servicio', 'Cambio de aceite', 'Equipo de gas LP', 'Llantas', 'Frenos', 'Batería', 'Afinación', 'Alineación y balanceo', 'Reparación', 'Otro'];
 const EXPENSE_TYPES = ['Seguro', 'Verificación', 'Tenencia / Refrendo', 'Estacionamiento', 'Casetas', 'Lavado', 'Multa', 'Accesorios', 'Otro'];
 
+const PROJECT_STATUS = [['activo', 'Activo'], ['pausa', 'En pausa'], ['terminado', 'Terminado'], ['idea', 'Idea']];
 const SCHEMAS = {
   fuel: {
     title: 'Carga de combustible',
@@ -204,6 +207,19 @@ const SCHEMAS = {
       { k: 'title', label: 'Qué hay que hacer', type: 'text', req: true, placeholder: 'Ej. Pagar la luz', big: true },
       { k: 'due', label: 'Para cuándo (opcional)', type: 'date' },
       { k: 'notes', label: 'Notas', type: 'textarea' },
+    ],
+  },
+  projects: {
+    title: 'Proyecto',
+    fields: [
+      { k: 'name', label: 'Nombre', type: 'text', req: true, placeholder: 'Ej. SecondBrain', big: true },
+      { k: 'emoji', label: 'Emoji (opcional)', type: 'text', placeholder: '🧠' },
+      { k: 'status', label: 'Estado', type: 'select', options: PROJECT_STATUS.map(([v, l]) => ({ v, l })) },
+      { k: 'description', label: 'De qué trata', type: 'textarea' },
+      { k: 'links', label: 'Accesos (uno por renglón: Nombre https://…)', type: 'textarea', rows: 4, placeholder: 'Repositorio https://github.com/usuario/repo\nPágina https://usuario.github.io/repo/' },
+      { k: 'tags', label: 'Etiquetas (separadas por coma)', type: 'text', placeholder: 'Ej. app, personal', big: true },
+      { k: 'notes', label: 'Notas importantes', type: 'textarea', rows: 4 },
+      { k: 'pinned', label: 'Fijar arriba', type: 'checkbox' },
     ],
   },
   habits: {
@@ -514,6 +530,7 @@ function render() {
   else if (mod === 'respaldo') renderBackup();
   else if (mod === 'buscar') renderSearch();
   else if (mod === 'notas') renderNotes();
+  else if (mod === 'proyectos') renderProjects();
   else if (mod === 'pendientes') renderTasks();
   else if (mod === 'dia') renderDay();
   else renderHome();
@@ -572,6 +589,7 @@ function renderHome() {
       ${modTile('#/pendientes', 'tasks', 'Pendientes', `${state.tasks.filter((x) => !x.done).length} abiertos`)}
       ${modTile('#/notas', 'note', 'Notas', `${state.notes.length} nota${state.notes.length === 1 ? '' : 's'}`)}
       ${modTile('#/dia', 'heart', 'Mi día', 'Diario y hábitos')}
+      ${modTile('#/proyectos', 'folder', 'Proyectos', state.projects.length ? ((n) => `${n} activo${n === 1 ? '' : 's'}`)(state.projects.filter((x) => (x.status || 'activo') === 'activo').length) : 'Accesos y repos')}
       ${modTile('#/respaldo', 'cloud', 'Respaldo', !bk.url ? '<span class="badge">Sin configurar</span>' : bk.error ? '<span class="badge">Falló</span>' : bk.last ? `Al día · ${ago(bk.last)}` : 'Pendiente')}
     </nav>`;
   bindFin();
@@ -598,6 +616,7 @@ const SEARCH = [
   { store: 'bills', label: 'Pagos', icon: 'calendar', show: (x) => ({ title: `${catEmoji(x.category)} ${x.concept}`, amount: x.amount }) },
   { store: 'goals', label: 'Metas', icon: 'target', show: (x) => ({ title: `${catEmoji(x.category)} ${x.concept}`, amount: x.amount }) },
   { store: 'notes', label: 'Notas', icon: 'note', show: (x) => ({ title: x.title, sub: x.body }) },
+  { store: 'projects', label: 'Proyectos', icon: 'folder', show: (x) => ({ title: `${x.emoji || ''} ${x.name}`.trim(), sub: x.description }) },
   { store: 'tasks', label: 'Pendientes', icon: 'tasks', show: (x) => ({ title: (x.done ? '✓ ' : '') + x.title, date: x.due }) },
   { store: 'journal', label: 'Diario', icon: 'heart', show: (x) => ({ title: `${x.mood || ''} ${fdate(x.date, { weekday: 'long', day: 'numeric', month: 'long' })}`.trim(), sub: x.text }), open: (x) => { dayDate = x.date; location.hash = '#/dia'; } },
   { store: 'habits', label: 'Hábitos', icon: 'check', show: (x) => ({ title: `${x.emoji || ''} ${x.name}`.trim() }) },
@@ -725,6 +744,63 @@ function renderNotes() {
           <small>${x.body ? esc(x.body.replace(/\s+/g, ' ')) : fdate(new Date(x.updatedAt || x.createdAt).toLocaleDateString('en-CA'))}</small>
           ${tagsOf(x).length ? `<span class="tags">${tagsOf(x).map((t) => `<i>${esc(t)}</i>`).join('')}</span>` : ''}</span></li>`).join('')}</ul>`;
   view.querySelectorAll('[data-tagf]').forEach((b) => (b.onclick = () => { noteTag = b.dataset.tagf; renderNotes(); }));
+  bindMine();
+}
+
+// ---------- Proyectos: accesos a repos, páginas y lo importante de cada uno ----------
+let projectStatus = '';
+// "Nombre https://…" por renglón; sin nombre se deduce del sitio.
+function linksOf(x) {
+  return String(x.links || '').split('\n').map((line) => {
+    const m = line.match(/(https?:\/\/\S+|[\w.-]+\.[a-z]{2,}\/\S*)/i);
+    if (!m) return null;
+    const url = /^https?:/i.test(m[1]) ? m[1] : 'https://' + m[1];
+    const label = line.replace(m[1], '').replace(/[\s:|—–-]+$/, '').replace(/^[\s:|—–-]+/, '').trim();
+    return { url, label: label || autoLabel(url) };
+  }).filter(Boolean);
+}
+function autoLabel(url) {
+  let h = '';
+  try { h = new URL(url).hostname.replace(/^www\./, ''); } catch { return 'Enlace'; }
+  if (h === 'github.com') return 'Repositorio';
+  if (/github\.io$|vercel\.app$|netlify\.app$|pages\.dev$/.test(h)) return 'Página';
+  if (/docs\.google|drive\.google/.test(h)) return 'Drive';
+  if (/notion\.(so|site)$/.test(h)) return 'Notion';
+  if (h === 'claude.ai') return 'Claude';
+  return h;
+}
+const statusLabel = (v) => (PROJECT_STATUS.find(([k]) => k === (v || 'activo')) || PROJECT_STATUS[0])[1];
+function renderProjects() {
+  setHeader({ title: 'Proyectos', back: '#/' });
+  setFab('projects');
+  tabs.hidden = true;
+  const used = PROJECT_STATUS.filter(([k]) => state.projects.some((x) => (x.status || 'activo') === k));
+  if (projectStatus && !used.some(([k]) => k === projectStatus)) projectStatus = '';
+  const order = PROJECT_STATUS.map(([k]) => k);
+  const list = state.projects.filter((x) => !projectStatus || (x.status || 'activo') === projectStatus)
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || order.indexOf(a.status || 'activo') - order.indexOf(b.status || 'activo') || a.name.localeCompare(b.name, 'es'));
+  view.innerHTML = !state.projects.length
+    ? `<div class="empty">${icon('folder')}<h2>Sin proyectos</h2><p>Junta en un solo lugar los repositorios, páginas y datos importantes de cada proyecto.</p><button class="primary" data-new="projects">＋ Nuevo proyecto</button><button data-seed>Agregar SecondBrain</button></div>`
+    : `${used.length > 1 ? `<div class="chips">${[['', 'Todos'], ...used].map(([k, l]) => `<button class="${k === projectStatus ? 'on' : ''}" data-pstatus="${k}">${l}</button>`).join('')}</div>` : ''}
+      <ul class="list projects">${list.map((x) => {
+        const links = linksOf(x);
+        return `<li data-store="projects" data-id="${x.id}" tabindex="0">
+        <span class="row-body"><b>${x.pinned ? '📌 ' : ''}${esc(x.emoji || '📁')} ${esc(x.name)} <em class="pstatus s-${esc(x.status || 'activo')}">${statusLabel(x.status)}</em></b>
+          ${x.description ? `<small>${esc(x.description.replace(/\s+/g, ' '))}</small>` : ''}
+          ${links.length ? `<span class="plinks">${links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${icon('link')}${esc(l.label)}</a>`).join('')}</span>` : ''}
+          ${x.notes ? `<small class="pnotes">${esc(x.notes)}</small>` : ''}
+          ${tagsOf(x).length ? `<span class="tags">${tagsOf(x).map((t) => `<i>${esc(t)}</i>`).join('')}</span>` : ''}</span></li>`;
+      }).join('')}</ul>`;
+  view.querySelectorAll('[data-pstatus]').forEach((b) => (b.onclick = () => { projectStatus = b.dataset.pstatus; renderProjects(); }));
+  view.querySelectorAll('.plinks a').forEach((a) => (a.onclick = (e) => e.stopPropagation()));
+  const seed = view.querySelector('[data-seed]');
+  if (seed) seed.onclick = async () => {
+    await db.put('projects', { id: 'proj-secondbrain', name: 'SecondBrain', emoji: '🧠', status: 'activo', pinned: true,
+      description: 'Mi PWA personal: vehículo, finanzas, pendientes, notas, mi día y proyectos.',
+      links: 'Página https://jeal1498.github.io/JEAL/\nRepositorio https://github.com/jeal1498/JEAL\nClaude Code https://claude.ai/code',
+      tags: 'app, personal', notes: 'Cada cambio se sube directo a main. Respaldo en Google Sheets.', createdAt: Date.now(), updatedAt: Date.now() });
+    await refresh();
+  };
   bindMine();
 }
 
@@ -1511,7 +1587,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '2.4.0';
+const VERSION = '2.5.0';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

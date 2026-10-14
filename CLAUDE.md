@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-10, v2.4.0)
+## SecondBrain (estado al 2026-10-14, v2.5.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -19,11 +19,11 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 
 ### Archivos
 - `index.html` — shell (header, `#view`, tabs, FAB, `<dialog>` de formularios).
-- `js/app.js` — router por hash (`#/`, `#/vehiculo/<tab>`, `#/finanzas/<tab>`, `#/respaldo`, `#/buscar`, `#/pendientes`, `#/notas`, `#/dia`), vistas, formularios por esquema (`SCHEMAS`), gráficas SVG propias.
+- `js/app.js` — router por hash (`#/`, `#/vehiculo/<tab>`, `#/finanzas/<tab>`, `#/respaldo`, `#/buscar`, `#/pendientes`, `#/notas`, `#/dia`, `#/proyectos`), vistas, formularios por esquema (`SCHEMAS`), gráficas SVG propias.
 - `js/finance.js` — finanzas puras: pagos repetidos, reparto del ingreso por fecha, metas, meta diaria.
 - `js/backup.js` — respaldo/restauración en Google Sheets y texto del Apps Script (`scriptFor`).
 - `js/calc.js` — cálculos puros (rendimiento tanque lleno→tanque lleno, gasto mensual, recordatorios).
-- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `budgets`, `spending` (en desuso: al cargar se convierte en `bills`), `notes`, `tasks`, `habits`, `journal`, `settings` (claves `vehicle`, `finance` (incl. `savings` {'YYYY-MM': monto}), `backup`). DB `VERSION` 5.
+- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `budgets`, `spending` (en desuso: al cargar se convierte en `bills`), `notes`, `tasks`, `habits`, `journal`, `projects`, `settings` (claves `vehicle`, `finance` (incl. `savings` {'YYYY-MM': monto}), `backup`). DB `VERSION` 6.
 - `css/styles.css` — tokens en `:root` con modo oscuro; series de gráficas `--s1..--s4` (paleta validada).
 
 ### Módulo Vehículo
@@ -48,6 +48,10 @@ Saludo + fecha; tiles Meta de hoy / Pendientes (hoy+vencidos) / Hábitos x/y; "�
 - **Notas** (`notes`: title, body, tags "a, b", pinned): filtro por etiqueta (chips), fijadas arriba.
 - **Mi día**: navegar por día (no futuro). Hábitos (`habits`: name, emoji, done ['YYYY-MM-DD']) con racha 🔥; Diario (`journal`, id `dia-YYYY-MM-DD`: mood de 5 emojis + text).
 - Todo entra al buscador y al respaldo (pestañas Notas/Pendientes/Hábitos/Diario; el Apps Script crea pestañas solo, no requiere nueva versión).
+
+### Proyectos (v2.5.0, `#/proyectos`, `renderProjects`)
+- `projects`: name, emoji, status (`activo|pausa|terminado|idea`), description, links (textarea, un acceso por renglón "Nombre https://…"; sin nombre se deduce: github.com→Repositorio, github.io/vercel→Página), tags, notes, pinned.
+- Tarjetas con botones de acceso (abren en pestaña nueva), filtro por estado, fijados arriba. Vacío: botón "Agregar SecondBrain" (id `proj-secondbrain`). En buscador y respaldo (pestaña Proyectos).
 
 ### Buscador (`#/buscar`, lupa en Inicio)
 - `renderSearch`/`SEARCH` en `app.js`: busca en todos los stores (menos budgets) sin acentos, todas las palabras deben aparecer; incluye fechas en texto ("octubre") y montos ("$1,490" → 1490). Tocar abre el formulario. Al agregar un módulo, súmalo a `SEARCH`.

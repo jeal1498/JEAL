@@ -1,6 +1,6 @@
 // Cartera: clientes privados del conductor (agenda, viajes, cobros y WhatsApp).
 // Todo se guarda en este teléfono (localStorage). Sin build ni dependencias.
-import { searchPlaces, route, directionsLink, mapSvg } from './maps.js';
+import { searchPlaces, route, reverse, directionsLink, mapSvg } from './maps.js';
 
 // ---------- Datos ----------
 const KEY = 'cartera';
@@ -153,12 +153,20 @@ function setFab(fn) {
   fab.onclick = fn;
 }
 let toastTimer;
-function toast(msg) {
+function toast(msg, act) {
   const t = $('#toast');
   t.textContent = msg;
+  if (act) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = act.label;
+    b.onclick = () => { clearTimeout(toastTimer); t.classList.remove('on', 'act'); act.fn(); };
+    t.append(b);
+  }
+  t.classList.toggle('act', !!act);
   t.classList.add('on');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('on'), 1800);
+  toastTimer = setTimeout(() => t.classList.remove('on', 'act'), act ? 7000 : 1800);
 }
 
 function render() {
@@ -331,9 +339,9 @@ function renderClient(id) {
     <p class="group"><span>Historial</span><em>${trips.length}</em></p>
     ${trips.length ? trips.map((t) => tripCard(t, { showDate: true, showClient: false })).join('') : '<div class="card muted">Aún no hay viajes con este cliente.</div>'}`;
   $('[data-new]', view).onclick = () => tripForm(null, { clientId: id });
-  view.querySelectorAll('[data-book]').forEach((b) => (b.onclick = () => tripForm(null, fromService(c, c.services.find((x) => x.id === b.dataset.book)))));
+  view.querySelectorAll('[data-book]').forEach((b) => (b.onclick = () => { const sv = c.services.find((x) => x.id === b.dataset.book); quickTrip(fromService(c, sv), sv.name || autoName(sv)); }));
   const rep = $('[data-repeat]', view);
-  if (last) rep.onclick = () => tripForm(null, { clientId: id, from: last.from, to: last.to, fromPt: last.fromPt, toPt: last.toPt, price: last.price, time: last.time, km: last.km, min: last.min, path: last.path });
+  if (last) rep.onclick = () => quickTrip({ clientId: id, from: last.from, to: last.to, fromPt: last.fromPt, toPt: last.toPt, price: last.price, time: last.time, km: last.km, min: last.min, path: last.path }, 'Repetir viaje');
   const e2 = $('[data-editc2]', view);
   if (e2) e2.onclick = () => clientForm(c);
   bindTrips();
@@ -478,6 +486,8 @@ const PROFILE_STEPS = ['Tú', 'Tu auto', 'Tu tarifa', 'Cómo cobras'];
 const CAR_EXTRAS = ['Aire acondicionado', 'Cajuela amplia', 'Acepta mascotas', 'Silla para bebé', 'Factura'];
 const PAY_OPTS = ['Efectivo', 'Transferencia', 'Tarjeta'];
 let obStep = 0;
+// Al inicio solo se pide lo esencial (tú y tu tarifa). Auto y forma de cobro se completan en Mi perfil.
+const ONB = [1, 3];
 const chipsOf = (list, sel, key) => `<div class="chips wrap">${list.map((x) => `<button type="button" aria-pressed="${sel.includes(x)}" data-toggle="${key}" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`;
 const pin = (k, label, val, attrs = '') => `<label class="field">${label}<input data-k="${k}" value="${esc(val)}" ${attrs}></label>`;
 
@@ -563,18 +573,18 @@ function renderOnboarding() {
         <li><span class="ic">${icon('nav')}</span><div><b>Precio justo en segundos</b><span>Punto A y B, distancia, tiempo y tu tarifa.</span></div></li>
         <li><span class="ic">${icon('wallet')}</span><div><b>Sabes quién te debe</b><span>Cobros pendientes y recordatorio amable.</span></div></li>
       </ul></div>
-      <button class="cta primary" data-go="1">Empezar · 2 minutos</button>
+      <button class="cta primary" data-go="1">Empezar · 1 minuto</button>
       <button class="skip" data-backup>Ya tengo una copia de mis datos</button></section>`;
-  } else if (n <= 4) {
-    view.innerHTML = `<section class="ob"><div class="progress">${PROFILE_STEPS.map((_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>
-      <span class="steplabel">Paso ${n} de 4 · ${PROFILE_STEPS[n - 1]}</span>
-      <div class="pstep">${stepHtml(n, D)}</div>
-      <div class="nav"><button type="button" data-go="${n - 1}">Atrás</button><button type="button" class="primary" data-go="${n + 1}">${n === 4 ? 'Terminar' : 'Siguiente'}</button></div></section>`;
+  } else if (n <= ONB.length) {
+    view.innerHTML = `<section class="ob"><div class="progress">${ONB.map((_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>
+      <span class="steplabel">Paso ${n} de ${ONB.length} · ${PROFILE_STEPS[ONB[n - 1] - 1]}</span>
+      <div class="pstep">${stepHtml(ONB[n - 1], D)}</div>
+      <div class="nav"><button type="button" data-go="${n - 1}">Atrás</button><button type="button" class="primary" data-go="${n + 1}">${n === ONB.length ? 'Terminar' : 'Siguiente'}</button></div></section>`;
     wireStep($('.pstep', view), D, renderOnboarding);
   } else {
     view.innerHTML = `<section class="ob"><div class="done"><span class="mark">${icon('check')}</span>
       <h2>¡Listo${D.driver ? ', ' + esc(D.driver) : ''}!</h2>
-      <p class="muted">Tu perfil y tu tarifa quedaron guardados. Ahora agrega a tus clientes.</p></div>
+      <p class="muted">Tu perfil y tu tarifa quedaron guardados. Tu auto y cómo cobras los completas luego en Mi perfil.</p></div>
       <button class="cta primary" data-finish="client">＋ Agregar mi primer cliente</button>
       ${'contacts' in navigator ? '<button class="cta" data-finish="contacts">Importar de mis contactos</button>' : ''}
       <button class="skip" data-finish="">Ir a mi agenda</button></section>`;
@@ -582,7 +592,7 @@ function renderOnboarding() {
   view.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => {
     const to = +b.dataset.go;
     if (n === 1 && to === 2 && !D.driver.trim()) { toast('Escribe tu nombre para firmar los mensajes'); $('[data-k=driver]', view).focus(); return; }
-    if (to === 5) { data.settings = { ...D, onboarded: false }; save(); }
+    if (to === ONB.length + 1) { data.settings = { ...D, onboarded: false }; save(); }
     obStep = to;
     render();
   }));
@@ -664,14 +674,19 @@ function wireCommon(form, onDelete) {
 }
 
 function clientForm(c = null, { onSaved } = {}) {
+  const chain = !c && !onSaved;
+  const openMore = !!(c && ((c.services || []).length || c.notes));
   openSheet(`<h2>${c ? 'Editar cliente' : 'Nuevo cliente'}</h2>
+    ${!c && 'contacts' in navigator ? '<button type="button" class="add wide" data-pick>Elegir de mis contactos</button>' : ''}
     ${field('Nombre', `<input name="name" required value="${esc(c?.name)}" placeholder="Ej. Sra. Laura">`, true)}
     ${field('Teléfono (WhatsApp)', `<input name="phone" type="tel" inputmode="tel" value="${esc(c?.phone)}" placeholder="10 dígitos">`, true)}
-    <div class="sec wide"><b>Servicios frecuentes</b><small>precio con tu tarifa</small></div>
-    <div class="wide svcs" id="svcs"></div>
-    <button type="button" class="add wide" data-addsvc>＋ Agregar servicio frecuente</button>
-    ${field('Notas', `<textarea name="notes" rows="2" placeholder="Ej. Viaja con su perrito, paga por transferencia">${esc(c?.notes)}</textarea>`, true)}
-    ${buttons(!!c)}`, (form) => {
+    <details class="opts" ${openMore ? 'open' : ''}><summary>Servicios frecuentes y notas <small>opcional · se aprenden solos con los viajes</small></summary><div>
+      <div class="sec wide"><b>Servicios frecuentes</b><small>precio con tu tarifa</small></div>
+      <div class="wide svcs" id="svcs"></div>
+      <button type="button" class="add wide" data-addsvc>＋ Agregar servicio frecuente</button>
+      ${field('Notas', `<textarea name="notes" rows="2" placeholder="Ej. Viaja con su perrito, paga por transferencia">${esc(c?.notes)}</textarea>`, true)}
+    </div></details>
+    <div class="buttons">${c ? '<button type="button" class="left" data-del>Eliminar</button>' : ''}<button type="button" data-close>Cancelar</button>${chain ? '<button>Solo guardar</button><button type="button" class="primary" data-savego>Guardar y agendar viaje</button>' : '<button class="primary">Guardar</button>'}</div>`, (form) => {
     wireCommon(form, () => {
       data.clients = data.clients.filter((x) => x.id !== c.id);
       data.trips = data.trips.filter((t) => t.clientId !== c.id);
@@ -685,6 +700,14 @@ function clientForm(c = null, { onSaved } = {}) {
       location.hash = '#/clientes';
       refresh();
     };
+    $('[data-pick]', form)?.addEventListener('click', async () => {
+      try {
+        const [p] = await navigator.contacts.select(['name', 'tel'], { multiple: false });
+        if (!p) return;
+        if (p.name?.[0]) form.elements.name.value = p.name[0].trim();
+        if (p.tel?.[0]) form.elements.phone.value = p.tel[0].trim();
+      } catch { toast('No se pudieron leer los contactos'); }
+    });
     const svcs = structuredClone(c?.services || []);
     const box = $('#svcs', form);
     const drawSvcs = () => {
@@ -698,7 +721,7 @@ function clientForm(c = null, { onSaved } = {}) {
       drawSvcs();
       box.lastElementChild.querySelector(home ? '[data-pt=b]' : '[data-pt=a]').focus();
     };
-    form.onsubmit = () => {
+    const doSave = (thenTrip) => {
       const f = new FormData(form);
       const x = { ...(c || { id: uid(), createdAt: Date.now() }), updatedAt: Date.now() };
       for (const k of ['name', 'phone', 'notes']) x[k] = f.get(k).trim();
@@ -709,8 +732,12 @@ function clientForm(c = null, { onSaved } = {}) {
       if (onSaved) onSaved(x);
       else if (!c) location.hash = `#/cliente/${x.id}`;
       refresh();
-      toast('Guardado');
+      if (thenTrip) tripForm(null, { clientId: x.id });
+      else toast('Guardado');
     };
+    form.onsubmit = () => doSave(false);
+    const go = $('[data-savego]', form);
+    if (go) go.onclick = () => { if (form.reportValidity()) doSave(true); };
   });
 }
 
@@ -734,8 +761,20 @@ const svcCtx = (sv) => ({ airport: isAirport(sv.a?.label, sv.b?.label) });
 const svcPrice = (sv) => sv.price ?? (sv.km ? suggestPrice(sv.km, sv.min, svcCtx(sv)) : 0);
 const fromService = (c, sv) => ({ clientId: c.id, from: sv.a?.label || '', to: sv.b?.label || '', fromPt: sv.a, toPt: sv.b, km: sv.km || '', min: sv.min || '', path: sv.path, price: svcPrice(sv) });
 
-function placeInput(pt, which, placeholder) {
-  return `<div class="stop"><span class="dot ${which}"></span><input data-pt="${which}" value="${esc(pt?.label || '')}" placeholder="${placeholder}" autocomplete="off" enterkeyhint="search"></div>`;
+function placeInput(pt, which, placeholder, locate = false) {
+  return `<div class="stop ${locate ? 'has-loc' : ''}"><span class="dot ${which}"></span><input data-pt="${which}" value="${esc(pt?.label || '')}" placeholder="${placeholder}" autocomplete="off" enterkeyhint="search">${locate ? `<button type="button" class="loc" data-loc aria-label="Usar mi ubicación">${icon('pin')}</button>` : ''}</div>`;
+}
+// Origen habitual del cliente: el que más usa; si no hay viajes, el de su primer servicio.
+function usualFrom(id) {
+  const c = client(id);
+  if (!c) return null;
+  const n = new Map();
+  tripsOf(id).filter((x) => x.status !== 'cancelado' && x.fromPt?.label).sort(byWhen).forEach((x) => {
+    const e = n.get(x.fromPt.label) || { p: x.fromPt, n: 0 };
+    e.n++; e.p = x.fromPt; n.set(x.fromPt.label, e);
+  });
+  const best = [...n.values()].sort((a, b) => b.n - a.n)[0];
+  return best?.p || (c.services || []).find((sv) => sv.a)?.a || null;
 }
 // Sugerencias al escribir; al elegir una, guarda el punto con sus coordenadas.
 function wirePlace(input, clientId, onPick) {
@@ -764,7 +803,7 @@ function wirePlace(input, clientId, onPick) {
     const q = input.value.trim();
     if (!q) return close();
     const words = fold(q).split(/\s+/);
-    const local = knownPlaces(clientId).filter((p) => words.every((w) => fold(p.label + ' ' + (p.sub || '')).includes(w))).slice(0, 3);
+    const local = knownPlaces(typeof clientId === 'function' ? clientId() : clientId).filter((p) => words.every((w) => fold(p.label + ' ' + (p.sub || '')).includes(w))).slice(0, 3);
     show(local, q.length >= 3 ? 'Buscando en el mapa…' : '');
     if (q.length < 3) return;
     timer = setTimeout(async () => {
@@ -798,18 +837,19 @@ async function fillRoute(el, a, b) {
 function serviceCard(sv, onRemove, getClient) {
   const el = document.createElement('section');
   el.className = 'svc';
-  el.innerHTML = `<div class="svc-head"><input data-name value="${esc(sv.name)}" placeholder="Nombre · ej. Casa → Aeropuerto" aria-label="Nombre del servicio"><button type="button" data-rm>Quitar</button></div>
+  el.innerHTML = `<div class="svc-head"><b data-title>${esc(sv.name || 'Servicio nuevo')}</b><button type="button" data-rm>Quitar</button></div>
     <div class="route">${placeInput(sv.a, 'a', 'Punto A · ¿de dónde sale?')}${placeInput(sv.b, 'b', 'Punto B · ¿a dónde va?')}</div>
     <div data-route></div>
     <div class="price-row"><label><span>Tu precio $</span><input data-price type="number" inputmode="numeric" min="0" step="10" value="${sv.price ?? ''}" placeholder="${sv.km ? suggestPrice(sv.km, sv.min, svcCtx(sv)) : ''}"></label><small class="muted">vacío = sugerido</small></div>`;
-  const nameIn = $('[data-name]', el);
+  const titleEl = $('[data-title]', el);
+  let auto = sv.name && sv.name === autoName(sv) ? sv.name : '';
   const priceIn = $('[data-price]', el);
   const routeEl = $('[data-route]', el);
   const update = async () => {
     const r = await fillRoute(routeEl, sv.a, sv.b);
     Object.assign(sv, r ? { km: r.km, min: r.min, path: r.path } : { km: '', min: '', path: null });
     priceIn.placeholder = r ? suggestPrice(r.km, r.min, svcCtx(sv)) : '';
-    if (!nameIn.value.trim() && sv.a && sv.b) nameIn.value = sv.name = autoName(sv);
+    if (sv.a && sv.b && (!sv.name || sv.name === auto)) { sv.name = auto = autoName(sv); titleEl.textContent = sv.name; }
   };
   for (const which of ['a', 'b']) {
     wirePlace($(`[data-pt=${which}]`, el), getClient()?.id, (p, typing) => {
@@ -817,7 +857,6 @@ function serviceCard(sv, onRemove, getClient) {
       if (!typing || !p) update();
     });
   }
-  nameIn.oninput = () => { sv.name = nameIn.value.trim(); };
   priceIn.oninput = () => { sv.price = priceIn.value === '' ? null : +priceIn.value; };
   $('[data-rm]', el).onclick = onRemove;
   if (sv.a && sv.b) {
@@ -828,30 +867,100 @@ function serviceCard(sv, onRemove, getClient) {
   return el;
 }
 
+// Atajos de fecha y hora (Ahora · Hoy · Mañana).
+const whenHtml = '<div class="chips wide" data-when><button type="button" data-w="now">Ahora</button><button type="button" data-w="0">Hoy</button><button type="button" data-w="1">Mañana</button></div>';
+function wireWhen(form, onChange = () => {}) {
+  const d = form.elements.date, tm = form.elements.time;
+  const mark = () => form.querySelectorAll('[data-w]').forEach((b) => b.classList.toggle('on', (b.dataset.w === '0' && d.value === today()) || (b.dataset.w === '1' && d.value === addDays(today(), 1))));
+  form.querySelectorAll('[data-w]').forEach((b) => (b.onclick = () => {
+    if (b.dataset.w === 'now') { d.value = today(); tm.value = new Date().toTimeString().slice(0, 5); }
+    else d.value = addDays(today(), +b.dataset.w);
+    mark(); onChange();
+  }));
+  d.addEventListener('input', () => { mark(); onChange(); });
+  mark();
+}
+const lastUse = (id) => Math.max(0, ...tripsOf(id).map((t) => t.updatedAt || t.createdAt || 0));
+
+// Después de guardar un viaje: ofrece confirmarlo por WhatsApp o guardar la ruta repetida.
+function tripToast(x, isNew) {
+  const c = client(x.clientId);
+  const learn = x.status === 'hecho' ? learnOffer(x) : null;
+  if (learn) return toast('Guardado · ruta repetida', learn);
+  if (isNew && x.status === 'agendado' && c?.phone) return toast('Viaje agendado', { label: 'Confirmar por WhatsApp', fn: () => window.open(waLink(c, MSG.confirm(c, x)), '_blank', 'noopener') });
+  toast(isNew ? 'Viaje agendado' : 'Guardado');
+}
+// A la segunda vez que haces la misma ruta con un cliente, ofrece guardarla como servicio frecuente.
+function learnOffer(t) {
+  const c = client(t.clientId);
+  if (!c || !t.fromPt?.label || !t.toPt?.label || t.status !== 'hecho') return null;
+  c.services ||= [];
+  if (c.services.some((sv) => sv.a?.label === t.fromPt.label && sv.b?.label === t.toPt.label)) return null;
+  const n = tripsOf(c.id).filter((x) => x.status === 'hecho' && x.fromPt?.label === t.fromPt.label && x.toPt?.label === t.toPt.label).length;
+  if (n !== 2) return null;
+  return { label: 'Guardar ruta frecuente', fn: () => {
+    const sv = { id: uid(), a: t.fromPt, b: t.toPt, km: t.km || '', min: t.min || '', path: t.path || null, price: +t.price || null };
+    sv.name = autoName(sv);
+    c.services.push(sv);
+    c.updatedAt = Date.now();
+    refresh();
+    toast(`Ruta guardada en ${firstName(c)}`);
+  } };
+}
+
+// Agendar en un paso: ya sabemos cliente, ruta y precio; solo falta cuándo.
+function quickTrip(preset, title) {
+  const c = client(preset.clientId);
+  if (!c || !+preset.price) return tripForm(null, preset);
+  const way = preset.from || preset.to ? `${preset.from || '…'} → ${preset.to || '…'}` : '';
+  openSheet(`<h2>${esc(title)}</h2>
+    <p class="field wide" style="font-weight:400">${esc(c.name)}${way ? ' · ' + esc(way) : ''} · <b>${money(preset.price)}</b></p>
+    ${field('Fecha', `<input name="date" type="date" required value="${today()}">`)}
+    ${field('Hora', `<input name="time" type="time" value="${esc(preset.time)}">`)}
+    ${whenHtml}
+    <div class="buttons"><button type="button" data-close>Cancelar</button><button type="button" data-more>Más opciones</button><button class="primary">Agendar</button></div>`, (form) => {
+    $('[data-close]', form).onclick = () => sheet.close();
+    wireWhen(form);
+    const read = () => ({ ...preset, date: form.elements.date.value || today(), time: form.elements.time.value || '' });
+    $('[data-more]', form).onclick = () => { const p = read(); sheet.close(); tripForm(null, p); };
+    form.onsubmit = () => {
+      const x = { id: uid(), createdAt: Date.now(), updatedAt: Date.now(), status: 'agendado', pay: '', notes: '', wait: '', ...read() };
+      data.trips.push(x);
+      sheet.close();
+      refresh();
+      tripToast(x, true);
+    };
+  });
+}
+
 function tripForm(t = null, preset = {}) {
   const v = { date: today(), status: 'agendado', pay: '', ...preset, ...(t || {}) };
-  const opts = [...data.clients].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  if (!v.clientId && data.clients.length === 1) v.clientId = data.clients[0].id;
   openSheet(`<h2>${t ? 'Editar viaje' : 'Nuevo viaje'}</h2>
-    ${field('Cliente', `<select name="clientId" required>${opts.length ? '' : '<option value="" disabled selected>Agrega un cliente</option>'}${opts.map((c) => `<option value="${c.id}" ${c.id === v.clientId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}<option value="__new">＋ Cliente nuevo…</option></select>`, true)}
+    <div class="field wide">Cliente<div class="chips wrap" id="cchips"></div>${data.clients.length > 5 ? '<input data-cq type="search" placeholder="Buscar otro cliente" autocomplete="off" aria-label="Buscar cliente">' : ''}</div>
+    <input type="hidden" name="clientId" value="${esc(v.clientId)}">
     ${field('Fecha', `<input name="date" type="date" required value="${esc(v.date)}">`)}
     ${field('Hora', `<input name="time" type="time" value="${esc(v.time)}">`)}
+    ${whenHtml}
     <div class="chips wide" id="svcchips"></div>
-    <div class="route wide">${placeInput(v.fromPt || (v.from ? { label: v.from } : null), 'a', 'Punto A · origen')}${placeInput(v.toPt || (v.to ? { label: v.to } : null), 'b', 'Punto B · destino')}</div>
+    <div class="route wide">${placeInput(v.fromPt || (v.from ? { label: v.from } : null), 'a', 'Punto A · origen', true)}${placeInput(v.toPt || (v.to ? { label: v.to } : null), 'b', 'Punto B · destino')}</div>
+    <small class="field wide muted" id="pnote"></small>
     <div class="wide svc" id="troute" hidden></div>
-    ${field('Km', `<input name="km" type="number" inputmode="decimal" step="0.1" min="0" value="${esc(v.km)}">`)}
-    ${data.settings.extra?.wait?.on ? field('Espera (min)', `<input name="wait" type="number" inputmode="numeric" min="0" step="5" value="${esc(v.wait)}">`, true) : ''}
-    ${field('Precio', `<input name="price" type="number" inputmode="decimal" step="1" min="0" required value="${esc(v.price)}">`)}
+    ${field('Precio', `<input name="price" type="number" inputmode="decimal" step="1" min="0" required value="${esc(v.price)}">`, true)}
     <small class="field wide muted" id="hint"></small>
-    <span class="field wide">Estado</span>${seg('status', [['agendado', 'Agendado'], ['hecho', 'Hecho'], ['cancelado', 'Cancelado']], v.status)}
-    <div class="wide" id="paybox" style="grid-column:1/-1;display:grid;gap:6px"><span class="field">Pago</span>${seg('pay', PAYS, v.pay || '')}</div>
-    ${field('Notas', `<textarea name="notes" rows="2">${esc(v.notes)}</textarea>`, true)}
+    <details class="opts" ${t ? 'open' : ''}><summary>Más opciones <small>km, espera, estado, notas</small></summary><div>
+      ${field('Km', `<input name="km" type="number" inputmode="decimal" step="0.1" min="0" value="${esc(v.km)}">`)}
+      ${data.settings.extra?.wait?.on ? field('Espera (min)', `<input name="wait" type="number" inputmode="numeric" min="0" step="5" value="${esc(v.wait)}">`) : ''}
+      <span class="field wide">Estado</span>${seg('status', [['agendado', 'Agendado'], ['hecho', 'Hecho'], ['cancelado', 'Cancelado']], v.status)}
+      <div class="wide" id="paybox" style="grid-column:1/-1;display:grid;gap:6px"><span class="field">Pago</span>${seg('pay', PAYS, v.pay || '')}</div>
+      ${field('Notas', `<textarea name="notes" rows="2">${esc(v.notes)}</textarea>`, true)}
+    </div></details>
     ${buttons(!!t)}`, (form) => {
     wireCommon(form, () => { data.trips = data.trips.filter((x) => x.id !== t.id); });
     const els = form.elements;
-    const sel = els.clientId;
+    const idIn = els.clientId;
     const hint = $('#hint', form);
     const paybox = $('#paybox', form);
-    let prevClient = sel.value;
     let priceTyped = !!t;
     els.price.addEventListener('input', () => { priceTyped = true; });
     const fromIn = $('[data-pt=a]', form);
@@ -859,7 +968,7 @@ function tripForm(t = null, preset = {}) {
     const rt = { fromPt: v.fromPt || null, toPt: v.toPt || null, min: v.min || '', path: v.path || null };
     const routeEl = $('#troute', form);
     const suggest = () => {
-      const same = data.trips.filter((x) => x.clientId === sel.value && x.id !== t?.id && x.status !== 'cancelado' && x.from === fromIn.value.trim() && x.to === toIn.value.trim() && (x.from || x.to)).sort(byWhen).pop();
+      const same = data.trips.filter((x) => x.clientId === idIn.value && x.id !== t?.id && x.status !== 'cancelado' && x.from === fromIn.value.trim() && x.to === toIn.value.trim() && (x.from || x.to)).sort(byWhen).pop();
       const km = +els.km.value;
       const min = +rt.min || Math.round(km * 2);
       const ctx = { airport: isAirport(fromIn.value, toIn.value), night: isNight(els.time.value), wait: +(els.wait?.value || 0) };
@@ -869,53 +978,96 @@ function tripForm(t = null, preset = {}) {
       hint.textContent = tips.join(' · ');
       if (!priceTyped && (same || km)) els.price.value = same ? same.price : suggestPrice(km, min, ctx);
     };
+    const checkPlaces = () => {
+      const bad = (fromIn.value.trim() && !rt.fromPt) || (toIn.value.trim() && !rt.toPt);
+      $('#pnote', form).textContent = bad ? 'Toca una opción de la lista para calcular ruta y precio, o escribe el precio a mano.' : '';
+    };
+    [fromIn, toIn].forEach((i) => i.addEventListener('blur', () => setTimeout(checkPlaces, 300)));
     const recalc = async () => {
       routeEl.hidden = !(rt.fromPt && rt.toPt);
       if (routeEl.hidden) { rt.min = ''; rt.path = null; return; }
       const r = await fillRoute(routeEl, rt.fromPt, rt.toPt);
       if (r) { els.km.value = r.km; rt.min = r.min; rt.path = r.path; suggest(); }
     };
-    wirePlace(fromIn, sel.value, (p, typing) => { rt.fromPt = p; if (!typing || !p) { recalc(); suggest(); } });
-    wirePlace(toIn, sel.value, (p, typing) => { rt.toPt = p; if (!typing || !p) { recalc(); suggest(); } });
+    const cid = () => idIn.value;
+    wirePlace(fromIn, cid, (p, typing) => { rt.fromPt = p; if (!typing || !p) { recalc(); suggest(); checkPlaces(); } });
+    wirePlace(toIn, cid, (p, typing) => { rt.toPt = p; if (!typing || !p) { recalc(); suggest(); checkPlaces(); } });
     if (rt.fromPt && rt.toPt) {
       routeEl.hidden = false;
       if (rt.path) routeEl.innerHTML = `${mapSvg(rt.path)}<div class="how">${els.km.value} km · ${rt.min} min · <a href="${directionsLink(rt.fromPt, rt.toPt)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
       else recalc();
     }
+    // Origen: el habitual del cliente, mientras no lo cambies a mano.
+    let autoFrom = '';
+    const prefillFrom = () => {
+      if (t || (fromIn.value.trim() && fromIn.value !== autoFrom)) return;
+      const p = usualFrom(idIn.value);
+      if (!p) return;
+      fromIn.value = autoFrom = p.label;
+      rt.fromPt = p.lat != null ? { label: p.label, lat: p.lat, lon: p.lon } : null;
+      recalc(); suggest();
+    };
+    // Mi ubicación como punto A.
+    $('[data-loc]', form).onclick = () => {
+      if (!navigator.geolocation) return toast('Tu teléfono no comparte la ubicación');
+      toast('Buscando tu ubicación…');
+      navigator.geolocation.getCurrentPosition(async ({ coords: { latitude: lat, longitude: lon } }) => {
+        let p;
+        try { const r = await reverse(lat, lon); p = { label: r.label, lat, lon }; } catch { p = { label: 'Mi ubicación', lat, lon }; }
+        fromIn.value = p.label; autoFrom = ''; rt.fromPt = p;
+        recalc(); suggest(); checkPlaces();
+      }, () => toast('No se pudo obtener tu ubicación'), { enableHighAccuracy: true, timeout: 10000 });
+    };
     // Servicios frecuentes del cliente: un toque llena A, B y precio.
     const fillPlaces = () => {
-      const svs = client(sel.value)?.services || [];
+      const svs = client(idIn.value)?.services || [];
       const chips = $('#svcchips', form);
       chips.innerHTML = svs.map((sv) => `<button type="button" data-sv="${sv.id}">${esc(sv.name || autoName(sv))}</button>`).join('');
       chips.hidden = !svs.length;
       chips.querySelectorAll('[data-sv]').forEach((b) => (b.onclick = () => {
         const sv = svs.find((x) => x.id === b.dataset.sv);
-        const f = fromService(client(sel.value), sv);
-        fromIn.value = f.from; toIn.value = f.to;
+        const f = fromService(client(idIn.value), sv);
+        fromIn.value = f.from; toIn.value = f.to; autoFrom = '';
         Object.assign(rt, { fromPt: f.fromPt, toPt: f.toPt, min: f.min, path: f.path });
         els.km.value = f.km; els.price.value = f.price; priceTyped = true;
         chips.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
         routeEl.hidden = !(f.fromPt && f.toPt);
         if (f.path) routeEl.innerHTML = `${mapSvg(f.path)}<div class="how">${f.km} km · ${f.min} min · <a href="${directionsLink(f.fromPt, f.toPt)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
         hint.textContent = `Servicio frecuente: ${money(f.price)}`;
+        checkPlaces();
       }));
     };
-    const showPay = () => { paybox.hidden = form.querySelector('[name=status]:checked').value !== 'hecho'; };
-    sel.onchange = () => {
-      if (sel.value === '__new') {
-        sel.value = prevClient;
-        clientForm(null, { onSaved: (c) => tripForm(null, { ...readForm(), clientId: c.id }) });
-        return;
-      }
-      prevClient = sel.value;
-      fillPlaces();
-      suggest();
+    // Cliente: los más recientes a un toque; con muchos clientes, buscador.
+    const cchips = $('#cchips', form);
+    const cq = $('[data-cq]', form);
+    const drawClients = () => {
+      const q = fold(cq?.value || '').trim();
+      let list = q
+        ? data.clients.filter((c) => fold(c.name + ' ' + (c.phone || '')).includes(q)).slice(0, 8)
+        : [...data.clients].sort((a, b) => lastUse(b.id) - lastUse(a.id) || a.name.localeCompare(b.name, 'es')).slice(0, 5);
+      const cur = client(idIn.value);
+      if (cur && !q && !list.includes(cur)) list = [cur, ...list];
+      cchips.innerHTML = list.map((c) => `<button type="button" data-c="${c.id}" class="${c.id === idIn.value ? 'on' : ''}">${esc(c.name)}</button>`).join('') + '<button type="button" data-newc>＋ Nuevo</button>';
     };
+    const setClient = (id) => {
+      idIn.value = id;
+      if (cq) cq.value = '';
+      drawClients(); fillPlaces(); prefillFrom(); suggest();
+    };
+    cchips.onclick = (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.newc) clientForm(null, { onSaved: (c) => tripForm(null, { ...readForm(), clientId: c.id }) });
+      else setClient(b.dataset.c);
+    };
+    cq?.addEventListener('input', drawClients);
+    const showPay = () => { paybox.hidden = form.querySelector('[name=status]:checked').value !== 'hecho'; };
     form.querySelectorAll('[name=status]').forEach((r) => (r.onchange = showPay));
     els.km.addEventListener('input', () => { rt.min = ''; suggest(); });
     els.time.addEventListener('input', suggest);
     els.wait?.addEventListener('input', suggest);
-    fillPlaces(); suggest(); showPay();
+    wireWhen(form, suggest);
+    drawClients(); fillPlaces(); prefillFrom(); suggest(); showPay();
     function readForm() {
       const f = new FormData(form);
       return {
@@ -925,50 +1077,65 @@ function tripForm(t = null, preset = {}) {
         status: f.get('status'), pay: f.get('status') === 'hecho' ? f.get('pay') || '' : '', notes: f.get('notes').trim(),
       };
     }
-    form.onsubmit = () => {
+    form.onsubmit = (e) => {
       const x = { ...(t || { id: uid(), createdAt: Date.now() }), ...readForm(), updatedAt: Date.now() };
-      if (!client(x.clientId)) return;
+      if (!client(x.clientId)) { e.preventDefault(); toast('Elige un cliente'); return; }
       if (t) Object.assign(t, x);
       else data.trips.push(x);
       sheet.close();
       refresh();
-      toast(t ? 'Guardado' : 'Viaje agendado');
+      tripToast(x, !t);
     };
   });
-  // Sin clientes: el precio no se exige hasta tener a quién cobrarle.
-  if (!opts.length) { sheet.close(); clientForm(null, { onSaved: (c) => tripForm(null, { ...preset, clientId: c.id }) }); }
+  // Sin clientes: primero se crea uno y luego se agenda su viaje.
+  if (!data.clients.length) { sheet.close(); clientForm(null, { onSaved: (c) => tripForm(null, { ...preset, clientId: c.id }) }); }
 }
 
-// Terminar un viaje: ¿cómo te pagó?
+// ---------- Cobro en un toque ----------
+const PAY_LABEL = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta' };
+// Botones de forma de pago; la habitual del cliente va primero.
+function payGrid(c, { debt = false } = {}) {
+  const order = Object.keys(PAY_LABEL);
+  const hab = c?.lastPay && PAY_LABEL[c.lastPay] ? c.lastPay : '';
+  if (hab) { order.splice(order.indexOf(hab), 1); order.unshift(hab); }
+  return `<div class="paygrid">${order.map((k) => `<button type="button" data-pay="${k}" class="${k === hab ? 'hab' : ''}">${PAY_LABEL[k]}${k === hab ? '<small>habitual</small>' : ''}</button>`).join('')}${debt ? '<button type="button" data-pay="" class="debt">Me debe</button>' : ''}</div>`;
+}
+
+// Terminar un viaje: un toque en cómo te pagó y listo.
 function finishForm(t) {
   const c = client(t.clientId);
   openSheet(`<h2>Terminar viaje</h2>
     <p class="field wide" style="font-weight:400">${esc(c?.name)} · ${money(t.price)}</p>
-    <span class="field wide">¿Cómo te pagó?</span>${seg('pay', [['efectivo', 'Efectivo'], ['transferencia', 'Transferencia'], ['tarjeta', 'Tarjeta'], ['', 'Me debe']], 'efectivo')}
-    <div class="buttons"><button type="button" data-close>Cancelar</button><button class="primary">Listo</button></div>`, (form) => {
+    <span class="field wide">¿Cómo te pagó? <small>un toque y listo</small></span>${payGrid(c, { debt: true })}
+    <div class="buttons"><button type="button" data-close>Cancelar</button></div>`, (form) => {
     $('[data-close]', form).onclick = () => sheet.close();
-    form.onsubmit = () => {
-      Object.assign(t, { status: 'hecho', pay: new FormData(form).get('pay') || '', updatedAt: Date.now() });
+    form.querySelectorAll('[data-pay]').forEach((b) => (b.onclick = () => {
+      const pay = b.dataset.pay;
+      Object.assign(t, { status: 'hecho', pay, updatedAt: Date.now() });
+      if (pay && c) c.lastPay = pay;
       sheet.close();
       refresh();
-      toast(t.pay ? 'Viaje terminado' : 'Anotado en Cobros');
-    };
+      const offer = learnOffer(t);
+      toast(offer ? 'Viaje terminado · ruta repetida' : pay ? 'Viaje terminado' : 'Anotado en Cobros', offer);
+    }));
   });
 }
 function payForm(list) {
   const total = list.reduce((s, t) => s + +t.price, 0);
+  const c = client(list[0].clientId);
   openSheet(`<h2>Registrar pago</h2>
-    <p class="field wide" style="font-weight:400">${esc(client(list[0].clientId)?.name)} · ${list.length} viaje${list.length === 1 ? '' : 's'} · ${money(total)}</p>
-    ${seg('pay', PAYS.slice(1), 'efectivo')}
-    <div class="buttons"><button type="button" data-close>Cancelar</button><button class="primary">Cobrado</button></div>`, (form) => {
+    <p class="field wide" style="font-weight:400">${esc(c?.name)} · ${list.length} viaje${list.length === 1 ? '' : 's'} · ${money(total)}</p>
+    ${payGrid(c)}
+    <div class="buttons"><button type="button" data-close>Cancelar</button></div>`, (form) => {
     $('[data-close]', form).onclick = () => sheet.close();
-    form.onsubmit = () => {
-      const pay = new FormData(form).get('pay');
+    form.querySelectorAll('[data-pay]').forEach((b) => (b.onclick = () => {
+      const pay = b.dataset.pay;
       for (const t of list) Object.assign(t, { pay, paidAt: today(), updatedAt: Date.now() });
+      if (c) c.lastPay = pay;
       sheet.close();
       refresh();
       toast('Cobrado');
-    };
+    }));
   });
 }
 

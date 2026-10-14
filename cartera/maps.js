@@ -30,6 +30,17 @@ export function searchPlaces(q, near) {
   });
 }
 
+// Dirección a partir de coordenadas (para «Mi ubicación»).
+export function reverse(lat, lon) {
+  return cached(`v:${lat.toFixed(4)},${lon.toFixed(4)}`, async () => {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=jsonv2&addressdetails=1&accept-language=es`);
+    if (!res.ok) throw new Error('reverse');
+    const r = await res.json();
+    if (!r || r.error) throw new Error('reverse');
+    return { ...labelOf(r), lat, lon };
+  });
+}
+
 export function route(a, b) {
   const k = `r:${a.lon.toFixed(5)},${a.lat.toFixed(5)};${b.lon.toFixed(5)},${b.lat.toFixed(5)}`;
   return cached(k, async () => {

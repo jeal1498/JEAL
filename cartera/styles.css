@@ -295,3 +295,22 @@ body.onboarding .tabs, body.onboarding .top { display: none; }
 .kv2 dt { color: var(--text-2); }
 .kv2 dd { margin: 0; font-weight: 700; text-align: right; }
 .share { display: flex; justify-content: center; align-items: center; gap: 8px; border-radius: 12px; padding: 13px; font-weight: 700; background: var(--accent); color: var(--accent-ink); margin-bottom: 12px; }
+
+/* v1.3: menos pasos */
+.sheet small.field:empty { display: none; }
+.toast { max-width: 92vw; text-align: center; }
+.toast.act { pointer-events: auto; display: flex; gap: 12px; align-items: center; }
+.toast button { border: 0; background: none; color: inherit; text-decoration: underline; font-weight: 800; padding: 4px 6px; white-space: nowrap; }
+.opts { grid-column: 1 / -1; }
+.opts summary { cursor: pointer; padding: 6px 0; font-weight: 700; font-size: 14px; color: var(--text-2); }
+.opts summary small { color: var(--muted); font-weight: 400; }
+.opts > div { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 10px; }
+.opts .wide { grid-column: 1 / -1; }
+.stop.has-loc { grid-template-columns: 28px 1fr 40px; }
+.stop .loc { border: 0; background: none; color: var(--accent); padding: 8px; }
+.svc-head b { flex: 1; min-width: 0; font-size: 15px; padding: 4px 0; }
+.paygrid { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.paygrid button { display: grid; gap: 2px; padding: 16px 8px; font-size: 16px; font-weight: 700; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+.paygrid button small { font-size: 11px; font-weight: 500; opacity: .8; }
+.paygrid button.hab { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.paygrid button.debt { grid-column: 1 / -1; color: var(--over); }

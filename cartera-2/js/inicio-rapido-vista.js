@@ -37,7 +37,7 @@ export function createOnboardingView({ getData, getObStep, setObStep, getObDraft
     }
     view.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => {
       const to = +b.dataset.go;
-      if (n === 1 && to === 2 && !D.driver.trim()) { toast('Escribe tu nombre para firmar los mensajes'); $('[data-k=driver]', view).focus(); return; }
+      if (n === 1 && to === 2 && !D.driver.trim()) { toast('Escribe tu nombre para firmar los mensajes'); $('[data-k=driver]', view).focus(); return; }\n      if (n === 1 && to === 2 && String(D.phone || '').replace(/\\D/g, '').length !== 10) { toast('Ingresa un WhatsApp válido de 10 dígitos'); $('[data-k=phone]', view).focus(); return; }
       if (to === ONB.length + 1) { data.settings = { ...D, onboarded: false }; save(); }
       setObStep(to);
       render();

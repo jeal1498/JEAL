@@ -1,8 +1,8 @@
+import { fold } from './utilidades.js';
 // Listado, búsqueda y filtros de clientes.
 export function createClientsView({ getData, header, setTabs, setFab, view, icon, esc, clientForm, $, sleeping, debtOf, lastTrip, tripsOf, dayLabel, initials, money }) {
   let clientQuery = '';
   let clientFilter = '';
-  const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   function renderClients() {
     const data = getData();
     header('Clientes', { action: { href: '#/ajustes', icon: 'gear', label: 'Ajustes' } });

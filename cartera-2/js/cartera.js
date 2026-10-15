@@ -1,3 +1,4 @@
+import { createMessaging } from './mensajes.js';
 import { searchPlaces, reverse, route, directionsLink, mapSvg } from './mapas.js';
 import { numOr, EXTRAS_INFO, PRESETS, isAirport, isNight, calculateQuote } from './calculos.js';
 import { loadData, saveData } from './almacenamiento.js';
@@ -55,25 +56,11 @@ const shortRoute = (from, to) => `${(from || '…').split(',')[0]} → ${(to || 
 const weekSummary = (c) => `${daysLabel(c.week?.days || [])} · ${c.week?.items?.length || 0} viaje${c.week?.items?.length === 1 ? '' : 's'} al día`;
 
 // ---------- WhatsApp y llamadas ----------
-function phoneIntl(p) {
-  const d = String(p || '').replace(/\D/g, '');
-  return d.length === 10 ? (data.settings.lada || '52') + d : d;
-}
-const waLink = (c, text) => `https://wa.me/${phoneIntl(c.phone)}?text=${encodeURIComponent(text)}`;
-const payTo = () => { const s = data.settings; return (s.pays || []).includes('Transferencia') && s.clabe ? [s.bank, s.clabe].filter(Boolean).join(' ') : ''; };
-const sign = () => (data.settings.driver ? `\n— ${data.settings.driver}` : '');
-const MSG = {
-  confirm: (c, t) => `Hola ${firstName(c)}, te confirmo tu viaje ${dayLabel(t.date)}${t.time ? ' a las ' + hour12(t.time) : ''}${t.from || t.to ? `: ${t.from || '…'} → ${t.to || '…'}` : ''}. Costo ${money(t.price)}. ¡Gracias!${sign()}`,
-  arrived: (c, t) => `Hola ${firstName(c)}, ya estoy afuera${t.from ? ' en ' + t.from : ''}. 🚗`,
-  charge: (c, list) => `Hola ${firstName(c)}, te comparto lo pendiente:\n${list.map((t) => `• ${fdate(t.date, { day: 'numeric', month: 'short' })}${t.to ? ' · ' + (t.from ? t.from + ' → ' : '') + t.to : ''}: ${money(t.price)}`).join('\n')}\nTotal: ${money(list.reduce((s, t) => s + +t.price, 0))}.${payTo() ? `\nTransferencia: ${payTo()}` : ''}\n¡Gracias!${sign()}`,
-  week: (c, list) => {
-    const short = (l) => (l || '…').split(',')[0];
-    const days = [...new Set(list.map((t) => t.date))];
-    const lines = days.map((d) => `• ${cap(fdate(d, { weekday: 'short', day: 'numeric', month: 'short' }))}: ${list.filter((t) => t.date === d).sort(byWhen).map((t) => `${t.time ? hour12(t.time) + ' ' : ''}${short(t.from)} → ${short(t.to)}`).join(' · ')}`).join('\n');
-    return `Hola ${firstName(c)}, te confirmo tus viajes:\n${lines}\nSon ${list.length} viaje${list.length === 1 ? '' : 's'} (${money(list.reduce((s, t) => s + +t.price, 0))}). ¡Gracias!${sign()}`;
-  },
-  hello: (c) => `Hola ${firstName(c)}, ¿cómo estás? Te recuerdo que sigo a tus órdenes para tus viajes. Cuando lo necesites, escríbeme y lo agendamos.${sign()}`,
-};
+// Las plantillas y los enlaces viven en mensajes.js; la aplicación les pasa sus formatos y estado.
+const { phoneIntl, waLink, payTo, sign, MSG } = createMessaging({
+  getSettings: () => data.settings,
+  firstName, dayLabel, hour12, money, fdate, cap, byWhen,
+});
 
 // ---------- Tarifa (como CHECA: meta por km y por hora; se usa la que deje más) ----------
 function quote(km, min, ctx = {}, s = data.settings) { return calculateQuote(km, min, ctx, s, EXTRA_DEF); }

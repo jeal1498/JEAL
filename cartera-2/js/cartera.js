@@ -1,3 +1,4 @@
+import { PAYS, seg, PAY_LABEL, payGrid } from './vistas-pago.js';
 import { PROFILE_STEPS, CAR_EXTRAS, PAY_OPTS, ONB, stepHtml } from './perfil-vistas.js';
 import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute } from './utilidades.js';
 import { encodePage, qrSvg, qrBlob } from './qr.js';
@@ -635,8 +636,6 @@ function clientForm(c = null, { onSaved } = {}) {
   });
 }
 
-const PAYS = [['', 'Me debe'], ['efectivo', 'Efectivo'], ['transferencia', 'Transferencia'], ['tarjeta', 'Tarjeta']];
-const seg = (name, opts, val) => `<div class="seg" role="radiogroup">${opts.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}" ${v === val ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
 
 // ---------- Punto A y punto B ----------
 // Lugares ya usados (servicios y viajes) aparecen primero, sin internet.
@@ -986,15 +985,6 @@ function tripForm(t = null, preset = {}) {
 }
 
 // ---------- Cobro en un toque ----------
-const PAY_LABEL = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta' };
-// Botones de forma de pago; la habitual del cliente va primero.
-function payGrid(c, { debt = false } = {}) {
-  const order = Object.keys(PAY_LABEL);
-  const hab = c?.lastPay && PAY_LABEL[c.lastPay] ? c.lastPay : '';
-  if (hab) { order.splice(order.indexOf(hab), 1); order.unshift(hab); }
-  return `<div class="paygrid">${order.map((k) => `<button type="button" data-pay="${k}" class="${k === hab ? 'hab' : ''}">${PAY_LABEL[k]}${k === hab ? '<small>habitual</small>' : ''}</button>`).join('')}${debt ? '<button type="button" data-pay="" class="debt">Me debe</button>' : ''}</div>`;
-}
-
 // Terminar un viaje: un toque en cómo te pagó y listo.
 function finishForm(t) {
   const c = client(t.clientId);

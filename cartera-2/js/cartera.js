@@ -1,3 +1,4 @@
+import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute } from './utilidades.js';
 import { encodePage, qrSvg, qrBlob } from './qr.js';
 import { icon } from './iconos.js';
 import { createMessaging } from './mensajes.js';
@@ -24,37 +25,15 @@ let data = loadData(KEY, DEFAULTS, EXTRA_DEF);
 function save() { saveData(KEY, data, () => toast('No se pudo guardar')); }
 navigator.storage?.persist?.();
 
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const $ = (s, el = document) => el.querySelector(s);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const money = (n) => '$' + Math.round(+n || 0).toLocaleString('es-MX');
-const today = () => new Date().toLocaleDateString('en-CA');
-const addDays = (d, n) => { const x = new Date(d + 'T00:00'); x.setDate(x.getDate() + n); return x.toLocaleDateString('en-CA'); };
-const daysBetween = (a, b) => Math.round((new Date(b + 'T00:00') - new Date(a + 'T00:00')) / 864e5);
-const fdate = (d, o = { weekday: 'short', day: 'numeric', month: 'short' }) => new Date(d + 'T00:00').toLocaleDateString('es-MX', o);
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-function dayLabel(d) {
-  const n = daysBetween(today(), d);
-  return n === 0 ? 'hoy' : n === 1 ? 'mañana' : n === -1 ? 'ayer' : fdate(d, { weekday: 'long', day: 'numeric', month: 'short' });
-}
-const hour12 = (t) => {
-  if (!t) return '';
-  const [h, m] = t.split(':').map(Number);
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
-};
-const initials = (name) => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-const firstName = (c) => (c?.name || '').trim().split(/\s+/)[0];
 
 const client = (id) => data.clients.find((c) => c.id === id);
 const tripsOf = (id) => data.trips.filter((t) => t.clientId === id);
 const owed = (t) => t.status === 'hecho' && !t.pay;
 const debtOf = (id) => tripsOf(id).filter(owed).reduce((s, t) => s + +t.price, 0);
 const lastTrip = (id) => tripsOf(id).filter((t) => t.status === 'hecho').sort((a, b) => b.date.localeCompare(a.date))[0];
-const byWhen = (a, b) => a.date.localeCompare(b.date) || (a.time || '99').localeCompare(b.time || '99');
 const DAYS = [[1, 'L'], [2, 'M'], [3, 'M'], [4, 'J'], [5, 'V'], [6, 'S'], [0, 'D']];
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
-const mondayOf = (d) => addDays(d, -((new Date(d + 'T00:00').getDay() + 6) % 7));
-const shortRoute = (from, to) => `${(from || '…').split(',')[0]} → ${(to || '…').split(',')[0]}`;
 const weekSummary = (c) => `${daysLabel(c.week?.days || [])} · ${c.week?.items?.length || 0} viaje${c.week?.items?.length === 1 ? '' : 's'} al día`;
 
 // ---------- WhatsApp y llamadas ----------

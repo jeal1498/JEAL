@@ -1,3 +1,4 @@
+import { createClientsView } from './clientes-vista.js';
 import { createChargesView } from './cobros-vista.js';
 import { createAgendaView } from './agenda-vista.js';
 import { createTripCard } from './viaje-vistas.js';
@@ -134,49 +135,15 @@ const renderAgenda = createAgendaView({
 });
 
 // ---------- Clientes ----------
-let clientQuery = '';
-let clientFilter = '';
-const fold = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-function renderClients() {
-  header('Clientes', { action: { href: '#/ajustes', icon: 'gear', label: 'Ajustes' } });
-  setTabs('clientes');
-  setFab(() => clientForm());
-  if (!data.clients.length) {
-    view.innerHTML = `<div class="empty">${icon('users')}<h2>Sin clientes</h2><p>Agrega a las personas que te piden viajes por fuera.</p><button class="primary" data-newclient>＋ Nuevo cliente</button></div>`;
-    $('[data-newclient]', view).onclick = () => clientForm();
-    return;
-  }
-  view.innerHTML = `<input class="search" type="search" placeholder="Buscar por nombre, teléfono o lugar" value="${esc(clientQuery)}" aria-label="Buscar cliente">
-    <div class="chips">${[['', 'Todos'], ['debe', 'Me deben'], ['dormidos', 'Sin viajar +30 días']].map(([k, l]) => `<button class="${k === clientFilter ? 'on' : ''}" data-cf="${k}">${l}</button>`).join('')}</div>
-    <ul class="list" id="clist"></ul>`;
-  const search = $('.search', view);
-  search.oninput = () => { clientQuery = search.value; drawClientList(); };
-  view.querySelectorAll('[data-cf]').forEach((b) => (b.onclick = () => { clientFilter = b.dataset.cf; renderClients(); }));
-  drawClientList();
-}
+const renderClients = createClientsView({
+  getData: () => data, header, setTabs, setFab, view, icon, esc, clientForm, $, sleeping,
+  debtOf, lastTrip, tripsOf, dayLabel, initials, money,
+});
+
 function sleeping(c) {
   const last = lastTrip(c.id);
   return daysBetween(last ? last.date : new Date(c.createdAt).toLocaleDateString('en-CA'), today()) > 30;
 }
-function drawClientList() {
-  const q = fold(clientQuery).split(/\s+/).filter(Boolean);
-  const list = data.clients
-    .filter((c) => q.every((w) => fold([c.name, c.phone, c.places, c.notes, ...(c.services || []).map((sv) => `${sv.name} ${sv.a?.label} ${sv.b?.label}`)].join(' ')).includes(w)))
-    .filter((c) => (clientFilter === 'debe' ? debtOf(c.id) > 0 : clientFilter === 'dormidos' ? sleeping(c) : true))
-    .map((c) => ({ c, last: lastTrip(c.id), n: tripsOf(c.id).filter((t) => t.status === 'hecho').length, debt: debtOf(c.id) }))
-    .sort((a, b) => (b.last?.date || '').localeCompare(a.last?.date || '') || a.c.name.localeCompare(b.c.name, 'es'));
-  $('#clist').innerHTML = list.length ? list.map(({ c, last, n, debt }) => `<li data-client="${c.id}" tabindex="0">
-      <span class="avatar">${esc(initials(c.name))}</span>
-      <span class="body"><b>${esc(c.name)}</b><small>${n ? `${n} viaje${n === 1 ? '' : 's'} · último ${last ? dayLabel(last.date) : ''}` : esc(c.phone || 'Sin viajes aún')}</small></span>
-      ${debt ? `<span class="badge">Debe ${money(debt)}</span>` : ''}</li>`).join('')
-    : '<li class="muted">Nadie coincide.</li>';
-  view.querySelectorAll('[data-client]').forEach((li) => {
-    const go = () => (location.hash = `#/cliente/${li.dataset.client}`);
-    li.onclick = go;
-    li.onkeydown = (e) => { if (e.key === 'Enter') go(); };
-  });
-}
-
 function renderClient(id) {
   const c = client(id);
   header(c.name, { back: '#/clientes' });

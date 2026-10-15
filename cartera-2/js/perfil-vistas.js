@@ -5,7 +5,6 @@ import { EXTRAS_INFO, PRESETS } from './calculos.js';
 export const PROFILE_STEPS = ['Tú', 'Tu auto', 'Tu tarifa', 'Cómo cobras'];
 export const CAR_EXTRAS = ['Aire acondicionado', 'Cajuela amplia', 'Acepta mascotas', 'Silla para bebé', 'Factura'];
 export const PAY_OPTS = ['Efectivo', 'Transferencia', 'Tarjeta'];
-let obStep = 0;
 // Al inicio solo se pide lo esencial (tú y tu tarifa). Auto y forma de cobro se completan en Mi perfil.
 export const ONB = [1, 3];
 const chipsOf = (list, sel, key) => `<div class="chips wrap">${list.map((x) => `<button type="button" aria-pressed="${sel.includes(x)}" data-toggle="${key}" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`;

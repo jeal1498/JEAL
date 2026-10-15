@@ -1,5 +1,5 @@
 import { searchPlaces, reverse, route, directionsLink, mapSvg } from './mapas.js';
-import { EXTRAS_INFO, PRESETS, isAirport, isNight, calculateQuote } from './calculos.js';
+import { numOr, EXTRAS_INFO, PRESETS, isAirport, isNight, calculateQuote } from './calculos.js';
 import { loadData, saveData } from './almacenamiento.js';
 
 

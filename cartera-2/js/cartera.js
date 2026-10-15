@@ -1,3 +1,4 @@
+import { createServiceHelpers } from './servicios.js';
 import { createOnboardingView } from './inicio-rapido-vista.js';
 import { createStepHandlers } from './inicio-rapido-campos.js';
 import { createShell } from './interfaz.js';
@@ -59,6 +60,7 @@ const { phoneIntl, waLink, payTo, sign, MSG } = createMessaging({
 // ---------- Tarifa (como CHECA: meta por km y por hora; se usa la que deje más) ----------
 function quote(km, min, ctx = {}, s = data.settings) { return calculateQuote(km, min, ctx, s, EXTRA_DEF); }
 const suggestPrice = (km, min, ctx) => quote(km, min, ctx).total;
+const { autoName, svcCtx, svcPrice, fromService } = createServiceHelpers({ suggestPrice, isAirport });
 const priceMath = (km, min, ctx) => quote(km, min, ctx).lines.filter((l) => l[2]).map(([l, v]) => `${l}: ${money(v)}`).join(' · ');
 const calcTable = (q) => `<dl class="calc">${q.lines.map(([l, v, used]) => `<dt class="${used ? '' : 'off'}">${esc(l)}</dt><dd class="${used ? '' : 'off'}">${money(v)}</dd>`).join('')}</dl>`;
 
@@ -314,10 +316,7 @@ function knownPlaces(clientId) {
   return [...out.values()];
 }
 const nearPoint = () => knownPlaces()[0] || null;
-const autoName = (sv) => [sv.a?.label, sv.b?.label].map((l) => (l || '…').split(',')[0]).join(' → ');
-const svcCtx = (sv) => ({ airport: isAirport(sv.a?.label, sv.b?.label) });
-const svcPrice = (sv) => sv.price ?? (sv.km ? suggestPrice(sv.km, sv.min, svcCtx(sv)) : 0);
-const fromService = (c, sv) => ({ clientId: c.id, from: sv.a?.label || '', to: sv.b?.label || '', fromPt: sv.a, toPt: sv.b, km: sv.km || '', min: sv.min || '', path: sv.path, price: svcPrice(sv) });
+
 
 function placeInput(pt, which, placeholder, locate = false) {
   return `<div class="stop ${locate ? 'has-loc' : ''}"><span class="dot ${which}"></span><input data-pt="${which}" value="${esc(pt?.label || '')}" placeholder="${placeholder}" autocomplete="off" enterkeyhint="search">${locate ? `<button type="button" class="loc" data-loc aria-label="Usar mi ubicación">${icon('pin')}</button>` : ''}</div>`;

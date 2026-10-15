@@ -17,7 +17,7 @@ import { createSummaryView } from './resumen.js';
 import { PAYS, seg, PAY_LABEL, payGrid } from './vistas-pago.js';
 import { PROFILE_STEPS, CAR_EXTRAS, PAY_OPTS, ONB, stepHtml } from './perfil-vistas.js';
 import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute, fold } from './utilidades.js';
-import { encodePage, qrSvg, qrBlob } from './qr.js';
+import { encodePage, qrSvg, qrBlob, buildPagePayload } from './qr.js';
 import { icon } from './iconos.js';
 import { createMessaging } from './mensajes.js';
 import { searchPlaces, reverse, route, directionsLink, mapSvg } from './mapas.js';
@@ -597,17 +597,6 @@ function weekForm(c, { start } = {}) {
 // ---------- Cobrar a tu ritmo ----------
 // Marcas qué viajes te pagó (o escribes cuánto te dio y se marcan los más antiguos).
 // ---------- Mi página de conductor (QR) ----------
-function pagePayload(s) {
-  const o = s.share;
-  const p = { n: s.driver.trim(), c: (s.city || '').trim(), w: phoneIntl(s.phone) };
-  if (o.auto && s.car) p.a = [s.car, s.year, s.color, s.seats, s.extras];
-  const routes = o.routes.filter((r) => r.label.trim() && +r.price > 0);
-  if (o.routesOn && routes.length) p.r = routes.map((r) => [r.label.trim(), Math.round(+r.price)]);
-  p.p = s.pays;
-  if (o.clabe && s.pays.includes('Transferencia') && s.clabe && s.holder.trim()) p.b = [s.bank, s.holder.trim(), s.clabe.replace(/\s/g, '')];
-  if (o.hours.trim()) p.h = o.hours.trim();
-  return p;
-}
 function shareSheet() {
   const s = data.settings;
   if (!s.driver.trim()) { toast('Escribe tu nombre en tu perfil'); return; }
@@ -639,7 +628,7 @@ function shareSheet() {
     const update = () => {
       clearTimeout(timer);
       timer = setTimeout(async () => {
-        const payload = pagePayload(s);
+        const payload = buildPagePayload(s, phoneIntl);
         const url = pageUrl(await encodePage(payload));
         state.url = url;
         $('[data-open]', form).href = url;

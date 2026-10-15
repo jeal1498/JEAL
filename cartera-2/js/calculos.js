@@ -7,12 +7,12 @@ export const EXTRAS_INFO = [
   ['night', 'Tarifa nocturna', '%', 'De 10 pm a 6 am'],
   ['wait', 'Tiempo de espera', '$/min', 'Lo agregas en el viaje si te hacen esperar'],
 ];
-export const PRESETS = { 'Económica': [9, 150], 'Estándar': [12, 180], 'Ejecutiva': [16, 250] };
+export const PRESETS = { 'Económica': [10, 200], 'Estándar': [12, 240], 'Ejecutiva': [15, 300] };
 export const isAirport = (...labels) => labels.some((l) => /aeropuerto|airport/i.test(l || ''));
 export const isNight = (time) => !!time && (+time.slice(0, 2) >= 22 || +time.slice(0, 2) < 6);
 export function calculateQuote(km, min, { airport = false, night = false, wait = 0 } = {}, s, EXTRA_DEF) {
   const X = s.extra || EXTRA_DEF, lines = [];
-  const byKm = km * numOr(s.perKm, 12), byHour = (min / 60) * numOr(s.perHour, 180);
+  const byKm = km * numOr(s.perKm, 12), byHour = (min / 60) * numOr(s.perHour, numOr(s.perKm, 12) * 20);
   let p = Math.max(byKm, byHour);
   lines.push([`Por km · ${km} km × $${s.perKm}`, byKm, byKm >= byHour], [`Por hora · ${min} min a $${s.perHour}/h`, byHour, byHour > byKm]);
   if (X.base.on) { p += +X.base.v; lines.push(['Banderazo', +X.base.v, true]); }

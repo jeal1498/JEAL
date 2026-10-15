@@ -41,7 +41,45 @@ function ceil(n){return Math.ceil((n-1e-8)/CONFIG.redondeo)*CONFIG.redondeo;}
 function inputs(){return {origin:$('origin').value.trim(),stops:[...document.querySelectorAll('.stop-input')].map(x=>x.value.trim()).filter(Boolean),destination:$('destination').value.trim()};}
 function mapUrl(){let r=inputs(),u=new URL('https://www.google.com/maps/dir/');u.searchParams.set('api','1');u.searchParams.set('origin',r.origin);u.searchParams.set('destination',r.destination);if(r.stops.length)u.searchParams.set('waypoints',r.stops.join('|'));u.searchParams.set('travelmode','driving');return u.href;}
 function updatePrice(){if(!route)return;let km=route.km*CONFIG.precioPorKm,h=route.minutes/60*CONFIG.precioPorHora,base=Math.max(km,h,CONFIG.tarifaMinima),night=isNight($('startTime').value),extra=night?base*CONFIG.recargoNocturnoPorcentaje/100:0,total=ceil(base+extra);$('price').textContent=money(total);$('total').textContent=money(total);$('distance').textContent=route.km.toFixed(1)+' km';$('duration').textContent=duration(route.minutes);$('kmPrice').textContent=money(km);$('hourPrice').textContent=money(h);$('minimum').textContent=money(CONFIG.tarifaMinima);$('nightRow').hidden=!night;$('nightPrice').textContent=money(extra);$('perHour').textContent=money(route.minutes?total/(route.minutes/60):0);$('perKm').textContent=money(route.km?total/route.km:0);$('reason').textContent=night?'Incluye recargo nocturno del '+CONFIG.recargoNocturnoPorcentaje+'%.':'Estimación según distancia, tiempo y tarifa mínima.';$('google').href=mapUrl();}
-async function photon(q){const variants=[q+', Cancún, Quintana Roo, México',q+', Quintana Roo, México',q];let last=null;for(const term of [...new Set(variants)]){try{const u='https://photon.komoot.io/api/?q='+encodeURIComponent(term)+'&limit=5&lat=21.1619&lon=-86.8515&lang=es';const r=await fetch(u,{signal:AbortSignal.timeout(9000)});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();if(d.features&&d.features.length)return d.features;}catch(e){last=e;}}if(last)throw last;return [];}
+const SEARCH_CACHE=new Map();let nominatimNext=0;
+async function photon(q){
+  const key=q.trim().toLocaleLowerCase('es-MX');
+  if(SEARCH_CACHE.has(key))return SEARCH_CACHE.get(key);
+  let last=null,features=[];
+  const terms=[q.trim(),q.trim()+', Cancún, Quintana Roo, México'];
+  for(const term of terms){
+    try{
+      const wait=Math.max(0,1100-(Date.now()-nominatimNext));
+      if(wait)await new Promise(resolve=>setTimeout(resolve,wait));
+      nominatimNext=Date.now();
+      const params=new URLSearchParams({q:term,format:'jsonv2',addressdetails:'1',limit:'5','accept-language':'es',countrycodes:'mx',viewbox:'-87.4519,21.7619,-86.2519,20.5619'});
+      const r=await fetch('https://nominatim.openstreetmap.org/search?'+params.toString(),{signal:AbortSignal.timeout(10000),headers:{'Accept-Language':'es-MX,es;q=0.9'}});
+      if(!r.ok)throw Error('Nominatim HTTP '+r.status);
+      const data=await r.json();
+      if(data.length){
+        features=data.map(item=>{
+          const a=item.address||{};
+          const props={name:item.name||item.display_name?.split(',')[0],street:a.road,housenumber:a.house_number,district:a.suburb||a.neighbourhood||a.quarter,city:a.city||a.town||a.village||a.county,state:a.state,country:a.country,type:item.type};
+          return {type:'Feature',properties:props,geometry:{type:'Point',coordinates:[+item.lon,+item.lat]}};
+        });
+        break;
+      }
+    }catch(e){last=e;}
+  }
+  if(!features.length){
+    try{
+      const u='https://photon.komoot.io/api/?q='+encodeURIComponent(q+', Cancún, Quintana Roo, México')+'&limit=5&lat=21.1619&lon=-86.8515&lang=es';
+      const r=await fetch(u,{signal:AbortSignal.timeout(9000)});
+      if(!r.ok)throw Error('Photon HTTP '+r.status);
+      const d=await r.json();
+      features=d.features||[];
+    }catch(e){last=e;}
+  }
+  if(features.length){SEARCH_CACHE.set(key,features);return features;}
+  if(last)throw last;
+  SEARCH_CACHE.set(key,[]);
+  return [];
+}
 function label(f){let p=f.properties||{},parts=[p.name,p.street,p.housenumber,p.district,p.city||p.town||p.village,p.state].filter(Boolean);return [...new Set(parts)].join(', ')||'Lugar encontrado';}
 function setup(input){let wrap=input.parentElement,menu=document.createElement('div');menu.className='suggestions';menu.hidden=true;wrap.append(menu);let timer,seq=0;function close(){menu.hidden=true;menu.innerHTML='';}
 input.addEventListener('input',()=>{clearTimeout(timer);let q=input.value.trim(),my=++seq;delete input.dataset.lat;delete input.dataset.lon;if(q.length<3){close();return;}menu.hidden=false;menu.innerHTML='<button type="button">Buscando sugerencias…</button>';timer=setTimeout(async()=>{try{let found=await photon(q);if(my!==seq)return;menu.innerHTML='';if(!found.length){menu.innerHTML='<button type="button">Sin sugerencias. Puedes escribir la dirección completa.</button>';return;}found.forEach(f=>{let b=document.createElement('button');b.type='button';b.innerHTML='';let title=document.createElement('span');title.textContent=label(f);let sub=document.createElement('small');sub.textContent=[f.properties?.type,f.properties?.country].filter(Boolean).join(' · ');b.append(title,sub);b.addEventListener('click',()=>{input.value=label(f);input.dataset.lat=f.geometry.coordinates[1];input.dataset.lon=f.geometry.coordinates[0];close();});menu.append(b);});}catch(e){if(my===seq)menu.innerHTML='<button type="button">No se pudo conectar al buscador. Puedes escribir el lugar completo.</button>'; }},350);});

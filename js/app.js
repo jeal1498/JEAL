@@ -24,6 +24,19 @@ async function load() {
     await db.remove('spending', x.id);
     bills.push(bill);
   }
+  // Proyectos que vienen de fábrica: se agregan una sola vez por dispositivo (si los borras, no vuelven).
+  const seeds = (await db.getSetting('seeds')) || [];
+  if (!seeds.includes('proj-cartera-2')) {
+    if (!projects.some((p) => p.id === 'proj-cartera-2')) {
+      const p = { id: 'proj-cartera-2', name: 'Cartera 2.0', emoji: '💼', status: 'activo', pinned: true,
+        description: 'Versión 2.0 de la cartera de clientes privados: app completa y perfil público del conductor.',
+        links: 'Cartera completa https://jeal1498.github.io/JEAL/cartera-2/cartera-completa.html\nPerfil del conductor https://jeal1498.github.io/JEAL/cartera-2/perfil-conductor.html\nCarpeta del repo https://github.com/jeal1498/JEAL/tree/main/cartera-2',
+        tags: 'app, conductor, clientes', notes: 'Archivos en cartera-2/. El perfil carga mapas (Leaflet) y necesita internet.', createdAt: Date.now(), updatedAt: Date.now() };
+      await db.put('projects', p);
+      projects.push(p);
+    }
+    await db.setSetting('seeds', [...seeds, 'proj-cartera-2']);
+  }
   Object.assign(state, { fuel, maintenance, expenses, reminders, income, bills, goals, budgets, notes, tasks, habits, journal, projects, vehicle: vehicle || {}, finance: finance || {} });
 }
 
@@ -1587,7 +1600,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '2.5.0';
+const VERSION = '2.6.0';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

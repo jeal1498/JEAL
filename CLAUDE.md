@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-14, v2.5.0)
+## SecondBrain (estado al 2026-10-15, v2.6.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -70,6 +70,10 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 - Para pasarle datos: JSON `{app:'secondbrain', <store>: [...]}` con ids estables y `createdAt`; decirle siempre **Respaldo → Agregar desde archivo**.
 
 - Proyectos (14-oct): `proyectos.json` con `proj-checa` (app Android en repo privado `jeal1498/Mi-Ruta`, web en `jeal1498/checa-web`) y `proj-reservas` = **Cartera de clientes**. El usuario de CHECA es **Eduardo (Lalo)** según el CLAUDE.md de Mi-Ruta; aquí se ha escrito «ella»: usar lenguaje neutro.
+
+## Cartera 2.0 (`cartera-2/`, v2.6.0)
+- Carpeta con los archivos de la versión 2.0: `cartera-completa.html` (app todo-en-uno, igual a `cartera/cartera-completa.html` al 15-oct) y `perfil-conductor.html` (perfil público de Eduardo; usa Leaflet de unpkg, requiere internet).
+- Publicados en https://jeal1498.github.io/JEAL/cartera-2/ . Aparecen en Proyectos como `proj-cartera-2` (se siembra una vez por dispositivo desde `load()` con la clave `seeds` en `settings`; es el patrón para proyectos de fábrica).
 
 ## Cartera de clientes (`cartera/`, tercer proyecto, v1.2)
 - PWA aparte para conductores: gestionar su cartera de **clientes privados** (los que les piden viajes por fuera de Uber/DiDi). No es venta de tarjetas impresas ni captar pasajeros de la app.

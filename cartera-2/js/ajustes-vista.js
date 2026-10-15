@@ -1,5 +1,5 @@
 // Vista de ajustes y acciones de copia de seguridad.
-export function createSettingsView({ getData, header, setTabs, setFab, view, icon, esc, initials, $, today, save, toast, pickBackup, importContacts, refresh }) {
+export function createSettingsView({ getData, header, setTabs, setFab, view, icon, esc, initials, $, today, save, toast, pickBackup, importContacts, resetOnboarding }) {
   function renderSettings() {
     const data = getData();
     header('Ajustes', { back: '#/' });
@@ -32,7 +32,7 @@ export function createSettingsView({ getData, header, setTabs, setFab, view, ico
     };
     $('[data-import]', view).onclick = pickBackup;
     $('[data-contacts]', view)?.addEventListener('click', importContacts);
-    $('[data-tour]', view).onclick = () => { data.settings.onboarded = false; obStep = 0; refresh(); };
+    $('[data-tour]', view).onclick = resetOnboarding;
   }
   return renderSettings;
 }

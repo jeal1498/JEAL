@@ -14,7 +14,7 @@ const pin = (k, label, val, attrs = '') => `<label class="field">${label}<input 
 export function stepHtml(n, D) {
   if (n === 1) return `<h2>¿Cómo te llamas?</h2><div class="pbody">
     ${pin('driver', 'Tu nombre o apodo', D.driver, 'placeholder="Ej. Lalo" autocomplete="given-name"')}
-    ${pin('phone', 'Tu WhatsApp', D.phone, 'type="tel" inputmode="tel" placeholder="10 dígitos"')}
+    ${pin('phone', 'Tu WhatsApp', D.phone, 'type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="10 dígitos"')}
     ${pin('city', 'Ciudad donde trabajas', D.city, 'placeholder="Ej. Cancún"')}
     <small class="muted">Tu nombre firma los mensajes. La ciudad ayuda a encontrar direcciones.</small></div>`;
   if (n === 2) return `<h2>Tu auto</h2><div class="pbody">
@@ -26,7 +26,19 @@ export function stepHtml(n, D) {
   if (n === 3) return `<h2>¿Cuánto cobras?</h2><div class="pbody">
     <p class="muted">Como en CHECA: tu meta por km y por hora. El precio usa la que deje más.</p>
     <div class="field">Empieza con una tarifa${chipsOf(Object.keys(PRESETS), Object.keys(PRESETS).filter((k) => PRESETS[k].join() === [D.perKm, D.perHour].join()), 'preset')}</div>
-    <div class="row2">${pin('perKm', 'Por km $', D.perKm, 'type="number" inputmode="decimal" step="0.5" min="0"')}${pin('perHour', 'Por hora $', D.perHour, 'type="number" inputmode="decimal" step="10" min="0"')}</div>
+    <div class="row2">${pin('perKm', 'Por km $', D.perKm, 'type="number" inputmode="decimal" step="0.5" min="0"')}${pin('perHour', 'Por hora </div>
+    <details class="more" ${Object.values(D.extra).some((x) => x.on) ? 'open' : ''}><summary>Más detalles <small>opcional</small></summary>
+      ${EXTRAS_INFO.map(([k, l, u, h]) => `<div class="opt"><label class="sw"><input type="checkbox" data-on="${k}" ${D.extra[k].on ? 'checked' : ''}><span>${l}<small>${h}</small></span></label>
+        ${D.extra[k].on ? `<label class="unit"><input data-x="${k}" type="number" inputmode="decimal" min="0" value="${D.extra[k].v}" aria-label="${l}"><span>${u}</span></label>` : ''}</div>`).join('')}
+    </details>
+    <div class="example" data-ex></div></div>`;
+  if (n === 4) return `<h2>¿Cómo te pagan?</h2><div class="pbody">
+    ${chipsOf(PAY_OPTS, D.pays, 'pays')}
+    ${D.pays.includes('Transferencia') ? `${pin('holder', 'Nombre completo del titular', D.holder, 'placeholder="Como aparece en tu cuenta" autocomplete="name"')}<div class="row2">${pin('bank', 'Banco', D.bank, 'placeholder="Ej. BBVA"')}${pin('clabe', 'CLABE o tarjeta', D.clabe, 'inputmode="numeric"')}</div>` : ''}
+    <div class="field">Así se ve tu recordatorio de cobro</div><div class="bubble" data-bubble></div></div>`;
+  return '';
+}
+, D.perHour, 'type="number" readonly aria-readonly="true" tabindex="-1"')}</div>
     <details class="more" ${Object.values(D.extra).some((x) => x.on) ? 'open' : ''}><summary>Más detalles <small>opcional</small></summary>
       ${EXTRAS_INFO.map(([k, l, u, h]) => `<div class="opt"><label class="sw"><input type="checkbox" data-on="${k}" ${D.extra[k].on ? 'checked' : ''}><span>${l}<small>${h}</small></span></label>
         ${D.extra[k].on ? `<label class="unit"><input data-x="${k}" type="number" inputmode="decimal" min="0" value="${D.extra[k].v}" aria-label="${l}"><span>${u}</span></label>` : ''}</div>`).join('')}

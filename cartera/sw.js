@@ -1,5 +1,5 @@
 // Service worker: la app funciona offline. Sube CACHE al publicar cambios.
-const CACHE = 'cartera-v4';
+const CACHE = 'cartera-v5';
 const ASSETS = [
   './',
   'index.html',

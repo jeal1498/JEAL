@@ -62,6 +62,11 @@ const owed = (t) => t.status === 'hecho' && !t.pay;
 const debtOf = (id) => tripsOf(id).filter(owed).reduce((s, t) => s + +t.price, 0);
 const lastTrip = (id) => tripsOf(id).filter((t) => t.status === 'hecho').sort((a, b) => b.date.localeCompare(a.date))[0];
 const byWhen = (a, b) => a.date.localeCompare(b.date) || (a.time || '99').localeCompare(b.time || '99');
+const DAYS = [[1, 'L'], [2, 'M'], [3, 'M'], [4, 'J'], [5, 'V'], [6, 'S'], [0, 'D']];
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const mondayOf = (d) => addDays(d, -((new Date(d + 'T00:00').getDay() + 6) % 7));
+const shortRoute = (from, to) => `${(from || '…').split(',')[0]} → ${(to || '…').split(',')[0]}`;
+const weekSummary = (c) => `${daysLabel(c.week?.days || [])} · ${c.week?.items?.length || 0} viaje${c.week?.items?.length === 1 ? '' : 's'} al día`;
 
 // ---------- WhatsApp y llamadas ----------
 function phoneIntl(p) {
@@ -75,6 +80,12 @@ const MSG = {
   confirm: (c, t) => `Hola ${firstName(c)}, te confirmo tu viaje ${dayLabel(t.date)}${t.time ? ' a las ' + hour12(t.time) : ''}${t.from || t.to ? `: ${t.from || '…'} → ${t.to || '…'}` : ''}. Costo ${money(t.price)}. ¡Gracias!${sign()}`,
   arrived: (c, t) => `Hola ${firstName(c)}, ya estoy afuera${t.from ? ' en ' + t.from : ''}. 🚗`,
   charge: (c, list) => `Hola ${firstName(c)}, te comparto lo pendiente:\n${list.map((t) => `• ${fdate(t.date, { day: 'numeric', month: 'short' })}${t.to ? ' · ' + (t.from ? t.from + ' → ' : '') + t.to : ''}: ${money(t.price)}`).join('\n')}\nTotal: ${money(list.reduce((s, t) => s + +t.price, 0))}.${payTo() ? `\nTransferencia: ${payTo()}` : ''}\n¡Gracias!${sign()}`,
+  week: (c, list) => {
+    const short = (l) => (l || '…').split(',')[0];
+    const days = [...new Set(list.map((t) => t.date))];
+    const lines = days.map((d) => `• ${cap(fdate(d, { weekday: 'short', day: 'numeric', month: 'short' }))}: ${list.filter((t) => t.date === d).sort(byWhen).map((t) => `${t.time ? hour12(t.time) + ' ' : ''}${short(t.from)} → ${short(t.to)}`).join(' · ')}`).join('\n');
+    return `Hola ${firstName(c)}, te confirmo tus viajes:\n${lines}\nSon ${list.length} viaje${list.length === 1 ? '' : 's'} (${money(list.reduce((s, t) => s + +t.price, 0))}). ¡Gracias!${sign()}`;
+  },
   hello: (c) => `Hola ${firstName(c)}, ¿cómo estás? Te recuerdo que sigo a tus órdenes para tus viajes. Cuando lo necesites, escríbeme y lo agendamos.${sign()}`,
 };
 
@@ -246,18 +257,23 @@ function renderAgenda() {
   const week = upcoming.filter((x) => x.date > addDays(t, 1) && x.date <= addDays(t, 7));
   const later = upcoming.filter((x) => x.date > addDays(t, 7));
   const section = (title, list, opts) => (list.length ? `<p class="group"><span>${title}</span><em>${money(list.reduce((s, x) => s + +x.price, 0))}</em></p>${list.map((x) => tripCard(x, opts)).join('')}` : '');
+  const nudges = weekNudges();
   view.innerHTML = `
     <section class="tiles">
       <div class="tile"><small>Hoy</small><b>${todays.length}</b><span>${todays.length ? money(todays.reduce((s, x) => s + +x.price, 0)) : 'sin viajes'}</span></div>
       <a class="tile ${debt ? 'warn' : ''}" href="#/cobros"><small>Por cobrar</small><b>${money(debt)}</b><span>${debt ? 'ver quién' : 'todo al día'}</span></a>
       <a class="tile" href="#/resumen"><small>Este mes</small><b>${money(monthDone.reduce((s, x) => s + +x.price, 0))}</b><span>${monthDone.length} viaje${monthDone.length === 1 ? '' : 's'}</span></a>
     </section>
+    ${nudges.map(({ c }) => `<section class="card nudge"><b>¿Agendar la próxima semana de ${esc(firstName(c))}?</b><small class="muted">${esc(weekSummary(c))}</small>
+      <div class="actions"><button class="primary" data-nweek="${c.id}">Agendar semana</button><button data-nsnooze="${c.id}">Ahora no</button></div></section>`).join('')}
     ${section('Sin cerrar', pending, { showDate: true })}
     ${todays.length ? section('Hoy', todays) : `<div class="card muted">Hoy no tienes viajes agendados.</div>`}
     ${section('Mañana', tomorrow)}
     ${section('Esta semana', week, { showDate: true })}
     ${section('Más adelante', later, { showDate: true })}`;
   bindTrips();
+  view.querySelectorAll('[data-nweek]').forEach((b) => (b.onclick = () => weekForm(client(b.dataset.nweek), { start: 'next' })));
+  view.querySelectorAll('[data-nsnooze]').forEach((b) => (b.onclick = () => { const n = nudges.find((x) => x.c.id === b.dataset.nsnooze); client(n.c.id).weekSnooze = n.next; refresh(); }));
 }
 
 // ---------- Clientes ----------
@@ -323,13 +339,14 @@ function renderClient(id) {
       <button data-new>${icon('plus')}Nuevo viaje</button>
       <button data-repeat ${last ? '' : 'disabled'}>${icon('repeat')}Repetir</button>
     </nav>
+    ${(c.services || []).length || done.length ? `<button class="cta primary" data-week style="margin-bottom:${c.week ? 4 : 12}px">${icon('repeat')} Agendar semana</button>${c.week ? `<p class="muted" style="margin:0 2px 12px;font-size:12.5px">Tu rutina: ${esc(weekSummary(c))}</p>` : ''}` : ''}
     <section class="tiles">
       <div class="tile"><small>Viajes</small><b>${done.length}</b><span>${last ? 'último ' + dayLabel(last.date) : '—'}</span></div>
       <div class="tile"><small>Total</small><b>${money(done.reduce((s, t) => s + +t.price, 0))}</b><span>${done.length ? 'prom. ' + money(done.reduce((s, t) => s + +t.price, 0) / done.length) : '—'}</span></div>
-      <div class="tile ${debt ? 'warn' : ''}"><small>Me debe</small><b>${money(debt)}</b><span>${debt ? `<a href="#/cobros">cobrar</a>` : 'al día'}</span></div>
+      <div class="tile ${debt ? 'warn' : ''}"><small>Me debe</small><b>${money(debt)}</b><span>${debt ? `<a href="#/cobros" data-collect>cobrar</a>` : 'al día'}</span></div>
     </section>
     ${(c.services || []).length ? `<p class="group"><span>Sus servicios</span><em>agendar en un toque</em></p>
-      <div class="qs">${c.services.map((sv) => `<div class="q"><b>${esc(sv.name || 'Servicio')}</b><small>${esc(sv.a?.label || '…')} → ${esc(sv.b?.label || '…')}</small>
+      <div class="qs">${c.services.map((sv) => `<div class="q"><b>${esc(sv.name || autoName(sv))}</b>${sv.name && sv.name !== autoName(sv) ? `<small>${esc(autoName(sv))}</small>` : ''}
         <span class="meta">${sv.km ? `${sv.km} km · ${sv.min} min · ` : ''}<span class="amt">${money(svcPrice(sv))}</span></span><button data-book="${sv.id}">Agendar</button></div>`).join('')}</div>` : ''}
     ${c.places || c.rate || c.notes ? `<section class="card"><dl class="kv">
       ${c.places ? `<dt>Lugares</dt><dd>${esc(c.places)}</dd>` : ''}
@@ -339,6 +356,8 @@ function renderClient(id) {
     <p class="group"><span>Historial</span><em>${trips.length}</em></p>
     ${trips.length ? trips.map((t) => tripCard(t, { showDate: true, showClient: false })).join('') : '<div class="card muted">Aún no hay viajes con este cliente.</div>'}`;
   $('[data-new]', view).onclick = () => tripForm(null, { clientId: id });
+  $('[data-week]', view)?.addEventListener('click', () => weekForm(c));
+  $('[data-collect]', view)?.addEventListener('click', (e) => { e.preventDefault(); collectForm(c); });
   view.querySelectorAll('[data-book]').forEach((b) => (b.onclick = () => { const sv = c.services.find((x) => x.id === b.dataset.book); quickTrip(fromService(c, sv), sv.name || autoName(sv)); }));
   const rep = $('[data-repeat]', view);
   if (last) rep.onclick = () => quickTrip({ clientId: id, from: last.from, to: last.to, fromPt: last.fromPt, toPt: last.toPt, price: last.price, time: last.time, km: last.km, min: last.min, path: last.path }, 'Repetir viaje');
@@ -365,9 +384,9 @@ function renderCharges() {
         <h3><a href="#/cliente/${c.id}">${esc(c.name)}</a> · ${money(list.reduce((s, t) => s + +t.price, 0))}</h3>
         <ul class="list" style="box-shadow:none;margin-bottom:10px">${list.map((t) => `<li data-trip="${t.id}"><span class="body"><b>${cap(fdate(t.date))}</b><small>${t.from || t.to ? `${esc(t.from || '…')} → ${esc(t.to || '…')}` : 'Sin ruta'}</small></span><span class="amt">${money(t.price)}</span><button data-paid="${t.id}">Cobrado</button></li>`).join('')}</ul>
         <div class="actions">${c.phone ? `<a class="wa" href="${waLink(c, MSG.charge(c, list))}" target="_blank" rel="noopener">${icon('wa')}Recordar por WhatsApp</a>` : ''}
-          <button data-payall="${c.id}">${icon('cash')}Me pagó todo</button></div></section>`).join('')}`;
+          <button data-payall="${c.id}">${icon('cash')}Cobrar</button></div></section>`).join('')}`;
   bindTrips();
-  view.querySelectorAll('[data-payall]').forEach((b) => (b.onclick = () => payForm(tripsOf(b.dataset.payall).filter(owed))));
+  view.querySelectorAll('[data-payall]').forEach((b) => (b.onclick = () => collectForm(client(b.dataset.payall))));
 }
 
 // ---------- Resumen ----------
@@ -1142,3 +1161,139 @@ function payForm(list) {
 // ---------- Inicio ----------
 render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+
+// ---------- Semana completa ----------
+function daysLabel(days) {
+  const set = WEEK_ORDER.filter((d) => days.includes(d));
+  if (set.length === 7) return 'todos los días';
+  if (set.join() === '1,2,3,4,5') return 'L–V';
+  if (set.join() === '1,2,3,4,5,6') return 'L–S';
+  return set.map((d) => DAYS.find((x) => x[0] === d)[1]).join(' ');
+}
+// Clientes con rutina semanal cuya próxima semana aún no está agendada (se avisa de jueves a domingo).
+function weekNudges() {
+  const dn = new Date().getDay();
+  if (!(dn === 0 || dn >= 4)) return [];
+  const next = addDays(mondayOf(today()), 7);
+  return data.clients
+    .filter((c) => c.week?.items?.length && c.weekSnooze !== next && !tripsOf(c.id).some((t) => t.status !== 'cancelado' && t.date >= next && t.date <= addDays(next, 6)))
+    .map((c) => ({ c, next }));
+}
+// Viajes que se pueden poner en la rutina: sus servicios o, si no tiene, las rutas que ya hizo.
+function weekCandidates(c) {
+  if ((c.services || []).length) return c.services.map((sv) => ({ key: sv.id, label: sv.name || autoName(sv), time: '', ...fromService(c, sv) }));
+  const seen = new Map();
+  tripsOf(c.id).filter((t) => t.status === 'hecho' && (t.from || t.to)).sort(byWhen).reverse().forEach((t) => {
+    const key = `${t.from}|${t.to}`;
+    if (!seen.has(key) && seen.size < 6) seen.set(key, { key, label: shortRoute(t.from, t.to), time: t.time || '', clientId: c.id, from: t.from, to: t.to, fromPt: t.fromPt, toPt: t.toPt, km: t.km, min: t.min, path: t.path, price: t.price });
+  });
+  return [...seen.values()];
+}
+function weekForm(c, { start } = {}) {
+  const cands = weekCandidates(c);
+  if (!cands.length) { toast('Primero agrega un servicio frecuente'); clientForm(c); return; }
+  const saved = c.week || {};
+  const dn = new Date().getDay();
+  const defStart = start || (dn === 0 || dn >= 4 ? 'next' : 'this');
+  const days = new Set(saved.days || [1, 2, 3, 4, 5, 6]);
+  const pick = (x) => (saved.items ? saved.items.find((i) => i.key === x.key) : { time: x.time });
+  openSheet(`<h2>Agendar semana · ${esc(firstName(c))}</h2>
+    <span class="field wide">Viajes de cada día <small>marca y pon la hora</small></span>
+    <div class="wide picks">${cands.map((x, i) => `<div class="pick"><label><input type="checkbox" data-i="${i}" ${pick(x) ? 'checked' : ''}><span><b>${esc(x.label)}</b><small>${money(x.price)}</small></span></label><input type="time" data-t="${i}" value="${esc(pick(x)?.time || '')}" aria-label="Hora"></div>`).join('')}</div>
+    <span class="field wide">Días</span>
+    <div class="chips wide" id="wdays">${DAYS.map(([d, l]) => `<button type="button" data-day="${d}" class="${days.has(d) ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <span class="field wide">Empezar</span>${seg('start', [['this', 'Esta semana'], ['next', 'La próxima']], defStart)}
+    <span class="field wide">Semanas</span>${seg('weeks', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']], '1')}
+    <p class="wide total" id="wsum"></p>
+    <div class="buttons"><button type="button" data-close>Cancelar</button><button class="primary">Agendar</button></div>`, (form) => {
+    $('[data-close]', form).onclick = () => sheet.close();
+    const checks = [...form.querySelectorAll('[data-i]')];
+    const times = [...form.querySelectorAll('[data-t]')];
+    const plan = () => {
+      const items = cands.map((x, i) => ({ x, on: checks[i].checked, time: times[i].value })).filter((i) => i.on);
+      const mon = mondayOf(today());
+      const base = form.querySelector('[name=start]:checked').value === 'next' ? addDays(mon, 7) : mon;
+      const weeks = +form.querySelector('[name=weeks]:checked').value;
+      const all = [];
+      for (let w = 0; w < weeks; w++) {
+        for (const d of WEEK_ORDER) {
+          if (!days.has(d)) continue;
+          const date = addDays(base, w * 7 + ((d + 6) % 7));
+          if (date < today()) continue;
+          for (const { x, time } of items) all.push({ clientId: c.id, date, time, from: x.from, to: x.to, fromPt: x.fromPt, toPt: x.toPt, km: x.km, min: x.min, path: x.path, price: x.price });
+        }
+      }
+      const exists = (o) => data.trips.some((t) => t.clientId === c.id && t.status !== 'cancelado' && t.date === o.date && (t.time || '') === (o.time || '') && t.from === o.from && t.to === o.to);
+      const fresh = all.filter((o) => !exists(o));
+      return { items, fresh, dup: all.length - fresh.length };
+    };
+    const sum = () => {
+      const { fresh, dup } = plan();
+      $('#wsum', form).textContent = fresh.length
+        ? `${fresh.length} viaje${fresh.length === 1 ? '' : 's'} · ${money(fresh.reduce((s, o) => s + +o.price, 0))}${dup ? ` · ${dup} ya estaban agendados` : ''}`
+        : dup ? 'Todo eso ya está agendado' : 'Marca al menos un viaje y un día';
+    };
+    form.querySelectorAll('#wdays button').forEach((b) => (b.onclick = () => {
+      const d = +b.dataset.day;
+      if (days.has(d)) days.delete(d); else days.add(d);
+      b.classList.toggle('on', days.has(d));
+      sum();
+    }));
+    form.addEventListener('input', sum);
+    form.addEventListener('change', sum);
+    sum();
+    form.onsubmit = (e) => {
+      const { items, fresh } = plan();
+      if (!fresh.length) { e.preventDefault(); toast('No hay viajes nuevos que agendar'); return; }
+      const made = fresh.sort(byWhen).map((o) => ({ id: uid(), createdAt: Date.now(), updatedAt: Date.now(), status: 'agendado', pay: '', notes: '', wait: '', ...o }));
+      data.trips.push(...made);
+      c.week = { days: WEEK_ORDER.filter((d) => days.has(d)), items: items.map((i) => ({ key: i.x.key, time: i.time })) };
+      sheet.close();
+      refresh();
+      toast(`${made.length} viaje${made.length === 1 ? '' : 's'} agendados`, c.phone ? { label: 'Avisar por WhatsApp', fn: () => window.open(waLink(c, MSG.week(c, made)), '_blank', 'noopener') } : undefined);
+    };
+  });
+}
+
+// ---------- Cobrar a tu ritmo ----------
+// Marcas qué viajes te pagó (o escribes cuánto te dio y se marcan los más antiguos).
+function collectForm(c) {
+  const list = tripsOf(c.id).filter(owed).sort(byWhen);
+  if (!list.length) { toast('No hay nada pendiente'); return; }
+  openSheet(`<h2>Cobrar a ${esc(firstName(c))}</h2>
+    <div class="wide picks">${list.map((t) => `<label class="pick row"><input type="checkbox" data-id="${t.id}" checked><span><b>${cap(fdate(t.date))}${t.time ? ' · ' + hour12(t.time) : ''}</b><small>${esc(shortRoute(t.from, t.to))}</small></span><em>${money(t.price)}</em></label>`).join('')}</div>
+    ${field('Me pagó (opcional)', '<input name="amt" type="number" inputmode="decimal" min="0" step="1" placeholder="Ej. 300 · marca los más antiguos">', true)}
+    <p class="wide total" id="ctot"></p>
+    <span class="field wide">¿Cómo te pagó? <small>un toque cobra lo marcado</small></span>${payGrid(c)}
+    <div class="buttons"><button type="button" data-close>Cancelar</button></div>`, (form) => {
+    $('[data-close]', form).onclick = () => sheet.close();
+    const checks = [...form.querySelectorAll('[data-id]')];
+    const price = (ch) => +list.find((t) => t.id === ch.dataset.id).price;
+    let left = 0;
+    const tot = () => {
+      const on = checks.filter((ch) => ch.checked);
+      const amt = +form.elements.amt.value;
+      $('#ctot', form).textContent = `Marcado: ${money(on.reduce((s, ch) => s + price(ch), 0))} · ${on.length} de ${list.length}${amt && left > 0 ? ` · sobran ${money(left)}` : ''}`;
+    };
+    form.elements.amt.addEventListener('input', () => {
+      left = +form.elements.amt.value;
+      if (!left) { checks.forEach((ch) => (ch.checked = true)); tot(); return; }
+      let stop = false;
+      checks.forEach((ch) => { if (!stop && price(ch) <= left) { ch.checked = true; left -= price(ch); } else { stop = true; ch.checked = false; } });
+      tot();
+    });
+    checks.forEach((ch) => ch.addEventListener('change', () => { left = 0; tot(); }));
+    tot();
+    form.querySelectorAll('[data-pay]').forEach((b) => (b.onclick = () => {
+      const picked = checks.filter((ch) => ch.checked).map((ch) => list.find((t) => t.id === ch.dataset.id));
+      if (!picked.length) { toast('Marca al menos un viaje'); return; }
+      const pay = b.dataset.pay;
+      for (const t of picked) Object.assign(t, { pay, paidAt: today(), updatedAt: Date.now() });
+      c.lastPay = pay;
+      sheet.close();
+      refresh();
+      const rest = debtOf(c.id);
+      toast(`Cobrado ${money(picked.reduce((s, t) => s + +t.price, 0))}${rest ? ` · le quedan ${money(rest)}` : ' · al día'}`);
+    }));
+  });
+}

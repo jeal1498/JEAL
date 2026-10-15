@@ -314,3 +314,19 @@ body.onboarding .tabs, body.onboarding .top { display: none; }
 .paygrid button small { font-size: 11px; font-weight: 500; opacity: .8; }
 .paygrid button.hab { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .paygrid button.debt { grid-column: 1 / -1; color: var(--over); }
+
+/* v1.4: semana completa y cobro a tu ritmo */
+.picks { display: grid; gap: 6px; }
+.pick { display: flex; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.pick label { display: flex; gap: 10px; align-items: center; flex: 1; min-width: 0; }
+.pick.row { cursor: pointer; }
+.pick span { flex: 1; min-width: 0; display: grid; }
+.pick b { font-size: 14px; }
+.pick small { color: var(--text-2); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick em { font-style: normal; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pick input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+.pick input[type=time] { width: 118px; flex: none; }
+.total { grid-column: 1 / -1; margin: 0; font-weight: 800; font-size: 16px; }
+.nudge { border-color: var(--accent); display: grid; gap: 2px; }
+.nudge .actions { margin-top: 10px; }
+.nudge .actions .primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }

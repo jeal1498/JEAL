@@ -39,7 +39,9 @@ const DEFAULTS = { clients: [], trips: [], settings: {
   pays: ['Efectivo'], bank: '', clabe: '', holder: '',
   share: { auto: true, routesOn: true, routes: [], clabe: true, hours: '' },
 } };
-let data = loadData(KEY, DEFAULTS, EXTRA_DEF);\n// La tarifa por hora siempre equivale a 20 veces la tarifa por kilómetro.\ndata.settings.perHour = numOr(data.settings.perKm, 12) * 20;
+let data = loadData(KEY, DEFAULTS, EXTRA_DEF);
+// La tarifa por hora siempre equivale a 20 veces la tarifa por kilómetro.
+data.settings.perHour = numOr(data.settings.perKm, 12) * 20;
 function save() { saveData(KEY, data, () => toast('No se pudo guardar')); }
 navigator.storage?.persist?.();
 

@@ -9,7 +9,8 @@ const DEFAULTS = { clients: [], trips: [], settings: {
   onboarded: false, driver: '', phone: '', city: '', lada: '52',
   car: '', year: '', color: '', plates: '', seats: 4, extras: [],
   perKm: 12, perHour: 180, extra: EXTRA_DEF,
-  pays: ['Efectivo'], bank: '', clabe: '',
+  pays: ['Efectivo'], bank: '', clabe: '', holder: '',
+  share: { auto: true, routesOn: true, routes: [], clabe: true, hours: '' },
 } };
 let data = load();
 function load() {
@@ -25,6 +26,7 @@ function load() {
         delete s.base; delete s.perMin; delete s.minimum;
       }
       s.extra = { ...structuredClone(EXTRA_DEF), ...s.extra };
+      s.share = { ...structuredClone(DEFAULTS.settings.share), ...s.share };
       return { ...DEFAULTS, ...d, settings: s };
     }
   } catch {}
@@ -126,6 +128,7 @@ const P = {
   chart: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   back: '<path d="M15 18l-6-6 6-6"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
   edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   wa: '<path d="M3 21l1.6-4.7A8.5 8.5 0 1 1 7.7 19.4z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8c-1-.5-1.8-1.3-2.3-2.3l.8-1-1-2z"/>',
   phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
@@ -534,7 +537,7 @@ function stepHtml(n, D) {
     <div class="example" data-ex></div></div>`;
   if (n === 4) return `<h2>¿Cómo te pagan?</h2><div class="pbody">
     ${chipsOf(PAY_OPTS, D.pays, 'pays')}
-    ${D.pays.includes('Transferencia') ? `<div class="row2">${pin('bank', 'Banco', D.bank, 'placeholder="Ej. BBVA"')}${pin('clabe', 'CLABE o tarjeta', D.clabe, 'inputmode="numeric"')}</div>` : ''}
+    ${D.pays.includes('Transferencia') ? `${pin('holder', 'Nombre completo del titular', D.holder, 'placeholder="Como aparece en tu cuenta" autocomplete="name"')}<div class="row2">${pin('bank', 'Banco', D.bank, 'placeholder="Ej. BBVA"')}${pin('clabe', 'CLABE o tarjeta', D.clabe, 'inputmode="numeric"')}</div>` : ''}
     <div class="field">Así se ve tu recordatorio de cobro</div><div class="bubble" data-bubble></div></div>`;
   return '';
 }
@@ -631,6 +634,8 @@ function renderOnboarding() {
 function renderProfile() {
   const s = data.settings;
   header('Mi perfil', { back: '#/' });
+  top.lastElementChild.outerHTML = `<button class="iconbtn" data-share aria-label="Compartir mi página">${icon('share')}</button>`;
+  $('[data-share]', top).onclick = shareSheet;
   setTabs('');
   setFab(null);
   const done = data.trips.filter((t) => t.status === 'hecho');
@@ -650,7 +655,7 @@ function renderProfile() {
       ${EXTRAS_INFO.filter(([k]) => X[k].on).map(([k, l, u]) => `<dt>${l}</dt><dd>${u === '%' ? '+' + X[k].v + '%' : u === '$/min' ? '$' + X[k].v + '/min' : money(X[k].v)}</dd>`).join('')}</dl></section>
     <section class="card psect"><h3>Cómo cobro <button data-edit="4">Editar</button></h3>
       <div class="tags">${s.pays.map((x) => `<i>${esc(x)}</i>`).join('') || '<span class="muted">Sin elegir</span>'}</div>
-      ${payTo() ? `<div class="copy"><span>${esc(s.bank)} <code>${esc(s.clabe)}</code></span><button data-copy="${esc(s.clabe)}">Copiar</button></div>` : ''}</section>
+      ${payTo() ? `<div class="copy"><span>${esc(s.bank)} <code>${esc(s.clabe)}</code>${s.holder ? `<br><small class="muted">A nombre de ${esc(s.holder)}</small>` : ''}</span><button data-copy="${esc(s.clabe)}">Copiar</button></div>` : ''}</section>
     <a class="share" href="https://wa.me/?text=${encodeURIComponent(card)}" target="_blank" rel="noopener">${icon('wa')} Compartir mi tarjeta por WhatsApp</a>`;
   view.querySelectorAll('[data-copy]').forEach((b) => (b.onclick = async () => {
     try { await navigator.clipboard.writeText(b.dataset.copy); toast('Copiado'); } catch { toast('No se pudo copiar'); }
@@ -1295,5 +1300,153 @@ function collectForm(c) {
       const rest = debtOf(c.id);
       toast(`Cobrado ${money(picked.reduce((s, t) => s + +t.price, 0))}${rest ? ` · le quedan ${money(rest)}` : ' · al día'}`);
     }));
+  });
+}
+
+// ---------- Mi página de conductor (QR) ----------
+const b64u = (bytes) => { let b = ''; for (const x of bytes) b += String.fromCharCode(x); return btoa(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+// Los datos viajan dentro del enlace (sin servidor); se comprimen cuando el navegador puede.
+async function encodePage(obj) {
+  const raw = new TextEncoder().encode(JSON.stringify(obj));
+  let best = 'j' + b64u(raw);
+  if ('CompressionStream' in window) {
+    try {
+      const z = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+      const c = 'z' + b64u(z);
+      if (c.length < best.length) best = c;
+    } catch {}
+  }
+  return best;
+}
+function pagePayload(s) {
+  const o = s.share;
+  const p = { n: s.driver.trim(), c: (s.city || '').trim(), w: phoneIntl(s.phone) };
+  if (o.auto && s.car) p.a = [s.car, s.year, s.color, s.seats, s.extras];
+  const routes = o.routes.filter((r) => r.label.trim() && +r.price > 0);
+  if (o.routesOn && routes.length) p.r = routes.map((r) => [r.label.trim(), Math.round(+r.price)]);
+  p.p = s.pays;
+  if (o.clabe && s.pays.includes('Transferencia') && s.clabe && s.holder.trim()) p.b = [s.bank, s.holder.trim(), s.clabe.replace(/\s/g, '')];
+  if (o.hours.trim()) p.h = o.hours.trim();
+  return p;
+}
+function qrSvg(qr) {
+  const n = qr.getModuleCount(), m = 4;
+  let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) d += `M${c + m} ${r + m}h1v1h-1z`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n + 2 * m} ${n + 2 * m}" shape-rendering="crispEdges" role="img" aria-label="Código QR de mi página"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+function qrBlob(qr, title) {
+  const n = qr.getModuleCount(), m = 4, W = 900, H = 1060;
+  const cell = Math.floor(780 / (n + 2 * m));
+  const size = cell * (n + 2 * m);
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#000';
+  const x0 = (W - size) / 2 + m * cell, y0 = 50 + m * cell;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) g.fillRect(x0 + c * cell, y0 + r * cell, cell, cell);
+  g.textAlign = 'center';
+  g.font = '700 54px system-ui, sans-serif';
+  g.fillText(title, W / 2, 50 + size + 90, W - 60);
+  g.font = '500 34px system-ui, sans-serif';
+  g.fillStyle = '#444';
+  g.fillText('Escanea para pedir tu viaje', W / 2, 50 + size + 140, W - 60);
+  return new Promise((res) => cv.toBlob(res, 'image/png'));
+}
+function shareSheet() {
+  const s = data.settings;
+  if (!s.driver.trim()) { toast('Escribe tu nombre en tu perfil'); return; }
+  const o = s.share;
+  const hasBank = s.pays.includes('Transferencia') && !!s.clabe;
+  const pageUrl = (code) => { const u = new URL('p.html', location.href); u.hash = code; return u.href; };
+  openSheet(`<h2>Mi página de conductor</h2>
+    <div class="wide qrbox"><div id="qr" class="qrimg"></div><small id="qrnote" class="muted"></small></div>
+    <div class="wide shbtns"><button type="button" data-copylink>Copiar enlace</button><button type="button" data-sharelink>Compartir</button><button type="button" data-dlqr>Descargar QR</button></div>
+    <a class="wide ghost" data-open target="_blank" rel="noopener">Ver cómo se ve mi página →</a>
+    <span class="field wide">Qué mostrar</span>
+    ${s.car ? `<label class="sw wide"><input type="checkbox" data-o="auto" ${o.auto ? 'checked' : ''}><span>Mi auto<small>Modelo, año, color y pasajeros. Sin placas.</small></span></label>` : ''}
+    <label class="sw wide"><input type="checkbox" data-o="routesOn" ${o.routesOn ? 'checked' : ''}><span>Precios de referencia<small>Tú escribes las rutas y el precio</small></span></label>
+    <div class="wide" id="routes"></div>
+    ${hasBank ? `<label class="sw wide"><input type="checkbox" data-o="clabe" ${o.clabe ? 'checked' : ''}><span>Datos para transferencia<small>${esc(s.bank || 'Banco')} · ${esc(s.clabe)}</small></span></label>
+      <label class="field wide" id="holderbox">Nombre completo del titular<input class="plain" name="holder" value="${esc(s.holder)}" placeholder="Como aparece en tu cuenta" autocomplete="name"></label>`
+      : '<p class="wide muted" style="margin:0;font-size:13px">Para mostrar tu CLABE, elige «Transferencia» y guárdala en <a href="#/perfil" data-editpay>Cómo cobro</a>.</p>'}
+    <label class="field wide">Horario <small>(opcional)</small><input class="plain" name="hours" value="${esc(o.hours)}" placeholder="Ej. Lun–Sáb, 6 am a 10 pm"></label>
+    <div class="buttons"><button class="primary">Listo</button></div>`, (form) => {
+    const state = { url: '', qr: null };
+    const routesBox = $('#routes', form);
+    const drawRoutes = () => {
+      if (o.routesOn && !o.routes.length) o.routes.push({ label: '', price: '' });
+      routesBox.hidden = !o.routesOn;
+      routesBox.innerHTML = o.routes.map((r, i) => `<div class="rrow"><input class="plain" data-rl="${i}" value="${esc(r.label)}" placeholder="Ej. Aeropuerto → Centro"><input class="plain" data-rp="${i}" type="number" inputmode="decimal" min="0" value="${esc(r.price)}" placeholder="$"><button type="button" data-rx="${i}" aria-label="Quitar">✕</button></div>`).join('')
+        + (o.routes.length < 8 ? '<button type="button" class="add" data-addroute>＋ Agregar ruta</button>' : '');
+    };
+    let timer;
+    const update = () => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const payload = pagePayload(s);
+        const url = pageUrl(await encodePage(payload));
+        state.url = url;
+        $('[data-open]', form).href = url;
+        const note = [];
+        try {
+          const qr = qrcode(0, 'M');
+          qr.addData(url);
+          qr.make();
+          state.qr = qr;
+          $('#qr', form).innerHTML = qrSvg(qr);
+          if (url.length > 900) note.push('El QR quedó muy denso; quita datos si cuesta escanearlo.');
+        } catch {
+          state.qr = null;
+          $('#qr', form).innerHTML = '';
+          note.push('Hay demasiados datos para un QR. Quita rutas o el horario.');
+        }
+        if (o.clabe && hasBank && !s.holder.trim()) note.push('Falta tu nombre completo: sin él no se muestra la CLABE.');
+        $('#qrnote', form).textContent = note.join(' ');
+      }, 200);
+    };
+    const persist = () => { save(); update(); };
+    form.addEventListener('change', (e) => {
+      const k = e.target.dataset.o;
+      if (!k) return;
+      o[k] = e.target.checked;
+      if (k === 'routesOn') { if (o.routesOn && !o.routes.length) o.routes.push({ label: '', price: '' }); drawRoutes(); }
+      persist();
+    });
+    form.addEventListener('input', (e) => {
+      const t = e.target;
+      if (t.dataset.rl != null) o.routes[+t.dataset.rl].label = t.value;
+      else if (t.dataset.rp != null) o.routes[+t.dataset.rp].price = t.value;
+      else if (t.name === 'holder') s.holder = t.value;
+      else if (t.name === 'hours') o.hours = t.value;
+      else return;
+      persist();
+    });
+    form.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.addroute != null) { o.routes.push({ label: '', price: '' }); drawRoutes(); routesBox.querySelector('.rrow:last-of-type input')?.focus(); }
+      else if (b.dataset.rx != null) { o.routes.splice(+b.dataset.rx, 1); drawRoutes(); persist(); }
+    });
+    $('[data-editpay]', form)?.addEventListener('click', (e) => { e.preventDefault(); sheet.close(); editProfile(4); });
+    $('[data-copylink]', form).onclick = async () => { try { await navigator.clipboard.writeText(state.url); toast('Enlace copiado'); } catch { toast('No se pudo copiar'); } };
+    $('[data-sharelink]', form).onclick = async () => {
+      if (!navigator.share) { try { await navigator.clipboard.writeText(state.url); toast('Enlace copiado'); } catch { toast('No se pudo compartir'); } return; }
+      try { await navigator.share({ title: `${s.driver} · Conductor privado`, text: 'Pide tu viaje conmigo', url: state.url }); } catch {}
+    };
+    $('[data-dlqr]', form).onclick = async () => {
+      if (!state.qr) { toast('No hay QR para descargar'); return; }
+      const blob = await qrBlob(state.qr, s.driver.trim());
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `QR-${s.driver.trim().split(/\s+/)[0] || 'conductor'}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    };
+    form.onsubmit = () => { save(); };
+    sheet.addEventListener('close', () => { save(); refresh(); }, { once: true });
+    drawRoutes();
+    update();
   });
 }

@@ -1,3 +1,4 @@
+import { createOnboardingView } from './inicio-rapido-vista.js';
 import { createStepHandlers } from './inicio-rapido-campos.js';
 import { createShell } from './interfaz.js';
 import { createProfileView } from './perfil-vista.js';
@@ -185,57 +186,12 @@ let obStep = 0;
 const { liveStep, wireStep } = createStepHandlers({ quote, money, calcTable, $, numOr, PRESETS });
 
 let obDraft = null;
-function renderOnboarding() {
-  top.innerHTML = '';
-  tabs.innerHTML = '';
-  setFab(null);
-  obDraft ||= structuredClone(data.settings);
-  const D = obDraft;
-  const n = obStep;
-  if (n === 0) {
-    view.innerHTML = `<section class="ob"><div class="welcome">
-      <span class="mark">${icon('users')}</span>
-      <h2>Tus clientes privados, en orden</h2>
-      <ul class="benefits">
-        <li><span class="ic">${icon('wa')}</span><div><b>Agenda y confirma por WhatsApp</b><span>Mensajes listos con fecha, ruta y precio.</span></div></li>
-        <li><span class="ic">${icon('nav')}</span><div><b>Precio justo en segundos</b><span>Punto A y B, distancia, tiempo y tu tarifa.</span></div></li>
-        <li><span class="ic">${icon('wallet')}</span><div><b>Sabes quién te debe</b><span>Cobros pendientes y recordatorio amable.</span></div></li>
-      </ul></div>
-      <button class="cta primary" data-go="1">Empezar · 1 minuto</button>
-      <button class="skip" data-backup>Ya tengo una copia de mis datos</button></section>`;
-  } else if (n <= ONB.length) {
-    view.innerHTML = `<section class="ob"><div class="progress">${ONB.map((_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>
-      <span class="steplabel">Paso ${n} de ${ONB.length} · ${PROFILE_STEPS[ONB[n - 1] - 1]}</span>
-      <div class="pstep">${stepHtml(ONB[n - 1], D)}</div>
-      <div class="nav"><button type="button" data-go="${n - 1}">Atrás</button><button type="button" class="primary" data-go="${n + 1}">${n === ONB.length ? 'Terminar' : 'Siguiente'}</button></div></section>`;
-    wireStep($('.pstep', view), D, renderOnboarding);
-  } else {
-    view.innerHTML = `<section class="ob"><div class="done"><span class="mark">${icon('check')}</span>
-      <h2>¡Listo${D.driver ? ', ' + esc(D.driver) : ''}!</h2>
-      <p class="muted">Tu perfil y tu tarifa quedaron guardados. Tu auto y cómo cobras los completas luego en Mi perfil.</p></div>
-      <button class="cta primary" data-finish="client">＋ Agregar mi primer cliente</button>
-      ${'contacts' in navigator ? '<button class="cta" data-finish="contacts">Importar de mis contactos</button>' : ''}
-      <button class="skip" data-finish="">Ir a mi agenda</button></section>`;
-  }
-  view.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => {
-    const to = +b.dataset.go;
-    if (n === 1 && to === 2 && !D.driver.trim()) { toast('Escribe tu nombre para firmar los mensajes'); $('[data-k=driver]', view).focus(); return; }
-    if (to === ONB.length + 1) { data.settings = { ...D, onboarded: false }; save(); }
-    obStep = to;
-    render();
-  }));
-  $('[data-backup]', view)?.addEventListener('click', pickBackup);
-  view.querySelectorAll('[data-finish]').forEach((b) => (b.onclick = () => {
-    data.settings.onboarded = true;
-    obDraft = null;
-    obStep = 0;
-    save();
-    if (b.dataset.finish === 'contacts') return importContacts();
-    location.hash = b.dataset.finish === 'client' ? '#/clientes' : '#/';
-    render();
-    if (b.dataset.finish === 'client') clientForm();
-  }));
-}
+const renderOnboarding = createOnboardingView({
+  getData: () => data, getObStep: () => obStep, setObStep: (value) => { obStep = value; },
+  getObDraft: () => obDraft, setObDraft: (value) => { obDraft = value; },
+  top, tabs, setFab, view, icon, ONB, PROFILE_STEPS, stepHtml, wireStep, $, esc, toast, save,
+  render, pickBackup, importContacts, clientForm,
+});
 
 const renderProfile = createProfileView({
   getData: () => data, header, top, icon, $, shareSheet, setTabs, setFab, today, view, esc,

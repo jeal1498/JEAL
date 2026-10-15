@@ -3,9 +3,6 @@ export function createClientsView({ getData, header, setTabs, setFab, view, icon
   let clientQuery = '';
   let clientFilter = '';
   const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  let clientQuery = '';
-  let clientFilter = '';
-  const fold = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   function renderClients() {
     const data = getData();
     header('Clientes', { action: { href: '#/ajustes', icon: 'gear', label: 'Ajustes' } });

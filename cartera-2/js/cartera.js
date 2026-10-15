@@ -129,11 +129,6 @@ function sleeping(c) {
   return daysBetween(last ? last.date : new Date(c.createdAt).toLocaleDateString('en-CA'), today()) > 30;
 }
 // ---------- Cobros ----------
-const renderCharges = createChargesView({
-  getData: () => data, view, header, setTabs, setFab, tripsOf, owed, byWhen, money, icon,
-  esc, waLink, MSG, cap, fdate, daysBetween, today, bindTrips, $, collectForm, client,
-});
-
 // ---------- Resumen ----------
 const renderSummary = createSummaryView({
   getData: () => data, view, header, setTabs, setFab, today, lastTrip, sleeping,
@@ -486,8 +481,14 @@ function tripForm(t = null, preset = {}) {
 
 // ---------- Cobro en un toque ----------
 // Terminar un viaje: un toque en cómo te pagó y listo.
-const { finishForm, payForm } = createPaymentHandlers({
+const { finishForm, payForm, collectForm } = createPaymentHandlers({
   client, openSheet, esc, money, payGrid, $, sheet, refresh, learnOffer, toast, today,
+  tripsOf, owed, byWhen, firstName, cap, fdate, hour12, shortRoute, field, debtOf,
+});
+
+const renderCharges = createChargesView({
+  getData: () => data, view, header, setTabs, setFab, tripsOf, owed, byWhen, money, icon,
+  esc, waLink, MSG, cap, fdate, daysBetween, today, bindTrips, $, collectForm, client,
 });
 
 const renderClient = createClientDetailView({
@@ -595,47 +596,6 @@ function weekForm(c, { start } = {}) {
 
 // ---------- Cobrar a tu ritmo ----------
 // Marcas qué viajes te pagó (o escribes cuánto te dio y se marcan los más antiguos).
-function collectForm(c) {
-  const list = tripsOf(c.id).filter(owed).sort(byWhen);
-  if (!list.length) { toast('No hay nada pendiente'); return; }
-  openSheet(`<h2>Cobrar a ${esc(firstName(c))}</h2>
-    <div class="wide picks">${list.map((t) => `<label class="pick row"><input type="checkbox" data-id="${t.id}" checked><span><b>${cap(fdate(t.date))}${t.time ? ' · ' + hour12(t.time) : ''}</b><small>${esc(shortRoute(t.from, t.to))}</small></span><em>${money(t.price)}</em></label>`).join('')}</div>
-    ${field('Me pagó (opcional)', '<input name="amt" type="number" inputmode="decimal" min="0" step="1" placeholder="Ej. 300 · marca los más antiguos">', true)}
-    <p class="wide total" id="ctot"></p>
-    <span class="field wide">¿Cómo te pagó? <small>un toque cobra lo marcado</small></span>${payGrid(c)}
-    <div class="buttons"><button type="button" data-close>Cancelar</button></div>`, (form) => {
-    $('[data-close]', form).onclick = () => sheet.close();
-    const checks = [...form.querySelectorAll('[data-id]')];
-    const price = (ch) => +list.find((t) => t.id === ch.dataset.id).price;
-    let left = 0;
-    const tot = () => {
-      const on = checks.filter((ch) => ch.checked);
-      const amt = +form.elements.amt.value;
-      $('#ctot', form).textContent = `Marcado: ${money(on.reduce((s, ch) => s + price(ch), 0))} · ${on.length} de ${list.length}${amt && left > 0 ? ` · sobran ${money(left)}` : ''}`;
-    };
-    form.elements.amt.addEventListener('input', () => {
-      left = +form.elements.amt.value;
-      if (!left) { checks.forEach((ch) => (ch.checked = true)); tot(); return; }
-      let stop = false;
-      checks.forEach((ch) => { if (!stop && price(ch) <= left) { ch.checked = true; left -= price(ch); } else { stop = true; ch.checked = false; } });
-      tot();
-    });
-    checks.forEach((ch) => ch.addEventListener('change', () => { left = 0; tot(); }));
-    tot();
-    form.querySelectorAll('[data-pay]').forEach((b) => (b.onclick = () => {
-      const picked = checks.filter((ch) => ch.checked).map((ch) => list.find((t) => t.id === ch.dataset.id));
-      if (!picked.length) { toast('Marca al menos un viaje'); return; }
-      const pay = b.dataset.pay;
-      for (const t of picked) Object.assign(t, { pay, paidAt: today(), updatedAt: Date.now() });
-      c.lastPay = pay;
-      sheet.close();
-      refresh();
-      const rest = debtOf(c.id);
-      toast(`Cobrado ${money(picked.reduce((s, t) => s + +t.price, 0))}${rest ? ` · le quedan ${money(rest)}` : ' · al día'}`);
-    }));
-  });
-}
-
 // ---------- Mi página de conductor (QR) ----------
 function pagePayload(s) {
   const o = s.share;

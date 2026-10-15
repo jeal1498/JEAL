@@ -8,7 +8,6 @@ export function createOnboardingView({ getData, getObStep, setObStep, getObDraft
     top.innerHTML = '';
     tabs.innerHTML = '';
     setFab(null);
-    obDraft ||= structuredClone(data.settings);
     const D = obDraft;
     const n = obStep;
     if (n === 0) {

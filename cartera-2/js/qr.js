@@ -39,3 +39,17 @@ export function qrBlob(qr, title) {
   g.fillText('Escanea para pedir tu viaje', W / 2, 50 + size + 140, W - 60);
   return new Promise((res) => cv.toBlob(res, 'image/png'));
 }
+
+
+// Serializa únicamente los datos que el conductor eligió compartir en su página pública.
+export function buildPagePayload(s, phoneIntl) {
+  const o = s.share;
+  const p = { n: s.driver.trim(), c: (s.city || '').trim(), w: phoneIntl(s.phone) };
+  if (o.auto && s.car) p.a = [s.car, s.year, s.color, s.seats, s.extras];
+  const routes = o.routes.filter((r) => r.label.trim() && +r.price > 0);
+  if (o.routesOn && routes.length) p.r = routes.map((r) => [r.label.trim(), Math.round(+r.price)]);
+  p.p = s.pays;
+  if (o.clabe && s.pays.includes('Transferencia') && s.clabe && s.holder.trim()) p.b = [s.bank, s.holder.trim(), s.clabe.replace(/\s/g, '')];
+  if (o.hours.trim()) p.h = o.hours.trim();
+  return p;
+}

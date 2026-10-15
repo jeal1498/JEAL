@@ -20,4 +20,5 @@ export const initials = (name) => name.trim().split(/\s+/).slice(0, 2).map((w) =
 export const firstName = (c) => (c?.name || '').trim().split(/\s+/)[0];
 export const byWhen = (a, b) => a.date.localeCompare(b.date) || (a.time || '99').localeCompare(b.time || '99');
 export const mondayOf = (d) => addDays(d, -((new Date(d + 'T00:00').getDay() + 6) % 7));
+export const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 export const shortRoute = (from, to) => `${(from || '…').split(',')[0]} → ${(to || '…').split(',')[0]}`;

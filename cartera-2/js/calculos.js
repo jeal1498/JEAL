@@ -1,5 +1,5 @@
 // Reglas de tarifa de Cartera. Funciones de cálculo sin acceso al DOM ni al almacenamiento.
-const numOr = (v, d) => (v === '' || v == null || isNaN(+v) ? d : +v);
+export const numOr = (v, d) => (v === '' || v == null || isNaN(+v) ? d : +v);
 export const EXTRAS_INFO = [
   ['base', 'Banderazo', '$', 'Se suma a cada viaje'],
   ['minimum', 'Viaje mínimo', '$', 'Ningún viaje cuesta menos'],

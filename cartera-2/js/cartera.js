@@ -11,7 +11,7 @@ import { createTripCard } from './viaje-vistas.js';
 import { createSummaryView } from './resumen.js';
 import { PAYS, seg, PAY_LABEL, payGrid } from './vistas-pago.js';
 import { PROFILE_STEPS, CAR_EXTRAS, PAY_OPTS, ONB, stepHtml } from './perfil-vistas.js';
-import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute } from './utilidades.js';
+import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute, fold } from './utilidades.js';
 import { encodePage, qrSvg, qrBlob } from './qr.js';
 import { icon } from './iconos.js';
 import { createMessaging } from './mensajes.js';

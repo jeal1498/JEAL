@@ -384,7 +384,7 @@ function pickBackup() {
       }
       if (d.settings) data.settings = { ...data.settings, ...d.settings, onboarded: true };
       save();
-      data = load();
+      data = loadData(KEY, DEFAULTS, EXTRA_DEF);
       refresh();
       toast('Copia cargada');
     } catch { toast('Ese archivo no es una copia de Cartera'); }

@@ -17,7 +17,7 @@ export function createStepHandlers({ quote, money, calcTable, $, numOr, PRESETS 
       if (el.dataset.x) D.extra[el.dataset.x].v = +el.value || 0;
       else if (el.dataset.k) {
         D[el.dataset.k] = el.type === 'number' ? numOr(el.value, 0) : el.value;
-        if (el.dataset.k === 'perKm' || el.dataset.k === 'perHour') root.querySelectorAll('[data-toggle=preset]').forEach((b) => b.setAttribute('aria-pressed', PRESETS[b.dataset.v].join() === [D.perKm, D.perHour].join()));
+        if (el.dataset.k === 'perKm') { D.perHour = D.perKm * 20; const hour = $('[data-k=perHour]', root); if (hour) hour.value = D.perHour; }\n        if (el.dataset.k === 'perKm') root.querySelectorAll('[data-toggle=preset]').forEach((b) => b.setAttribute('aria-pressed', PRESETS[b.dataset.v].join() === [D.perKm, D.perHour].join()));
         if (el.dataset.k === 'clabe' || el.dataset.k === 'bank' || el.dataset.k === 'driver') liveStep(root, D);
       }
       liveStep(root, D);

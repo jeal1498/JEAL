@@ -36,12 +36,5 @@ export function createPaymentHandlers({ client, openSheet, esc, money, payGrid, 
       }));
     });
   }
-  
-  // La vista se inicializa aquí, después de declarar los helpers de servicios que utiliza.
-  const renderClient = createClientDetailView({
-    client, header, top, icon, esc, $, clientForm, setTabs, tripsOf, byWhen, debtOf, setFab, tripForm,
-    view, initials, firstName, phoneIntl, waLink, MSG, weekSummary, money, dayLabel, autoName,
-    svcPrice, sleeping, tripCard, weekForm, collectForm, quickTrip, fromService, bindTrips,
-  });
   return { finishForm, payForm };
 }

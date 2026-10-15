@@ -1,79 +1,7 @@
-// Lugares y rutas. Por ahora con OpenStreetMap (gratis, sin clave):
-// Nominatim para buscar direcciones y OSRM para distancia y tiempo.
-// Cuando haya clave de Google Maps, se cambia aquí sin tocar el resto.
+import { searchPlaces, reverse, route, directionsLink, mapSvg } from './mapas.js';
+import { EXTRAS_INFO, PRESETS, isAirport, isNight, calculateQuote } from './calculos.js';
+import { loadData, saveData } from './almacenamiento.js';
 
-const cache = new Map();
-const cached = async (key, fn) => {
-  if (!cache.has(key)) cache.set(key, fn().catch((e) => { cache.delete(key); throw e; }));
-  return cache.get(key);
-};
-
-// Nombre corto y legible a partir del resultado de Nominatim.
-function labelOf(r) {
-  const a = r.address || {};
-  const name = r.name || [a.road, a.house_number].filter(Boolean).join(' ') || r.display_name.split(',')[0];
-  const area = a.suburb || a.neighbourhood || a.quarter || a.road || '';
-  const city = a.city || a.town || a.village || a.county || '';
-  return { label: [name, area && area !== name ? area : ''].filter(Boolean).join(', '), sub: [city, a.state].filter(Boolean).join(', ') };
-}
-
-function searchPlaces(q, near) {
-  const p = new URLSearchParams({ q, format: 'jsonv2', addressdetails: '1', limit: '5', 'accept-language': 'es', countrycodes: 'mx' });
-  if (near) {
-    const d = 0.6;
-    p.set('viewbox', [near.lon - d, near.lat + d, near.lon + d, near.lat - d].join(','));
-  }
-  return cached('s:' + p, async () => {
-    const res = await fetch('https://nominatim.openstreetmap.org/search?' + p);
-    if (!res.ok) throw new Error('search');
-    return (await res.json()).map((r) => ({ ...labelOf(r), lat: +r.lat, lon: +r.lon }));
-  });
-}
-
-// Dirección a partir de coordenadas (para «Mi ubicación»).
-function reverse(lat, lon) {
-  return cached(`v:${lat.toFixed(4)},${lon.toFixed(4)}`, async () => {
-    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=jsonv2&addressdetails=1&accept-language=es`);
-    if (!res.ok) throw new Error('reverse');
-    const r = await res.json();
-    if (!r || r.error) throw new Error('reverse');
-    return { ...labelOf(r), lat, lon };
-  });
-}
-
-function route(a, b) {
-  const k = `r:${a.lon.toFixed(5)},${a.lat.toFixed(5)};${b.lon.toFixed(5)},${b.lat.toFixed(5)}`;
-  return cached(k, async () => {
-    const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${k.slice(2)}?overview=simplified&geometries=geojson`);
-    const d = await res.json();
-    if (d.code !== 'Ok' || !d.routes?.length) throw new Error('route');
-    const r = d.routes[0];
-    // OSRM no conoce el tráfico: se agrega un 25 % para acercarse a lo real en ciudad.
-    return { km: Math.round(r.distance / 100) / 10, min: Math.max(1, Math.round((r.duration / 60) * 1.25)), path: r.geometry.coordinates };
-  });
-}
-
-const directionsLink = (a, b) => `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lon}&destination=${b.lat},${b.lon}&travelmode=driving`;
-
-// Mini mapa: el trazo de la ruta sobre un fondo neutro (sin mosaicos externos).
-function mapSvg(path, label = 'Ruta') {
-  if (!path?.length) return '';
-  const W = 360, H = 120, pad = 16;
-  const xs = path.map((p) => p[0]), ys = path.map((p) => p[1]);
-  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  const k = Math.min((W - 2 * pad) / (x1 - x0 || 1e-6), (H - 2 * pad) / (y1 - y0 || 1e-6));
-  const ox = (W - (x1 - x0) * k) / 2, oy = (H - (y1 - y0) * k) / 2;
-  const pt = ([x, y]) => [ox + (x - x0) * k, H - (oy + (y - y0) * k)].map((n) => n.toFixed(1));
-  const pts = path.map(pt);
-  const [ax, ay] = pts[0], [bx, by] = pts[pts.length - 1];
-  return `<svg class="map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">
-    <rect width="${W}" height="${H}" fill="var(--map)"/>
-    <g stroke="var(--road)" stroke-width="5" fill="none"><path d="M0 38H${W}M0 86H${W}M80 0V${H}M190 0V${H}M290 0V${H}"/></g>
-    <polyline points="${pts.map((p) => p.join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="${ax}" cy="${ay}" r="7" fill="var(--pin-a)" stroke="var(--surface)" stroke-width="3"/>
-    <rect x="${bx - 7}" y="${by - 7}" width="14" height="14" rx="3" fill="var(--pin-b)" stroke="var(--surface)" stroke-width="3"/>
-  </svg>`;
-}
 
 // Cartera: clientes privados del conductor (agenda, viajes, cobros y WhatsApp).
 // Todo se guarda en este teléfono (localStorage). Sin build ni dependencias.
@@ -89,29 +17,8 @@ const DEFAULTS = { clients: [], trips: [], settings: {
   pays: ['Efectivo'], bank: '', clabe: '', holder: '',
   share: { auto: true, routesOn: true, routes: [], clabe: true, hours: '' },
 } };
-let data = load();
-function load() {
-  try {
-    const d = JSON.parse(localStorage.getItem(KEY));
-    if (d) {
-      const s = { ...structuredClone(DEFAULTS.settings), ...d.settings };
-      // Tarifa anterior (banderazo + km + minuto) → por km y por hora, como en CHECA.
-      if (d.settings && d.settings.perHour == null) {
-        s.perHour = 180;
-        s.extra = { ...structuredClone(EXTRA_DEF), base: { on: !!d.settings.base, v: +d.settings.base || 30 }, minimum: { on: true, v: +d.settings.minimum || 100 } };
-        if (d.settings.bank && !d.settings.clabe) Object.assign(s, { clabe: d.settings.bank, bank: '', pays: ['Efectivo', 'Transferencia'] });
-        delete s.base; delete s.perMin; delete s.minimum;
-      }
-      s.extra = { ...structuredClone(EXTRA_DEF), ...s.extra };
-      s.share = { ...structuredClone(DEFAULTS.settings.share), ...s.share };
-      return { ...DEFAULTS, ...d, settings: s };
-    }
-  } catch {}
-  return structuredClone(DEFAULTS);
-}
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { toast('No se pudo guardar'); }
-}
+let data = loadData(KEY, DEFAULTS, EXTRA_DEF);
+function save() { saveData(KEY, data, () => toast('No se pudo guardar')); }
 navigator.storage?.persist?.();
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -169,30 +76,7 @@ const MSG = {
 };
 
 // ---------- Tarifa (como CHECA: meta por km y por hora; se usa la que deje más) ----------
-const numOr = (v, d) => (v === '' || v == null || isNaN(+v) ? d : +v);
-const EXTRAS_INFO = [
-  ['base', 'Banderazo', '$', 'Se suma a cada viaje'],
-  ['minimum', 'Viaje mínimo', '$', 'Ningún viaje cuesta menos'],
-  ['airport', 'Extra aeropuerto', '$', 'Si el viaje sale o llega al aeropuerto'],
-  ['night', 'Tarifa nocturna', '%', 'De 10 pm a 6 am'],
-  ['wait', 'Tiempo de espera', '$/min', 'Lo agregas en el viaje si te hacen esperar'],
-];
-const PRESETS = { 'Económica': [9, 150], 'Estándar': [12, 180], 'Ejecutiva': [16, 250] };
-const isAirport = (...labels) => labels.some((l) => /aeropuerto|airport/i.test(l || ''));
-const isNight = (time) => !!time && (+time.slice(0, 2) >= 22 || +time.slice(0, 2) < 6);
-function quote(km, min, { airport = false, night = false, wait = 0 } = {}, s = data.settings) {
-  const X = s.extra || EXTRA_DEF, lines = [];
-  const byKm = km * numOr(s.perKm, 12), byHour = (min / 60) * numOr(s.perHour, 180);
-  let p = Math.max(byKm, byHour);
-  lines.push([`Por km · ${km} km × $${s.perKm}`, byKm, byKm >= byHour], [`Por hora · ${min} min a $${s.perHour}/h`, byHour, byHour > byKm]);
-  if (X.base.on) { p += +X.base.v; lines.push(['Banderazo', +X.base.v, true]); }
-  if (X.airport.on && airport) { p += +X.airport.v; lines.push(['Extra aeropuerto', +X.airport.v, true]); }
-  if (X.wait.on && wait) { p += wait * X.wait.v; lines.push([`Espera · ${wait} min`, wait * X.wait.v, true]); }
-  if (X.night.on && night) { const n = (p * X.night.v) / 100; p += n; lines.push([`Nocturna +${X.night.v}%`, n, true]); }
-  let total = Math.round(p / 10) * 10;
-  if (X.minimum.on && total < +X.minimum.v) { total = +X.minimum.v; lines.push(['Sube al viaje mínimo', total, true]); }
-  return { total, lines };
-}
+function quote(km, min, ctx = {}, s = data.settings) { return calculateQuote(km, min, ctx, s, EXTRA_DEF); }
 const suggestPrice = (km, min, ctx) => quote(km, min, ctx).total;
 const priceMath = (km, min, ctx) => quote(km, min, ctx).lines.filter((l) => l[2]).map(([l, v]) => `${l}: ${money(v)}`).join(' · ');
 const calcTable = (q) => `<dl class="calc">${q.lines.map(([l, v, used]) => `<dt class="${used ? '' : 'off'}">${esc(l)}</dt><dd class="${used ? '' : 'off'}">${money(v)}</dd>`).join('')}</dl>`;
@@ -1527,3 +1411,4 @@ function shareSheet() {
     update();
   });
 }
+

@@ -17,7 +17,11 @@ export const hour12 = (t) => {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
 };
 export const initials = (name) => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-export const firstName = (c) => (c?.name || '').trim().split(/\s+/)[0];
+// Nombre para saludar: «Sra. Laura» y «Don Raúl» conservan el trato; «Laura Pérez» queda en «Laura».
+export const firstName = (c) => {
+  const w = (c?.name || '').trim().split(/\s+/);
+  return /^(sr|sra|srta|srita|don|doña|lic|dr|dra|ing|mtro|mtra)\.?$/i.test(w[0] || '') && w[1] ? `${w[0]} ${w[1]}` : w[0] || '';
+};
 export const byWhen = (a, b) => a.date.localeCompare(b.date) || (a.time || '99').localeCompare(b.time || '99');
 export const mondayOf = (d) => addDays(d, -((new Date(d + 'T00:00').getDay() + 6) % 7));
 export const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();

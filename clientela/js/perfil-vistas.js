@@ -11,12 +11,13 @@ const chipsOf = (list, sel, key) => `<div class="chips wrap">${list.map((x) => `
 const pin = (k, label, val, attrs = '') => `<label class="field">${label}<input data-k="${k}" value="${esc(val)}" ${attrs}></label>`;
 
 // Campos de cada paso; los usan el inicio rápido y «Editar» del perfil.
-export function stepHtml(n, D) {
+// En el inicio rápido la ciudad no se pide (se completa luego en Mis datos).
+export function stepHtml(n, D, { onboarding = false } = {}) {
   if (n === 1) return `<h2>¿Cómo te llamas?</h2><div class="pbody">
     ${pin('driver', 'Tu nombre o apodo', D.driver, 'placeholder="Ej. Lalo" autocomplete="given-name"')}
     ${pin('phone', 'Tu WhatsApp', D.phone, 'type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="10 dígitos"')}
-    ${pin('city', 'Ciudad donde trabajas', D.city, 'placeholder="Ej. Cancún"')}
-    <small class="muted">Tu nombre firma los mensajes. La ciudad ayuda a encontrar direcciones.</small></div>`;
+    ${onboarding ? '' : pin('city', 'Ciudad donde trabajas <small>(opcional)</small>', D.city, 'placeholder="Ej. la ciudad donde trabajas"')}
+    <small class="muted">Tu nombre firma los mensajes${onboarding ? '' : '. La ciudad ayuda a encontrar direcciones'}.</small></div>`;
   if (n === 2) return `<h2>Tu auto</h2><div class="pbody">
     ${pin('car', 'Marca y modelo', D.car, 'placeholder="Ej. Nissan Versa"')}
     <div class="row2">${pin('year', 'Año', D.year, 'inputmode="numeric" maxlength="4"')}${pin('color', 'Color', D.color)}</div>
@@ -24,7 +25,7 @@ export function stepHtml(n, D) {
     <div class="field">Pasajeros<span class="stepper"><button type="button" data-seats="-1" aria-label="Menos">−</button><b>${D.seats}</b><button type="button" data-seats="1" aria-label="Más">+</button></span></div>
     <div class="field">Qué ofreces${chipsOf(CAR_EXTRAS, D.extras, 'extras')}</div></div>`;
   if (n === 3) return `<h2>¿Cuánto cobras?</h2><div class="pbody">
-    <p class="muted">Como en CHECA: tu meta por km y por hora. El precio usa la que deje más.</p>
+    <p class="muted">Como en Checa: tu meta por km y por hora. El precio usa la que deje más.</p>
     <div class="field">Empieza con una tarifa${chipsOf(Object.keys(PRESETS), Object.keys(PRESETS).filter((k) => PRESETS[k].join() === [D.perKm, D.perHour].join()), 'preset')}</div>
     <div class="row2">${pin('perKm', 'Por km $', D.perKm, 'type="number" inputmode="decimal" step="0.5" min="0"')}${pin('perHour', 'Por hora $', D.perHour, 'type="number" readonly aria-readonly="true" tabindex="-1"')}</div>
     <details class="more" ${Object.values(D.extra).some((x) => x.on) ? 'open' : ''}><summary>Más detalles <small>opcional</small></summary>

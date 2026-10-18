@@ -540,7 +540,7 @@ function tripForm(t = null, preset = {}) {
 // Te escriben manejando: de, a y listo. El precio sale con tu tarifa y se manda por WhatsApp sin agendar.
 function quoteForm(preset = {}) {
   openSheet(`<h2>Cotizar</h2>
-    <div class="wide para"><span class="eti">Para · opcional</span><div class="chips wrap" id="qchips"></div></div>
+    <div class="wide para"><span class="eti">Para · opcional</span><div class="chips wrap" id="qchips"></div><div class="chips wrap" id="qsvc" hidden></div></div>
     <input type="hidden" name="clientId" value="${esc(preset.clientId || '')}">
     <div class="route wide">${placeInput(null, 'a', 'De dónde', true)}${placeInput(null, 'b', 'A dónde')}</div>
     <small class="field wide muted" id="pnote"></small>
@@ -607,7 +607,28 @@ function quoteForm(preset = {}) {
       if (!b) return;
       els.clientId.value = els.clientId.value === b.dataset.c ? '' : b.dataset.c;
       drawClients();
+      drawServices();
       prefillFrom();
+    };
+    // Sus viajes de siempre: un toque llena de dónde, a dónde y el precio.
+    const qsvc = $('#qsvc', form);
+    function drawServices() {
+      const svs = cur()?.services || [];
+      qsvc.hidden = !svs.length;
+      qsvc.innerHTML = svs.map((sv) => `<button type="button" data-sv="${sv.id}">${esc(sv.name || autoName(sv))} · ${money(svcPrice(sv))}</button>`).join('');
+    }
+    qsvc.onclick = (e) => {
+      const b = e.target.closest('[data-sv]');
+      if (!b) return;
+      const f = fromService(cur(), cur().services.find((x) => x.id === b.dataset.sv));
+      fromIn.value = f.from; toIn.value = f.to;
+      Object.assign(rt, { fromPt: f.fromPt, toPt: f.toPt, km: f.km, min: f.min, path: f.path });
+      els.price.value = f.price; typed = true;
+      qsvc.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+      routeEl.hidden = !(f.fromPt && f.toPt && f.path);
+      if (!routeEl.hidden) routeEl.innerHTML = `${mapSvg(f.path)}<div class="stats"><div><small>Distancia</small><b>${f.km} km</b></div><div><small>Tiempo</small><b>${f.min} min</b></div></div>`;
+      $('#qcalc', form).innerHTML = '<small>Precio de su viaje de siempre.</small>';
+      checkPlaces();
     };
     function prefillFrom() {
       const p = cur() && usualFrom(cur().id);
@@ -625,6 +646,7 @@ function quoteForm(preset = {}) {
     };
     $('[data-book]', form).onclick = () => { const t = read(); sheet.close(); tripForm(null, { ...t, price: t.price || '' }); };
     drawClients();
+    drawServices();
     prefillFrom();
   });
 }

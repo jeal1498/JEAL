@@ -1,44 +1,25 @@
+/* Clientela: marca de la familia Checa (fuente única: ../marca/tokens.css). Solo oscuro.
+   El color habla de la lana: --ok cobrado, --warn te debe, --over atrasado. Lo demás va en hueso. */
 :root {
-  color-scheme: light;
-  --bg: #f4f6f5;
-  --surface: #ffffff;
-  --surface-2: #eaefec;
-  --line: #dde3df;
-  --text: #0d1210;
-  --text-2: #4b5551;
-  --muted: #76807b;
-  --accent: #16a34a;
-  --accent-ink: #ffffff;
-  --accent-soft: #dcf5e4;
-  --wa: #128c4a;
-  --warn: #9a6700;
-  --warn-bg: #fff4d6;
-  --over: #c62828;
-  --over-bg: #fde8e8;
-  --map: #e4ece7; --road: #ffffff; --pin-a: #16a34a; --pin-b: #d0402b;
-  --bubble: #d9fdd3; --bubble-ink: #0d1210;
-  --radius: 14px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 16px rgb(0 0 0 / 0.04);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #0e1110; --surface: #181c1a; --surface-2: #232926; --line: #2e3531;
-    --text: #f4f7f5; --text-2: #bcc5c0; --muted: #8a948f;
-    --accent: #22c55e; --accent-ink: #062b14; --accent-soft: #143322; --wa: #3ddc84;
-    --warn: #e3b341; --warn-bg: #3a2f12; --over: #ff7b72; --over-bg: #3d1a1a; --shadow: none;
-    --map: #1d2421; --road: #2c3531; --pin-a: #22c55e; --pin-b: #ff7b62;
-    --bubble: #144d37; --bubble-ink: #e9f5ee;
-  }
-}
-:root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0e1110; --surface: #181c1a; --surface-2: #232926; --line: #2e3531;
-  --text: #f4f7f5; --text-2: #bcc5c0; --muted: #8a948f;
-  --accent: #22c55e; --accent-ink: #062b14; --accent-soft: #143322; --wa: #3ddc84;
-  --warn: #e3b341; --warn-bg: #3a2f12; --over: #ff7b72; --over-bg: #3d1a1a; --shadow: none;
-    --map: #1d2421; --road: #2c3531; --pin-a: #22c55e; --pin-b: #ff7b62;
-    --bubble: #144d37; --bubble-ink: #e9f5ee;
+  --bg: var(--asfalto);
+  --surface: var(--tablero);
+  --surface-2: #1E1E26;
+  --line: #2A2A33;
+  --text: var(--hueso);
+  --text-2: #CFCFD6;
+  --muted: var(--gris-texto);
+  --accent: var(--hueso);
+  --accent-ink: var(--asfalto);
+  --accent-soft: #24242C;
+  --wa: var(--hueso);
+  --ok: var(--cobrado); --ok-bg: rgb(34 197 94 / .14);
+  --warn: var(--te-debe); --warn-bg: rgb(250 204 21 / .14);
+  --over: var(--atrasado); --over-bg: rgb(239 68 68 / .14);
+  --map: #1A1A21; --road: #2E2E38; --pin-a: var(--cobrado); --pin-b: var(--atrasado);
+  --bubble: #1D2A24; --bubble-ink: var(--hueso);
+  --radius: 20px;
+  --shadow: none;
 }
 
 * { box-sizing: border-box; }
@@ -46,15 +27,16 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
-  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.45 var(--fuente-texto);
   padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
 h1, h2, h3, p { margin: 0; }
+h1, h2, .welcome h2, .pstep h2, .done h2, .empty h2, .hero h2 { font-family: var(--fuente-titulos); font-weight: 800; letter-spacing: -.02em; }
 a { color: var(--accent); text-decoration: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button {
   cursor: pointer; border: 1px solid var(--line); background: var(--surface);
-  border-radius: 10px; padding: 9px 14px; font-weight: 600;
+  border-radius: 999px; padding: 9px 16px; font-weight: 700; min-height: 40px;
 }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 button.wa, a.wa { color: var(--wa); }
@@ -75,7 +57,7 @@ button.wa, a.wa { color: var(--wa); }
 }
 .tabs a { display: grid; justify-items: center; gap: 2px; font-size: 11.5px; font-weight: 600; color: var(--muted); padding: 4px 0; position: relative; }
 .tabs a.on { color: var(--accent); }
-.tabs a .dot { position: absolute; top: 0; left: calc(50% + 6px); min-width: 16px; height: 16px; border-radius: 8px; background: var(--over); color: #fff; font-size: 10px; line-height: 16px; padding: 0 4px; }
+.tabs a .dot { position: absolute; top: 0; left: calc(50% + 6px); min-width: 16px; height: 16px; border-radius: 8px; background: var(--warn); color: var(--texto-sobre-te-debe); font-family: var(--fuente-datos); font-weight: 700; font-size: 10px; line-height: 16px; padding: 0 4px; }
 .fab {
   position: fixed; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 6;
   width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; padding: 0;
@@ -87,7 +69,7 @@ button.wa, a.wa { color: var(--wa); }
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 16px; }
 .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; box-shadow: var(--shadow); color: var(--text); display: grid; gap: 2px; min-width: 0; }
 .tile small { color: var(--text-2); font-size: 12px; }
-.tile b { font-size: 19px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile b { font: 700 18px var(--fuente-datos); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile span { color: var(--muted); font-size: 12px; }
 .tile.warn b { color: var(--warn); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); margin-bottom: 12px; }
@@ -99,19 +81,20 @@ button.wa, a.wa { color: var(--wa); }
 .empty h2 { font-size: 19px; color: var(--text); }
 .empty p { max-width: 360px; }
 .muted { color: var(--muted); }
-.badge { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 8px; background: var(--over-bg); color: var(--over); vertical-align: 1px; }
+.badge { display: inline-block; font: 700 11px/1.5 var(--fuente-datos); letter-spacing: .03em; border-radius: 999px; padding: 1px 8px; background: var(--warn-bg); color: var(--warn); vertical-align: 1px; }
+.badge.late { background: var(--over-bg); color: var(--over); }
 .badge.warn { background: var(--warn-bg); color: var(--warn); }
-.badge.ok { background: var(--accent-soft); color: var(--accent); }
+.badge.ok { background: var(--ok-bg); color: var(--ok); }
 
 /* Viajes */
 .trip { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; box-shadow: var(--shadow); cursor: pointer; }
 .trip.late { border-color: var(--warn); }
 .trip.done { opacity: .75; }
-.trip .when { font-weight: 800; font-size: 16px; font-variant-numeric: tabular-nums; }
+.trip .when { font: 700 15px var(--fuente-datos); font-variant-numeric: tabular-nums; }
 .trip .when small { display: block; font-weight: 600; font-size: 11px; color: var(--muted); }
 .trip .who { font-weight: 700; }
 .trip .way { color: var(--text-2); font-size: 13px; }
-.trip .price { font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; }
+.trip .price { font: 700 15px var(--fuente-datos); font-variant-numeric: tabular-nums; text-align: right; }
 .trip .price small { display: block; font-weight: 600; font-size: 11px; }
 .actions { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
 .actions button, .actions a { font-size: 13px; padding: 7px 11px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); font-weight: 600; }
@@ -124,7 +107,7 @@ button.wa, a.wa { color: var(--wa); }
 .list .body { flex: 1; min-width: 0; display: grid; }
 .list .body small { color: var(--text-2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .list .amt { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
-.avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 800; flex: none; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--cuerpo-logo); border: 1.5px solid var(--borde-logo); color: var(--hueso); font: 700 13px var(--fuente-datos); flex: none; }
 .search { width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); margin-bottom: 10px; }
 .chips { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 12px; scrollbar-width: none; }
 .chips button { flex: none; max-width: 85%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; padding: 6px 12px; border-radius: 999px; }
@@ -168,7 +151,7 @@ button.wa, a.wa { color: var(--wa); }
 .seg label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .buttons { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
 .buttons .left { margin-right: auto; color: var(--over); }
-.toast { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+.toast { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--hueso); color: var(--asfalto); border-radius: 999px; padding: 10px 16px; border-radius: 12px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
 .toast.on { opacity: 1; }
 
 /* Servicios frecuentes y punto A → B */
@@ -208,7 +191,7 @@ button.wa, a.wa { color: var(--wa); }
 .price-row { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 0 12px 12px; }
 .price-row label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); font-weight: 600; white-space: nowrap; }
 .price-row input { width: 96px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
-.add { border: 1.5px dashed var(--accent); background: var(--accent-soft); color: var(--accent); border-radius: 14px; padding: 12px; font-weight: 700; }
+.add { border: 1.5px dashed var(--humo); background: none; color: var(--hueso); border-radius: 14px; padding: 12px; font-weight: 700; }
 .qs { display: grid; gap: 8px; }
 .q { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
 .q small { color: var(--text-2); font-size: 12.5px; grid-column: 1; }
@@ -313,7 +296,7 @@ body.onboarding .tabs, body.onboarding .top { display: none; }
 .paygrid button { display: grid; gap: 2px; padding: 16px 8px; font-size: 16px; font-weight: 700; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); }
 .paygrid button small { font-size: 11px; font-weight: 500; opacity: .8; }
 .paygrid button.hab { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.paygrid button.debt { grid-column: 1 / -1; color: var(--over); }
+.paygrid button.debt { grid-column: 1 / -1; color: var(--warn); }
 
 /* v1.4: semana completa y cobro a tu ritmo */
 .picks { display: grid; gap: 6px; }

@@ -383,3 +383,26 @@ body.onboarding .tabs, body.onboarding .top { display: none; }
 input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; }
 .qform .para { display: grid; gap: 8px; }
+
+/* Cobros, clientes, ficha y resumen */
+.barra { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--humo); margin: 6px 0 2px; }
+.barra i { display: block; height: 100%; }
+.barra i.debe { background: var(--te-debe); }
+.barra i.late { background: var(--atrasado); }
+.cobro { background: var(--surface); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; display: grid; gap: 6px; }
+.cobro summary { list-style: none; cursor: pointer; display: grid; gap: 2px; }
+.cobro summary::-webkit-details-marker { display: none; }
+.cobro .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cobro .list { margin-top: 10px; background: var(--bg); }
+.cobro .list button { min-height: 36px; padding: 0 12px; font-size: 12.5px; }
+.sello { flex: none; transform: rotate(-8deg); border: 2.5px solid var(--cobrado); color: var(--cobrado); border-radius: 8px; padding: 1px 9px; font: 800 13px var(--fuente-titulos); letter-spacing: .02em; text-transform: uppercase; }
+.tile b.ok { color: var(--cobrado); }
+.tile b.debe { color: var(--te-debe); }
+.quick3 { margin: 0 0 12px; }
+.strip button.pill { min-height: 0; cursor: pointer; }
+.svc-card { cursor: default; }
+.avatar.big { width: 72px; height: 72px; font-size: 22px; border: 1.5px solid var(--borde-logo); box-shadow: none; }
+.hero h2 { font-size: 28px; }
+.list .pill { flex: none; }
+.list li b.mono { font-size: 14px; }
+.card h3.eti { font-size: 12px; font-weight: 500; }

@@ -20,7 +20,7 @@ export function createMessaging({ getSettings, firstName, dayLabel, hour12, mone
     // Cotización sin agendar: c puede faltar (se elige el contacto en WhatsApp).
     quote: (c, t) => {
       const short = (l) => (l || '…').split(',')[0];
-      return `Hola${c ? ' ' + firstName(c) : ''}, el viaje${t.from || t.to ? ` de ${short(t.from)} a ${short(t.to)}` : ''} ${dayLabel(t.date)}${t.time ? ' a las ' + hour12(t.time) : ''} te queda en ${money(t.price)}. ¿Te lo agendo?${sign()}`;
+      return `Hola${c ? ' ' + firstName(c) : ''}, el viaje${t.from || t.to ? ` de ${short(t.from)} a ${short(t.to)}` : ''} ${t.date ? dayLabel(t.date) + ' ' : ''}${t.time ? 'a las ' + hour12(t.time) + ' ' : ''}te queda en ${money(t.price)}. ¿Te lo agendo?${sign()}`;
     },
     arrived: (c, t) => `Hola ${firstName(c)}, ya estoy afuera${t.from ? ' en ' + t.from : ''}. 🚗`,
     charge: (c, list) => {

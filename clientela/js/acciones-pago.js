@@ -9,7 +9,7 @@ export function createPaymentHandlers({ client, openSheet, esc, money, payGrid, 
       $('[data-close]', form).onclick = () => sheet.close();
       form.querySelectorAll('[data-pay]').forEach((b) => (b.onclick = () => {
         const pay = b.dataset.pay;
-        Object.assign(t, { status: 'hecho', pay, updatedAt: Date.now() });
+        Object.assign(t, { status: 'hecho', pay, paidAt: pay ? today() : '', updatedAt: Date.now() });
         if (pay && c) c.lastPay = pay;
         sheet.close();
         refresh();

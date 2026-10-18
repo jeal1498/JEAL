@@ -137,7 +137,7 @@ const renderAgenda = createAgendaView({
 // ---------- Clientes ----------
 const renderClients = createClientsView({
   getData: () => data, header, setTabs, view, icon, esc, clientForm, $, sleeping,
-  debtOf, lastTrip, tripsOf, dayLabel, initials, money,
+  debtOf, lateDebt, lastTrip, tripsOf, dayLabel, hour12, today, byWhen, initials, money,
 });
 
 function sleeping(c) {
@@ -634,14 +634,14 @@ const { finishForm, payForm, collectForm } = createPaymentHandlers({
 });
 
 const renderCharges = createChargesView({
-  getData: () => data, view, header, setTabs, tripsOf, owed, byWhen, money, icon,
-  esc, waLink, MSG, cap, fdate, daysBetween, today, bindTrips, $, collectForm, client,
+  getData: () => data, view, header, setTabs, tripsOf, owed, lateDebt, byWhen, money, icon,
+  esc, waLink, MSG, cap, fdate, dayLabel, daysBetween, today, bindTrips, $, collectForm, client, shortRoute,
 });
 
 const renderClient = createClientDetailView({
-  client, header, top, icon, esc, $, clientForm, setTabs, tripsOf, byWhen, debtOf, tripForm,
-  view, initials, firstName, phoneIntl, waLink, MSG, weekSummary, money, dayLabel, autoName,
-  svcPrice, sleeping, tripCard, weekForm, collectForm, quickTrip, fromService, bindTrips,
+  client, header, top, icon, esc, $, clientForm, setTabs, tripsOf, byWhen, debtOf, lateDebt, owed, tripForm,
+  view, initials, firstName, phoneIntl, waLink, MSG, weekSummary, money, dayLabel, hour12, cap, autoName,
+  svcPrice, sleeping, weekForm, collectForm, quickTrip, fromService, bindTrips,
 });
 
 // ---------- Inicio ----------

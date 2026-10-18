@@ -30,7 +30,7 @@ Clientela publicada para conductores de Uber, DiDi, taxi y choferes independient
 - [x] Aprobada: logo de tarjeta de contacto, lema «Tus clientes, en orden», verde cobrado / amarillo te debe / rojo atrasado, firma «de la familia Checa» en web y videos.
 - [x] Carpeta `marca/` (fuente única) y skill `marca-clientela` llena.
 
-### 4. Rediseño de la app (PWA) — falta tu OK
+### 4. Rediseño de la app (PWA) — publicado, falta probar en tu teléfono
 - [x] Auditoría pantalla por pantalla.
 - [x] Maqueta aprobada: https://claude.ai/artifact/AmJLsuWugR1ZEeznZxBBmZ
 - [x] App movida a `clientela/` (el link viejo redirige; los datos se conservan).
@@ -41,7 +41,7 @@ Clientela publicada para conductores de Uber, DiDi, taxi y choferes independient
 - [x] Parte 5: Cobros por antigüedad, Clientes, Ficha y Resumen.
 - [x] Parte 6: Mi tarjeta en pantalla completa y su página `tarjeta.html`; se borró `perfil-conductor.html`.
 - [x] Parte 7: arranque con la marca y repaso a 390 px con Playwright.
-- [ ] OK de Eduardo para pasarlo a `main`.
+- [x] OK de Eduardo para pasarlo a `main` (18 oct).
 - [ ] Prueba en el teléfono de Eduardo (sobre todo rutas y precio con mapa).
 
 ### 5. Acceso con Google y nube

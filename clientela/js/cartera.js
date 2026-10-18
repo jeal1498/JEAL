@@ -6,27 +6,26 @@ import { createServiceHelpers } from './servicios.js';
 import { createOnboardingView } from './inicio-rapido-vista.js';
 import { createStepHandlers } from './inicio-rapido-campos.js';
 import { createShell } from './interfaz.js';
-import { createProfileView } from './perfil-vista.js';
-import { createSettingsView } from './ajustes-vista.js';
+import { createMeView } from './yo-vista.js';
 import { createClientDetailView } from './cliente-detalle-vista.js';
 import { createClientsView } from './clientes-vista.js';
 import { createChargesView } from './cobros-vista.js';
 import { createAgendaView } from './agenda-vista.js';
 import { createTripCard } from './viaje-vistas.js';
 import { createSummaryView } from './resumen.js';
-import { PAYS, seg, PAY_LABEL, payGrid } from './vistas-pago.js';
+import { PAYS, seg, payGrid } from './vistas-pago.js';
 import { PROFILE_STEPS, CAR_EXTRAS, PAY_OPTS, ONB, stepHtml } from './perfil-vistas.js';
 import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute, fold } from './utilidades.js';
 import { encodePage, qrSvg, qrBlob, buildPagePayload } from './qr.js';
 import { icon } from './iconos.js';
 import { createMessaging } from './mensajes.js';
 import { searchPlaces, reverse, route, directionsLink, mapSvg } from './mapas.js';
-import { numOr, EXTRAS_INFO, PRESETS, isAirport, isNight, calculateQuote } from './calculos.js';
+import { numOr, PRESETS, isAirport, isNight, calculateQuote } from './calculos.js';
 import { loadData, saveData } from './almacenamiento.js';
 
 
-// Cartera: clientes privados del conductor (agenda, viajes, cobros y WhatsApp).
-// Todo se guarda en este teléfono (localStorage). Sin build ni dependencias.
+// Clientela: clientes privados del conductor (agenda, cotizaciones, viajes, cobros y WhatsApp).
+// Todo se guarda en este teléfono (localStorage, clave «cartera» de la versión anterior). Sin build ni dependencias.
 
 
 // ---------- Datos ----------
@@ -50,6 +49,9 @@ const $ = (s, el = document) => el.querySelector(s);
 const client = (id) => data.clients.find((c) => c.id === id);
 const tripsOf = (id) => data.trips.filter((t) => t.clientId === id);
 const owed = (t) => t.status === 'hecho' && !t.pay;
+// Te debe desde hace 15 días o más: se pinta en rojo (atrasado); antes, en amarillo.
+const LATE_DAYS = 15;
+const lateDebt = (t) => owed(t) && daysBetween(t.date, today()) >= LATE_DAYS;
 const debtOf = (id) => tripsOf(id).filter(owed).reduce((s, t) => s + +t.price, 0);
 const lastTrip = (id) => tripsOf(id).filter((t) => t.status === 'hecho').sort((a, b) => b.date.localeCompare(a.date))[0];
 const DAYS = [[1, 'L'], [2, 'M'], [3, 'M'], [4, 'J'], [5, 'V'], [6, 'S'], [0, 'D']];
@@ -58,7 +60,7 @@ const weekSummary = (c) => `${daysLabel(c.week?.days || [])} · ${c.week?.items?
 
 // ---------- WhatsApp y llamadas ----------
 // Las plantillas y los enlaces viven en mensajes.js; la aplicación les pasa sus formatos y estado.
-const { phoneIntl, waLink, payTo, sign, MSG } = createMessaging({
+const { phoneIntl, waLink, sign, MSG } = createMessaging({
   getSettings: () => data.settings,
   firstName, dayLabel, hour12, money, fdate, cap, byWhen,
 });
@@ -74,11 +76,11 @@ const calcTable = (q) => `<dl class="calc">${q.lines.map(([l, v, used]) => `<dt 
 const view = $('#view');
 const top = $('#top');
 const tabs = $('#tabs');
-const fab = $('#fab');
 const sheet = $('#sheet');
 
-const { header, setTabs, setFab, toast } = createShell({
-  getData: () => data, top, tabs, fab, icon, esc, initials, owed, $,
+const { header, setTabs, toast } = createShell({
+  getData: () => data, top, tabs, icon, esc, initials, owed, lateDebt, $,
+  onCard: () => shareSheet(), onPlus: () => plusMenu(),
 });
 
 function render() {
@@ -87,12 +89,11 @@ function render() {
   window.scrollTo(0, 0);
   document.body.classList.toggle('onboarding', !data.settings.onboarded);
   if (!data.settings.onboarded) renderOnboarding();
-  else if (mod === 'perfil') renderProfile();
+  else if (mod === 'yo' || mod === 'perfil' || mod === 'ajustes') renderMe();
   else if (mod === 'clientes') renderClients();
   else if (mod === 'cliente' && client(id)) renderClient(id);
   else if (mod === 'cobros') renderCharges();
   else if (mod === 'resumen') renderSummary();
-  else if (mod === 'ajustes') renderSettings();
   else renderAgenda();
 }
 window.addEventListener('hashchange', render);
@@ -100,7 +101,7 @@ function refresh() { save(); render(); }
 
 // ---------- Tarjeta de viaje ----------
 const tripCard = createTripCard({
-  client, today, owed, cap, waLink, MSG, icon, directionsLink, hour12, fdate, esc, money,
+  client, today, owed, lateDebt, cap, waLink, MSG, icon, hour12, dayLabel, esc, money,
 });
 
 function bindTrips() {
@@ -111,18 +112,31 @@ function bindTrips() {
   });
   view.querySelectorAll('[data-finish]').forEach((b) => (b.onclick = () => finishForm(data.trips.find((t) => t.id === b.dataset.finish))));
   view.querySelectorAll('[data-paid]').forEach((b) => (b.onclick = () => payForm([data.trips.find((t) => t.id === b.dataset.paid)])));
+  // Confirmar abre WhatsApp y deja el viaje como «Confirmado».
+  view.querySelectorAll('[data-confirm]').forEach((a) => (a.onclick = () => {
+    const t = data.trips.find((x) => x.id === a.dataset.confirm);
+    t.confirmedAt = Date.now();
+    setTimeout(refresh, 50);
+  }));
+  view.querySelectorAll('[data-notdone]').forEach((b) => (b.onclick = () => {
+    const t = data.trips.find((x) => x.id === b.dataset.notdone);
+    t.status = 'cancelado';
+    t.updatedAt = Date.now();
+    refresh();
+    toast('Marcado como no hecho', { label: 'Deshacer', fn: () => { t.status = 'agendado'; refresh(); } });
+  }));
 }
 
 // ---------- Agenda ----------
 const renderAgenda = createAgendaView({
-  getData: () => data, view, header, setTabs, setFab, today, owed, byWhen, money, icon,
-  firstName, esc, weekSummary, weekNudges, addDays, tripCard, bindTrips, $, client,
-  weekForm, refresh, clientForm, tripForm, importContacts,
+  getData: () => data, view, header, setTabs, today, owed, lateDebt, byWhen, money, icon,
+  firstName, esc, cap, fdate, dayLabel, hour12, weekSummary, weekNudges, addDays, tripCard, bindTrips, $, client,
+  weekForm, refresh, clientForm, importContacts,
 });
 
 // ---------- Clientes ----------
 const renderClients = createClientsView({
-  getData: () => data, header, setTabs, setFab, view, icon, esc, clientForm, $, sleeping,
+  getData: () => data, header, setTabs, view, icon, esc, clientForm, $, sleeping,
   debtOf, lastTrip, tripsOf, dayLabel, initials, money,
 });
 
@@ -133,15 +147,36 @@ function sleeping(c) {
 // ---------- Cobros ----------
 // ---------- Resumen ----------
 const renderSummary = createSummaryView({
-  getData: () => data, view, header, setTabs, setFab, today, lastTrip, sleeping,
+  getData: () => data, view, header, setTabs, today, lastTrip, sleeping,
   icon, money, esc, cap, fdate, initials, dayLabel, waLink, MSG, client,
 });
 
-// ---------- Ajustes ----------
-const renderSettings = createSettingsView({
-  getData: () => data, header, setTabs, setFab, view, icon, esc, initials, $, today, save, toast,
-  pickBackup, importContacts, resetOnboarding: () => { data.settings.onboarded = false; obStep = 0; refresh(); },
+// ---------- Yo (perfil y ajustes) ----------
+const renderMe = createMeView({
+  getData: () => data, header, setTabs, view, icon, esc, initials, $, today, daysBetween, editProfile,
+  openCard: () => shareSheet(), exportBackup, pickBackup, importContacts, ladaForm,
+  resetOnboarding: () => { data.settings.onboarded = false; obStep = 0; refresh(); },
 });
+function exportBackup() {
+  const blob = new Blob([JSON.stringify({ app: 'cartera', exportedAt: new Date().toISOString(), ...data }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `clientela-${today()}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  data.settings.lastBackup = today();
+  refresh();
+  toast('Copia descargada');
+}
+function ladaForm() {
+  openSheet(`<h2>Lada para WhatsApp</h2>
+    ${field('Lada del país', `<input name="lada" inputmode="numeric" value="${esc(data.settings.lada)}" placeholder="52">`, true)}
+    <small class="field wide muted">Se agrega a los números de 10 dígitos.</small>
+    <div class="buttons"><button type="button" data-close>Cancelar</button><button class="primary">Guardar</button></div>`, (form) => {
+    $('[data-close]', form).onclick = () => sheet.close();
+    form.onsubmit = () => { data.settings.lada = form.elements.lada.value.replace(/\D/g, '') || '52'; refresh(); toast('Guardado'); };
+  });
+}
 function pickBackup() {
   const file = document.createElement('input');
   file.type = 'file';
@@ -161,7 +196,7 @@ function pickBackup() {
       data = loadData(KEY, DEFAULTS, EXTRA_DEF);
       refresh();
       toast('Copia cargada');
-    } catch { toast('Ese archivo no es una copia de Cartera'); }
+    } catch { toast('Ese archivo no es una copia de Clientela'); }
   };
   file.click();
 }
@@ -192,14 +227,10 @@ let obDraft = null;
 const renderOnboarding = createOnboardingView({
   getData: () => data, getObStep: () => obStep, setObStep: (value) => { obStep = value; },
   getObDraft: () => obDraft, setObDraft: (value) => { obDraft = value; },
-  top, tabs, setFab, view, icon, ONB, PROFILE_STEPS, stepHtml, wireStep, $, esc, toast, save,
+  top, tabs, view, icon, ONB, PROFILE_STEPS, stepHtml, wireStep, $, esc, toast, save,
   render, pickBackup, importContacts, clientForm,
 });
 
-const renderProfile = createProfileView({
-  getData: () => data, header, top, icon, $, shareSheet, setTabs, setFab, today, view, esc,
-  initials, money, EXTRAS_INFO, payTo, toast, editProfile,
-});
 
 function editProfile(n) {
   const D = structuredClone(data.settings);
@@ -218,6 +249,27 @@ function editProfile(n) {
       refresh();
       toast('Perfil guardado');
     };
+  });
+}
+
+// ---------- Botón + ----------
+// Cotizar, agendar o agregar cliente. En la ficha de un cliente, ya viene elegido.
+function plusMenu() {
+  const [, mod = '', id = ''] = (location.hash || '#/').slice(1).split('/');
+  const preset = mod === 'cliente' && client(id) ? { clientId: id } : {};
+  const opt = (k, ic, title, sub) => `<button type="button" class="opcion wide" data-o="${k}"><span class="ic">${icon(ic)}</span><span><b>${title}</b><small>${sub}</small></span></button>`;
+  openSheet(`<h2>¿Qué quieres hacer?</h2>
+    ${opt('quote', 'calc', 'Cotizar un viaje', 'Precio en segundos para mandarlo')}
+    ${opt('trip', 'calendar', 'Agendar viaje', 'Con cliente, día y hora')}
+    ${opt('client', 'userplus', 'Cliente nuevo', 'contacts' in navigator ? 'O impórtalo de tus contactos' : 'Nombre y WhatsApp')}
+    <button type="button" class="wide" data-close>Cancelar</button>`, (form) => {
+    $('[data-close]', form).onclick = () => sheet.close();
+    form.querySelectorAll('[data-o]').forEach((b) => (b.onclick = () => {
+      sheet.close();
+      if (b.dataset.o === 'quote') quoteForm(preset);
+      else if (b.dataset.o === 'trip') tripForm(null, preset);
+      else clientForm();
+    }));
   });
 }
 
@@ -481,6 +533,99 @@ function tripForm(t = null, preset = {}) {
   if (!data.clients.length) { sheet.close(); clientForm(null, { onSaved: (c) => tripForm(null, { ...preset, clientId: c.id }) }); }
 }
 
+// ---------- Cotizar ----------
+// Te escriben manejando: de, a y listo. El precio sale con tu tarifa y se manda por WhatsApp sin agendar.
+function quoteForm(preset = {}) {
+  openSheet(`<h2>Cotizar</h2>
+    <div class="wide para"><span class="eti">Para · opcional</span><div class="chips wrap" id="qchips"></div></div>
+    <input type="hidden" name="clientId" value="${esc(preset.clientId || '')}">
+    <div class="route wide">${placeInput(null, 'a', 'De dónde', true)}${placeInput(null, 'b', 'A dónde')}</div>
+    <small class="field wide muted" id="pnote"></small>
+    <div class="wide svc" id="troute" hidden></div>
+    <input type="hidden" name="date" value="${today()}">
+    <div class="wide cuando">${whenHtml}<input name="time" type="time" aria-label="Hora"></div>
+    <div class="cotiza wide"><span class="eti">Precio con tu tarifa</span>
+      <label class="precio"><span>$</span><input name="price" type="number" inputmode="numeric" min="0" step="10" placeholder="0" aria-label="Precio"></label>
+      <div id="qcalc" class="muted"></div></div>
+    <button type="button" class="primary wide grande" data-send>${icon('wa')} Mandar precio por WhatsApp</button>
+    <button type="button" class="wide grande" data-book>Agendar este viaje</button>
+    <button type="button" class="wide ghost" data-close>Cerrar</button>`, (form) => {
+    form.classList.add('qform');
+    const els = form.elements;
+    const fromIn = $('[data-pt=a]', form);
+    const toIn = $('[data-pt=b]', form);
+    const routeEl = $('#troute', form);
+    const rt = { fromPt: null, toPt: null, km: '', min: '', path: null };
+    let typed = false;
+    els.price.addEventListener('input', () => { typed = true; });
+    $('[data-close]', form).onclick = () => sheet.close();
+    const cur = () => client(els.clientId.value);
+    const read = () => ({ clientId: els.clientId.value, from: fromIn.value.trim(), to: toIn.value.trim(), fromPt: rt.fromPt, toPt: rt.toPt, km: rt.km, min: rt.min, path: rt.path, price: +els.price.value || 0, date: els.date.value || today(), time: els.time.value || '' });
+    const suggest = () => {
+      const ctx = { airport: isAirport(fromIn.value, toIn.value), night: isNight(els.time.value) };
+      const same = cur() && data.trips.filter((x) => x.clientId === cur().id && x.status !== 'cancelado' && x.from === fromIn.value.trim() && x.to === toIn.value.trim() && (x.from || x.to)).sort(byWhen).pop();
+      const q = rt.km ? quote(+rt.km, +rt.min || Math.round(rt.km * 2), ctx) : null;
+      $('#qcalc', form).innerHTML = (q ? calcTable(q) : '<small>Elige de dónde y a dónde para calcular, o escribe el precio.</small>') + (same ? `<small>La última vez le cobraste ${money(same.price)}.</small>` : '');
+      if (!typed && q) els.price.value = q.total;
+    };
+    const recalc = async () => {
+      routeEl.hidden = !(rt.fromPt && rt.toPt);
+      if (routeEl.hidden) { Object.assign(rt, { km: '', min: '', path: null }); suggest(); return; }
+      const r = await fillRoute(routeEl, rt.fromPt, rt.toPt);
+      if (r) Object.assign(rt, { km: r.km, min: r.min, path: r.path });
+      suggest();
+    };
+    const checkPlaces = () => {
+      const bad = (fromIn.value.trim() && !rt.fromPt) || (toIn.value.trim() && !rt.toPt);
+      $('#pnote', form).textContent = bad ? 'Toca una opción de la lista para calcular, o escribe el precio a mano.' : '';
+    };
+    [fromIn, toIn].forEach((i) => i.addEventListener('blur', () => setTimeout(checkPlaces, 300)));
+    wirePlace(fromIn, () => els.clientId.value, (p, typing) => { rt.fromPt = p; if (!typing || !p) { recalc(); checkPlaces(); } });
+    wirePlace(toIn, () => els.clientId.value, (p, typing) => { rt.toPt = p; if (!typing || !p) { recalc(); checkPlaces(); } });
+    $('[data-loc]', form).onclick = () => {
+      if (!navigator.geolocation) return toast('Tu teléfono no comparte la ubicación');
+      toast('Buscando tu ubicación…');
+      navigator.geolocation.getCurrentPosition(async ({ coords: { latitude: lat, longitude: lon } }) => {
+        let p;
+        try { const r = await reverse(lat, lon); p = { label: r.label, lat, lon }; } catch { p = { label: 'Mi ubicación', lat, lon }; }
+        fromIn.value = p.label; rt.fromPt = p;
+        recalc(); checkPlaces();
+      }, () => toast('No se pudo obtener tu ubicación'), { enableHighAccuracy: true, timeout: 10000 });
+    };
+    // Clientes recientes (opcional). Al elegir uno sale su origen de siempre.
+    const qchips = $('#qchips', form);
+    const drawClients = () => {
+      const list = [...data.clients].sort((a, b) => lastUse(b.id) - lastUse(a.id) || a.name.localeCompare(b.name, 'es')).slice(0, 5);
+      if (cur() && !list.includes(cur())) list.unshift(cur());
+      qchips.innerHTML = list.map((c) => `<button type="button" data-c="${c.id}" class="${c.id === els.clientId.value ? 'on' : ''}">${esc(c.name)}</button>`).join('') || '<small class="muted">Aún no tienes clientes: igual puedes cotizar.</small>';
+    };
+    qchips.onclick = (e) => {
+      const b = e.target.closest('[data-c]');
+      if (!b) return;
+      els.clientId.value = els.clientId.value === b.dataset.c ? '' : b.dataset.c;
+      drawClients();
+      prefillFrom();
+    };
+    function prefillFrom() {
+      const p = cur() && usualFrom(cur().id);
+      if (p && !fromIn.value.trim()) { fromIn.value = p.label; rt.fromPt = p.lat != null ? { label: p.label, lat: p.lat, lon: p.lon } : null; recalc(); }
+      else suggest();
+    }
+    els.time.addEventListener('input', suggest);
+    wireWhen(form, suggest);
+    $('[data-send]', form).onclick = () => {
+      const t = read();
+      if (!t.price) { toast('Pon el precio'); els.price.focus(); return; }
+      const c = cur();
+      const text = MSG.quote(c, t);
+      window.open(c?.phone ? waLink(c, text) : `https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+    };
+    $('[data-book]', form).onclick = () => { const t = read(); sheet.close(); tripForm(null, { ...t, price: t.price || '' }); };
+    drawClients();
+    prefillFrom();
+  });
+}
+
 // ---------- Cobro en un toque ----------
 // Terminar un viaje: un toque en cómo te pagó y listo.
 const { finishForm, payForm, collectForm } = createPaymentHandlers({
@@ -489,12 +634,12 @@ const { finishForm, payForm, collectForm } = createPaymentHandlers({
 });
 
 const renderCharges = createChargesView({
-  getData: () => data, view, header, setTabs, setFab, tripsOf, owed, byWhen, money, icon,
+  getData: () => data, view, header, setTabs, tripsOf, owed, byWhen, money, icon,
   esc, waLink, MSG, cap, fdate, daysBetween, today, bindTrips, $, collectForm, client,
 });
 
 const renderClient = createClientDetailView({
-  client, header, top, icon, esc, $, clientForm, setTabs, tripsOf, byWhen, debtOf, setFab, tripForm,
+  client, header, top, icon, esc, $, clientForm, setTabs, tripsOf, byWhen, debtOf, tripForm,
   view, initials, firstName, phoneIntl, waLink, MSG, weekSummary, money, dayLabel, autoName,
   svcPrice, sleeping, tripCard, weekForm, collectForm, quickTrip, fromService, bindTrips,
 });

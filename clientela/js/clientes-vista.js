@@ -1,13 +1,12 @@
 import { fold } from './utilidades.js';
 // Listado, búsqueda y filtros de clientes.
-export function createClientsView({ getData, header, setTabs, setFab, view, icon, esc, clientForm, $, sleeping, debtOf, lastTrip, tripsOf, dayLabel, initials, money }) {
+export function createClientsView({ getData, header, setTabs, view, icon, esc, clientForm, $, sleeping, debtOf, lastTrip, tripsOf, dayLabel, initials, money }) {
   let clientQuery = '';
   let clientFilter = '';
   function renderClients() {
     const data = getData();
     header('Clientes', { action: { href: '#/ajustes', icon: 'gear', label: 'Ajustes' } });
     setTabs('clientes');
-    setFab(() => clientForm());
     if (!data.clients.length) {
       view.innerHTML = `<div class="empty">${icon('users')}<h2>Sin clientes</h2><p>Agrega a las personas que te piden viajes por fuera.</p><button class="primary" data-newclient>＋ Nuevo cliente</button></div>`;
       $('[data-newclient]', view).onclick = () => clientForm();

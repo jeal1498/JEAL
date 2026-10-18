@@ -1,11 +1,10 @@
 // Vista del resumen mensual y acciones de navegación por mes.
-export function createSummaryView({ getData, view, header, setTabs, setFab, today, lastTrip, sleeping, icon, money, esc, cap, fdate, initials, dayLabel, waLink, MSG, client }) {
+export function createSummaryView({ getData, view, header, setTabs, today, lastTrip, sleeping, icon, money, esc, cap, fdate, initials, dayLabel, waLink, MSG, client }) {
   let sumMonth = '';
   function renderSummary() {
     const data = getData();
     header('Resumen', { action: { href: '#/ajustes', icon: 'gear', label: 'Ajustes' } });
     setTabs('resumen');
-    setFab(null);
     if (!sumMonth) sumMonth = today().slice(0, 7);
     const shift = (n) => { const d = new Date(sumMonth + '-01T00:00'); d.setMonth(d.getMonth() + n); return d.toLocaleDateString('en-CA').slice(0, 7); };
     const trips = data.trips.filter((t) => t.status === 'hecho' && t.date.startsWith(sumMonth));

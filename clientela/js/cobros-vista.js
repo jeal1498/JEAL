@@ -1,10 +1,9 @@
 // Renderizado de cobros pendientes por cliente.
-export function createChargesView({ getData, view, header, setTabs, setFab, tripsOf, owed, byWhen, money, icon, esc, waLink, MSG, cap, fdate, daysBetween, today, bindTrips, $, collectForm, client }) {
+export function createChargesView({ getData, view, header, setTabs, tripsOf, owed, byWhen, money, icon, esc, waLink, MSG, cap, fdate, daysBetween, today, bindTrips, $, collectForm, client }) {
   function renderCharges() {
     const data = getData();
     header('Cobros', { action: { href: '#/ajustes', icon: 'gear', label: 'Ajustes' } });
     setTabs('cobros');
-    setFab(null);
     const groups = data.clients
       .map((c) => ({ c, list: tripsOf(c.id).filter(owed).sort(byWhen) }))
       .filter((g) => g.list.length)

@@ -1,5 +1,5 @@
 // Detalle del cliente, sus servicios y su historial de viajes.
-export function createClientDetailView({ client, header, top, icon, esc, $, clientForm, setTabs, tripsOf, byWhen, debtOf, setFab, tripForm, view, initials, firstName, phoneIntl, waLink, MSG, weekSummary, money, dayLabel, autoName, svcPrice, sleeping, tripCard, weekForm, collectForm, quickTrip, fromService, bindTrips }) {
+export function createClientDetailView({ client, header, top, icon, esc, $, clientForm, setTabs, tripsOf, byWhen, debtOf, tripForm, view, initials, firstName, phoneIntl, waLink, MSG, weekSummary, money, dayLabel, autoName, svcPrice, sleeping, tripCard, weekForm, collectForm, quickTrip, fromService, bindTrips }) {
   function renderClient(id) {
     const c = client(id);
     header(c.name, { back: '#/clientes' });
@@ -10,7 +10,6 @@ export function createClientDetailView({ client, header, top, icon, esc, $, clie
     const done = trips.filter((t) => t.status === 'hecho');
     const debt = debtOf(id);
     const last = done[0] || trips[0];
-    setFab(() => tripForm(null, { clientId: id }));
     view.innerHTML = `
       <section class="hero"><span class="avatar">${esc(initials(c.name))}</span><h2>${esc(c.name)}</h2>
         ${c.phone ? `<span class="muted">${esc(c.phone)}</span>` : ''}</section>

@@ -1,13 +1,13 @@
 // Service worker de Clientela: funciona sin internet. Sube CACHE al publicar cambios.
-const CACHE = 'clientela-v1';
+const CACHE = 'clientela-v2';
 const ASSETS = [
-  'cartera-completa.html',
+  './',
+  'index.html',
   'manifest.webmanifest',
   'css/cartera.css',
   'js/acciones-pago.js',
   'js/acciones-viaje.js',
   'js/agenda-vista.js',
-  'js/ajustes-vista.js',
   'js/almacenamiento.js',
   'js/calculos.js',
   'js/cartera.js',
@@ -21,7 +21,6 @@ const ASSETS = [
   'js/lugares-vista.js',
   'js/mapas.js',
   'js/mensajes.js',
-  'js/perfil-vista.js',
   'js/perfil-vistas.js',
   'js/qr.js',
   'js/qrcode.js',
@@ -31,13 +30,14 @@ const ASSETS = [
   'js/utilidades.js',
   'js/viaje-vistas.js',
   'js/vistas-pago.js',
+  'js/yo-vista.js',
   '../marca/tokens.css',
   '../marca/fonts/bricolage-800.woff2',
   '../marca/fonts/dmsans.woff2',
   '../marca/fonts/jetbrains.woff2',
   '../marca/icono-app.svg',
   '../marca/png/icono-app-192.png',
-  '../marca/png/icono-app-180.png'
+  '../marca/png/icono-app-180.png',
 ];
 
 self.addEventListener('install', (e) => {
@@ -65,7 +65,7 @@ self.addEventListener('fetch', (e) => {
           if (res.ok) cache.put(req, res.clone());
           return res;
         })
-        .catch(() => cached || (req.mode === 'navigate' ? cache.match('cartera-completa.html') : undefined));
+        .catch(() => cached || (req.mode === 'navigate' ? cache.match('index.html') : undefined));
       return cached || network;
     }),
   );

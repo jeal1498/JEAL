@@ -1,5 +1,5 @@
 // Pantalla del inicio rápido, sin poseer el estado principal de Cartera.
-export function createOnboardingView({ getData, getObStep, setObStep, getObDraft, setObDraft, top, tabs, setFab, view, icon, ONB, PROFILE_STEPS, stepHtml, wireStep, $, esc, toast, save, render, pickBackup, importContacts, clientForm }) {
+export function createOnboardingView({ getData, getObStep, setObStep, getObDraft, setObDraft, top, tabs, view, icon, ONB, PROFILE_STEPS, stepHtml, wireStep, $, esc, toast, save, render, pickBackup, importContacts, clientForm }) {
   function renderOnboarding() {
       const data = getData();
       let obDraft = getObDraft();
@@ -7,7 +7,6 @@ export function createOnboardingView({ getData, getObStep, setObStep, getObDraft
       const obStep = getObStep();
     top.innerHTML = '';
     tabs.innerHTML = '';
-    setFab(null);
     const D = obDraft;
     const n = obStep;
     if (n === 0) {

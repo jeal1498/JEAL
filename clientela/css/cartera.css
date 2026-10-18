@@ -406,3 +406,19 @@ input[type=number] { -moz-appearance: textfield; }
 .list .pill { flex: none; }
 .list li b.mono { font-size: 14px; }
 .card h3.eti { font-size: 12px; font-weight: 500; }
+
+/* Mi tarjeta (pantalla completa) */
+body.full { padding-bottom: 0; }
+body.full .top, body.full .tabs { display: none; }
+.micarta { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: calc(10px + env(safe-area-inset-top)) 0 calc(16px + env(safe-area-inset-bottom)); text-align: center; }
+.mc-top { align-self: stretch; display: flex; }
+.mc-quien { display: grid; gap: 2px; }
+.mc-quien h2 { font-size: 34px; }
+.mc-quien b { font: 800 22px var(--fuente-titulos); letter-spacing: -.01em; }
+.mc-qr { width: min(78vw, 300px); background: #fff; border-radius: 24px; padding: 14px; }
+.mc-qr svg { display: block; width: 100%; height: auto; border: 0; border-radius: 0; }
+.mc-qr p { color: var(--asfalto); }
+.mc-acc { align-self: stretch; display: grid; gap: 4px; margin-top: auto; }
+.mc-acc .grande { width: 100%; }
+.mc-acc .ghost { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.mc-acc .ghost .i { width: 16px; height: 16px; }

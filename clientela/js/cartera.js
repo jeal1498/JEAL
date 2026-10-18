@@ -7,6 +7,7 @@ import { createOnboardingView } from './inicio-rapido-vista.js';
 import { createStepHandlers } from './inicio-rapido-campos.js';
 import { createShell } from './interfaz.js';
 import { createMeView } from './yo-vista.js';
+import { createCardView } from './tarjeta-vista.js';
 import { createClientDetailView } from './cliente-detalle-vista.js';
 import { createClientsView } from './clientes-vista.js';
 import { createChargesView } from './cobros-vista.js';
@@ -16,7 +17,7 @@ import { createSummaryView } from './resumen.js';
 import { PAYS, seg, payGrid } from './vistas-pago.js';
 import { PROFILE_STEPS, CAR_EXTRAS, PAY_OPTS, ONB, stepHtml } from './perfil-vistas.js';
 import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute, fold } from './utilidades.js';
-import { encodePage, qrSvg, qrBlob, buildPagePayload } from './qr.js';
+import { encodePage, qrSvg, buildPagePayload } from './qr.js';
 import { icon } from './iconos.js';
 import { createMessaging } from './mensajes.js';
 import { searchPlaces, reverse, route, directionsLink, mapSvg } from './mapas.js';
@@ -80,7 +81,7 @@ const sheet = $('#sheet');
 
 const { header, setTabs, toast } = createShell({
   getData: () => data, top, tabs, icon, esc, initials, owed, lateDebt, $,
-  onCard: () => shareSheet(), onPlus: () => plusMenu(),
+  onCard: () => { location.hash = '#/tarjeta'; }, onPlus: () => plusMenu(),
 });
 
 function render() {
@@ -88,8 +89,10 @@ function render() {
   if (mod === 'nuevo') { history.replaceState(null, '', '#/'); render(); tripForm(); return; }
   window.scrollTo(0, 0);
   document.body.classList.toggle('onboarding', !data.settings.onboarded);
+  document.body.classList.toggle('full', data.settings.onboarded && mod === 'tarjeta');
   if (!data.settings.onboarded) renderOnboarding();
   else if (mod === 'yo' || mod === 'perfil' || mod === 'ajustes') renderMe();
+  else if (mod === 'tarjeta') renderCard();
   else if (mod === 'clientes') renderClients();
   else if (mod === 'cliente' && client(id)) renderClient(id);
   else if (mod === 'cobros') renderCharges();
@@ -154,7 +157,7 @@ const renderSummary = createSummaryView({
 // ---------- Yo (perfil y ajustes) ----------
 const renderMe = createMeView({
   getData: () => data, header, setTabs, view, icon, esc, initials, $, today, daysBetween, editProfile,
-  openCard: () => shareSheet(), exportBackup, pickBackup, importContacts, ladaForm,
+  openCard: () => { location.hash = '#/tarjeta'; }, exportBackup, pickBackup, importContacts, ladaForm,
   resetOnboarding: () => { data.settings.onboarded = false; obStep = 0; refresh(); },
 });
 function exportBackup() {
@@ -743,66 +746,44 @@ function weekForm(c, { start } = {}) {
 
 // ---------- Cobrar a tu ritmo ----------
 // Marcas qué viajes te pagó (o escribes cuánto te dio y se marcan los más antiguos).
-// ---------- Mi página de conductor (QR) ----------
-function shareSheet() {
+// ---------- Mi tarjeta (QR) ----------
+// El enlace lleva dentro solo lo que elegiste mostrar; tarjeta.html lo lee sin servidor.
+async function cardUrl() {
+  const u = new URL('tarjeta.html', location.href);
+  u.hash = await encodePage(buildPagePayload(data.settings, phoneIntl));
+  return u.href;
+}
+const renderCard = createCardView({
+  getData: () => data, view, icon, esc, $, toast, cardUrl, qrSvg, openSettings: () => cardSettings(),
+});
+// Qué se ve en mi tarjeta: auto, precios de referencia, datos para transferencia y horario.
+function cardSettings() {
   const s = data.settings;
-  if (!s.driver.trim()) { toast('Escribe tu nombre en tu perfil'); return; }
   const o = s.share;
   const hasBank = s.pays.includes('Transferencia') && !!s.clabe;
-  const pageUrl = (code) => { const u = new URL('p.html', location.href); u.hash = code; return u.href; };
-  openSheet(`<h2>Mi página de conductor</h2>
-    <div class="wide qrbox"><div id="qr" class="qrimg"></div><small id="qrnote" class="muted"></small></div>
-    <div class="wide shbtns"><button type="button" data-copylink>Copiar enlace</button><button type="button" data-sharelink>Compartir</button><button type="button" data-dlqr>Descargar QR</button></div>
-    <a class="wide ghost" data-open target="_blank" rel="noopener">Ver cómo se ve mi página →</a>
-    <span class="field wide">Qué mostrar</span>
+  openSheet(`<h2>Qué se ve en mi tarjeta</h2>
+    <p class="wide muted" style="margin:0;font-size:13px">Siempre: tu nombre y tu WhatsApp. Lo demás, solo si lo prendes. Las placas nunca.</p>
     ${s.car ? `<label class="sw wide"><input type="checkbox" data-o="auto" ${o.auto ? 'checked' : ''}><span>Mi auto<small>Modelo, año, color y pasajeros. Sin placas.</small></span></label>` : ''}
     <label class="sw wide"><input type="checkbox" data-o="routesOn" ${o.routesOn ? 'checked' : ''}><span>Precios de referencia<small>Tú escribes las rutas y el precio</small></span></label>
     <div class="wide" id="routes"></div>
     ${hasBank ? `<label class="sw wide"><input type="checkbox" data-o="clabe" ${o.clabe ? 'checked' : ''}><span>Datos para transferencia<small>${esc(s.bank || 'Banco')} · ${esc(s.clabe)}</small></span></label>
       <label class="field wide" id="holderbox">Nombre completo del titular<input class="plain" name="holder" value="${esc(s.holder)}" placeholder="Como aparece en tu cuenta" autocomplete="name"></label>`
-      : '<p class="wide muted" style="margin:0;font-size:13px">Para mostrar tu CLABE, elige «Transferencia» y guárdala en <a href="#/perfil" data-editpay>Cómo cobro</a>.</p>'}
+      : '<p class="wide muted" style="margin:0;font-size:13px">Para mostrar tu CLABE, elige «Transferencia» y guárdala en <a href="#/yo" data-editpay>Cómo cobro</a>.</p>'}
     <label class="field wide">Horario <small>(opcional)</small><input class="plain" name="hours" value="${esc(o.hours)}" placeholder="Ej. Lun–Sáb, 6 am a 10 pm"></label>
     <div class="buttons"><button class="primary">Listo</button></div>`, (form) => {
-    const state = { url: '', qr: null };
     const routesBox = $('#routes', form);
     const drawRoutes = () => {
       if (o.routesOn && !o.routes.length) o.routes.push({ label: '', price: '' });
       routesBox.hidden = !o.routesOn;
-      routesBox.innerHTML = o.routes.map((r, i) => `<div class="rrow"><input class="plain" data-rl="${i}" value="${esc(r.label)}" placeholder="Ej. Aeropuerto → Centro"><input class="plain" data-rp="${i}" type="number" inputmode="decimal" min="0" value="${esc(r.price)}" placeholder="$"><button type="button" data-rx="${i}" aria-label="Quitar">✕</button></div>`).join('')
+      routesBox.innerHTML = o.routes.map((r, i) => `<div class="rrow"><input class="plain" data-rl="${i}" value="${esc(r.label)}" placeholder="Ej. Aeropuerto → Centro"><input class="plain" data-rp="${i}" type="number" inputmode="decimal" min="0" value="${esc(r.price)}" placeholder="$"><button type="button" data-rx="${i}" aria-label="Quitar">${icon('close')}</button></div>`).join('')
         + (o.routes.length < 8 ? '<button type="button" class="add" data-addroute>＋ Agregar ruta</button>' : '');
     };
-    let timer;
-    const update = () => {
-      clearTimeout(timer);
-      timer = setTimeout(async () => {
-        const payload = buildPagePayload(s, phoneIntl);
-        const url = pageUrl(await encodePage(payload));
-        state.url = url;
-        $('[data-open]', form).href = url;
-        const note = [];
-        try {
-          const qr = qrcode(0, 'M');
-          qr.addData(url);
-          qr.make();
-          state.qr = qr;
-          $('#qr', form).innerHTML = qrSvg(qr);
-          if (url.length > 900) note.push('El QR quedó muy denso; quita datos si cuesta escanearlo.');
-        } catch {
-          state.qr = null;
-          $('#qr', form).innerHTML = '';
-          note.push('Hay demasiados datos para un QR. Quita rutas o el horario.');
-        }
-        if (o.clabe && hasBank && !s.holder.trim()) note.push('Falta tu nombre completo: sin él no se muestra la CLABE.');
-        $('#qrnote', form).textContent = note.join(' ');
-      }, 200);
-    };
-    const persist = () => { save(); update(); };
     form.addEventListener('change', (e) => {
       const k = e.target.dataset.o;
       if (!k) return;
       o[k] = e.target.checked;
-      if (k === 'routesOn') { if (o.routesOn && !o.routes.length) o.routes.push({ label: '', price: '' }); drawRoutes(); }
-      persist();
+      if (k === 'routesOn') drawRoutes();
+      save();
     });
     form.addEventListener('input', (e) => {
       const t = e.target;
@@ -811,33 +792,18 @@ function shareSheet() {
       else if (t.name === 'holder') s.holder = t.value;
       else if (t.name === 'hours') o.hours = t.value;
       else return;
-      persist();
+      save();
     });
     form.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
       if (b.dataset.addroute != null) { o.routes.push({ label: '', price: '' }); drawRoutes(); routesBox.querySelector('.rrow:last-of-type input')?.focus(); }
-      else if (b.dataset.rx != null) { o.routes.splice(+b.dataset.rx, 1); drawRoutes(); persist(); }
+      else if (b.dataset.rx != null) { o.routes.splice(+b.dataset.rx, 1); drawRoutes(); save(); }
     });
     $('[data-editpay]', form)?.addEventListener('click', (e) => { e.preventDefault(); sheet.close(); editProfile(4); });
-    $('[data-copylink]', form).onclick = async () => { try { await navigator.clipboard.writeText(state.url); toast('Enlace copiado'); } catch { toast('No se pudo copiar'); } };
-    $('[data-sharelink]', form).onclick = async () => {
-      if (!navigator.share) { try { await navigator.clipboard.writeText(state.url); toast('Enlace copiado'); } catch { toast('No se pudo compartir'); } return; }
-      try { await navigator.share({ title: `${s.driver} · Conductor privado`, text: 'Pide tu viaje conmigo', url: state.url }); } catch {}
-    };
-    $('[data-dlqr]', form).onclick = async () => {
-      if (!state.qr) { toast('No hay QR para descargar'); return; }
-      const blob = await qrBlob(state.qr, s.driver.trim());
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `QR-${s.driver.trim().split(/\s+/)[0] || 'conductor'}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    };
     form.onsubmit = () => { save(); };
     sheet.addEventListener('close', () => { save(); refresh(); }, { once: true });
     drawRoutes();
-    update();
   });
 }
 

@@ -20,7 +20,7 @@ import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hou
 import { encodePage, qrSvg, buildPagePayload } from './qr.js';
 import { icon } from './iconos.js';
 import { createMessaging } from './mensajes.js';
-import { searchPlaces, reverse, route, directionsLink, mapSvg } from './mapas.js';
+import { searchPlaces, reverse, route, directionsLink, mapSvg, parseMapLink } from './mapas.js';
 import { numOr, PRESETS, isAirport, isNight, calculateQuote } from './calculos.js';
 import { loadData, saveData } from './almacenamiento.js';
 
@@ -363,7 +363,7 @@ function clientForm(c = null, { onSaved } = {}) {
 // ---------- Punto A y punto B ----------
 // Lugares ya usados (servicios y viajes) aparecen primero, sin internet.
 const { knownPlaces, nearPoint, placeInput, usualFrom, wirePlace, fillRoute } = createPlaceFields({
-  getData: () => data, client, tripsOf, byWhen, esc, icon, fold, searchPlaces, route,
+  getData: () => data, client, tripsOf, byWhen, esc, icon, fold, searchPlaces, reverse, parseMapLink, route,
   directionsLink, mapSvg, money, suggestPrice, isAirport, priceMath,
 });
 

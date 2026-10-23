@@ -1,5 +1,5 @@
 // Autocompletado de lugares, rutas frecuentes y cálculo de ruta entre A y B.
-export function createPlaceFields({ getData, client, tripsOf, byWhen, esc, icon, fold, searchPlaces, route, directionsLink, mapSvg, money, suggestPrice, isAirport, priceMath }) {
+export function createPlaceFields({ getData, client, tripsOf, byWhen, esc, icon, fold, searchPlaces, reverse, parseMapLink, route, directionsLink, mapSvg, money, suggestPrice, isAirport, priceMath }) {
   function knownPlaces(clientId) {
     const data = getData();
     const out = new Map();
@@ -54,6 +54,17 @@ export function createPlaceFields({ getData, client, tripsOf, byWhen, esc, icon,
       clearTimeout(timer);
       const q = input.value.trim();
       if (!q) return close();
+      const link = parseMapLink(q);
+      if (link) {
+        if (link.unreadable) return show([], 'Ese enlace no trae la ubicación. Los cortos (maps.app.goo.gl) no se pueden leer: ábrelo en el navegador y pega el enlace largo, o pega las coordenadas.');
+        const fallback = `Ubicación ${link.lat.toFixed(5)}, ${link.lon.toFixed(5)}`;
+        const one = (label) => [{ label, sub: 'Del enlace pegado', lat: link.lat, lon: link.lon }];
+        show(one(link.name || fallback), '');
+        if (!link.name) reverse(link.lat, link.lon).then((r) => {
+          if (input.value.trim() === q && document.activeElement === input) show(one(r.label || fallback), '');
+        }).catch(() => {});
+        return;
+      }
       const words = fold(q).split(/\s+/);
       const local = knownPlaces(typeof clientId === 'function' ? clientId() : clientId).filter((p) => words.every((w) => fold(p.label + ' ' + (p.sub || '')).includes(w))).slice(0, 3);
       show(local, q.length >= 3 ? 'Buscando en el mapa…' : '');
@@ -63,7 +74,7 @@ export function createPlaceFields({ getData, client, tripsOf, byWhen, esc, icon,
           const city = (getData().settings.city || '').trim();
           const found = (await searchPlaces(q, nearPoint(), city)).filter((r) => !local.some((l) => l.label === r.label));
           if (input.value.trim() !== q || document.activeElement !== input) return;
-          show([...local, ...found].slice(0, 6), found.length ? 'Mapa: OpenStreetMap' : `No lo encuentro en el mapa. Prueba otra parte del nombre, la calle o la colonia${city ? '' : ', o pon tu ciudad en Yo → Mis datos'}.`);
+          show([...local, ...found].slice(0, 6), found.length ? 'Mapa: OpenStreetMap' : `No lo encuentro en el mapa. Prueba otra parte del nombre o la calle, o pega un enlace de Google Maps${city ? '' : '. Pon tu ciudad en Yo → Mis datos para buscar mejor'}.`);
         } catch {
           if (input.value.trim() === q) show(local, 'Sin conexión: puedes escribir la dirección y el precio a mano.');
         }

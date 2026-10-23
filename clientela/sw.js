@@ -1,5 +1,5 @@
 // Service worker de Clientela: funciona sin internet. Sube CACHE al publicar cambios.
-const CACHE = 'clientela-v7';
+const CACHE = 'clientela-v8';
 const ASSETS = [
   './',
   'index.html',

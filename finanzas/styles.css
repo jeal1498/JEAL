@@ -463,3 +463,14 @@ body { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
 .stat-value.t-ok { color: var(--ok); }
 .stat-sub { display: none; }
 .stat-sub:not(:empty) { display: block; }
+
+/* Encabezado: tres botones redondos, el mes como título y píldora de hoy */
+.header { position: static; flex-direction: column; align-items: stretch; gap: 0; padding-bottom: 4px; background: var(--bg); backdrop-filter: none; }
+.header-bar { display: flex; align-items: center; justify-content: space-between; }
+.icon-btn { border-radius: 50%; border: 0; background: var(--surface-2); box-shadow: none; }
+.header-cap { margin-top: 14px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.header-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; min-height: 44px; }
+.header-title-row h1 { font-size: 30px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
+.hp-label { min-height: 44px; font-size: 30px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); }
+.hp-label .ic { width: 22px; height: 22px; color: var(--muted); }
+.today-pill { flex: none; font-size: 14px; font-weight: 700; background: var(--surface-2); border-radius: 99px; padding: 6px 12px; }

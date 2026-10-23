@@ -466,9 +466,11 @@ function renderList(groups, caption, countText, emptyKind, baseEmpty) {
    ========================================================= */
 function render() {
   const isG = state.view === 'gastos';
-  $('#header-sub').textContent = `${isG ? 'Gastos' : 'Metas de ahorro'}, ${DIAS[HOY.getDay()]} ${HOY.getDate()} de ${MESES[HOY.getMonth()].toLowerCase()}`;
+  $('#header-sub').textContent = `Finanzas · ${isG ? 'Gastos' : 'Metas'}`;
+  $('#today-pill').textContent = `Hoy · ${DIAS[HOY.getDay()].slice(0, 3).toLowerCase()} ${HOY.getDate()}`;
   $$('.nav-btn').forEach(b => b.setAttribute('aria-current', b.dataset.view === state.view ? 'page' : 'false'));
-  $('#hero-period').hidden = !isG;
+  $('#month-label').hidden = !isG;
+  $('#title-metas').hidden = isG;
   $('#seg').hidden = !isG;
   const addBtn = $('.nav-add'), addLabel = isG ? 'Agregar pago o abono' : 'Agregar meta o ahorro';
   addBtn.setAttribute('aria-label', addLabel); addBtn.title = addLabel;

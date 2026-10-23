@@ -205,7 +205,7 @@ const PLAZO_ORDER = ['vencida', 'proxima', 'largo', 'alcanzada'];
 function buildGastos() {
   const all = movimientos.map(procesar);
   const isUrg = state.grouping === 'urgencia';
-  const base = isUrg ? all : all.filter(m => m.date.getFullYear() === state.month.year && m.date.getMonth() === state.month.month);
+  const base = all.filter(m => m.date.getFullYear() === state.month.year && m.date.getMonth() === state.month.month);
   const q = state.search.trim().toLowerCase();
   const items = base.filter(m =>
     (state.filter === 'todos' || m.estado.toLowerCase() === state.filter) &&
@@ -324,7 +324,7 @@ function renderRhythm(items, start, n, monthMode) {
 }
 
 function renderHeroGastos(b) {
-  const { all, base, isUrg } = b;
+  const { base } = b;
   const totalImp = sum(base, 'imp'), totalAbo = sum(base, 'abo'), pend = sum(base, 'pendiente');
   const venc = base.filter(m => m.estado === 'Vencido');
   const atrasado = sum(venc, 'pendiente');
@@ -339,8 +339,8 @@ function renderHeroGastos(b) {
      para cerrar el mes (incluye lo vencido). */
   const finMes = new Date(HOY.getFullYear(), HOY.getMonth() + 1, 0);
   const diasRestantes = Math.max(1, finMes.getDate() - HOY.getDate() + 1);
-  const mostrarDiaria = isUrg || isCurrentMonth();
-  const debeMes = isUrg ? sum(all.filter(m => m.date <= finMes), 'pendiente') : pend;
+  const mostrarDiaria = isCurrentMonth();
+  const debeMes = pend;
 
   const futuros = base.filter(m => m.estado === 'Pendiente').sort((a, c) => a.date - c.date);
   let proximo;
@@ -352,7 +352,7 @@ function renderHeroGastos(b) {
   }
 
   const porPagar = {
-    label: isUrg ? 'Por pagar en total' : isCurrentMonth() ? 'Por pagar este mes' : `Por pagar en ${MESES[state.month.month].toLowerCase()} ${state.month.year}`,
+    label: isCurrentMonth() ? 'Por pagar este mes' : `Por pagar en ${MESES[state.month.month].toLowerCase()} ${state.month.year}`,
     value: fmtMoney(pend),
     sub: totalImp > 0 ? `Pagado ${fmtMoney(totalAbo)}` : 'Sin movimientos'
   };
@@ -375,8 +375,7 @@ function renderHeroGastos(b) {
 
   $('#rhythm').hidden = false;
   $('#s-meter').hidden = true;
-  if (isUrg) renderRhythm(all, HOY, 31, false);
-  else renderRhythm(base, new Date(state.month.year, state.month.month, 1), new Date(state.month.year, state.month.month + 1, 0).getDate(), true);
+  renderRhythm(base, new Date(state.month.year, state.month.month, 1), new Date(state.month.year, state.month.month + 1, 0).getDate(), true);
 }
 
 function renderHeroMetas(b) {
@@ -423,8 +422,7 @@ function renderChips(defs) {
 
 function renderMonthControls() {
   const urg = state.grouping === 'urgencia';
-  $('#month-text').textContent = urg ? 'Todos los meses' : `${MESES[state.month.month]} ${state.month.year}`;
-  $('#month-label').disabled = urg;
+  $('#month-text').textContent = `${MESES[state.month.month]} ${state.month.year}`;
   $('#g-cat').setAttribute('aria-pressed', String(!urg));
   $('#g-urg').setAttribute('aria-pressed', String(urg));
 }
@@ -581,7 +579,7 @@ function render() {
   const isG = state.view === 'gastos';
   $('#header-sub').textContent = `${isG ? 'Gastos' : 'Metas de ahorro'}, ${DIAS[HOY.getDay()]} ${HOY.getDate()} de ${MESES[HOY.getMonth()].toLowerCase()}`;
   $$('.nav-btn').forEach(b => b.setAttribute('aria-current', b.dataset.view === state.view ? 'page' : 'false'));
-  $('#hero-period').hidden = !isG || state.grouping === 'urgencia';
+  $('#hero-period').hidden = !isG;
   $('#seg').hidden = !isG;
   $('#stat-2').disabled = !isG;
   const addBtn = $('.nav-add'), addLabel = isG ? 'Agregar pago o abono' : 'Agregar meta o ahorro';
@@ -746,7 +744,7 @@ function openDetail(kind, id) {
 /* Deja visible lo recién guardado: limpia filtro/búsqueda que lo esconderían y abre su grupo. */
 function reveal(kind, raw) {
   const isMeta = kind === 'meta';
-  if (!isMeta && state.grouping === 'categoria') { const d = parseDate(raw.fecha); state.month = { year: d.getFullYear(), month: d.getMonth() }; }
+  if (!isMeta) { const d = parseDate(raw.fecha); state.month = { year: d.getFullYear(), month: d.getMonth() }; }
   const okFilter = isMeta ? (state.filter === 'todas' || plazoKey(raw) === state.filter) : (state.filter === 'todos' || procesar(raw).estado.toLowerCase() === state.filter);
   if (!okFilter) state.filter = isMeta ? 'todas' : 'todos';
   const q = state.search.trim().toLowerCase();
@@ -861,7 +859,7 @@ function openPayDetail(kind, id) {
 /* ----- Formulario ----- */
 function defaultDate(isMeta) {
   if (isMeta) return '';
-  if (state.grouping === 'urgencia' || isCurrentMonth()) return toISO(HOY);
+  if (isCurrentMonth()) return toISO(HOY);
   return toISO(new Date(state.month.year, state.month.month, 1));
 }
 
@@ -1079,7 +1077,7 @@ function setGrouping(g) {
   lsSet(KEYS.group, g);
   render();
   /* Aviso de una sola vez: ya no hay flechas, el mes se cambia deslizando. */
-  if (g === 'categoria' && !lsGet(KEYS.hint)) {
+  if (!lsGet(KEYS.hint)) {
     lsSet(KEYS.hint, '1');
     toast('Desliza a los lados para cambiar de mes');
   }
@@ -1275,7 +1273,7 @@ document.addEventListener('keydown', e => {
   document.addEventListener('touchend', e => {
     if (!tracking) return;
     tracking = false;
-    if (state.view !== 'gastos' || state.grouping !== 'categoria' || !sheet.el.hidden) return;
+    if (state.view !== 'gastos' || !sheet.el.hidden) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - sx, dy = t.clientY - sy;
     if (Date.now() - t0 > 700 || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;

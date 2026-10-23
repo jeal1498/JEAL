@@ -26,3 +26,5 @@ export const byWhen = (a, b) => a.date.localeCompare(b.date) || (a.time || '99')
 export const mondayOf = (d) => addDays(d, -((new Date(d + 'T00:00').getDay() + 6) % 7));
 export const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 export const shortRoute = (from, to) => `${(from || '…').split(',')[0]} → ${(to || '…').split(',')[0]}`;
+// Punto de mapa sin campos de más. `addr` es la dirección real cuando el lugar tiene nombre («Casa»).
+export const cleanPt = (p) => (p && p.lat != null ? { label: p.label, ...(p.addr ? { addr: p.addr } : {}), lat: p.lat, lon: p.lon } : null);

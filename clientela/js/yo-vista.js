@@ -1,5 +1,5 @@
 // Pantalla Yo: Mi tarjeta, tu perfil (datos, auto, tarifa, cobro) y los ajustes.
-export function createMeView({ getData, header, setTabs, view, icon, esc, initials, $, today, daysBetween, editProfile, openCard, exportBackup, pickBackup, importContacts, ladaForm, resetOnboarding }) {
+export function createMeView({ getData, header, setTabs, view, icon, esc, initials, $, today, daysBetween, editProfile, openCard, exportBackup, pickBackup, importContacts, ladaForm, placesForm, resetOnboarding }) {
   function renderMe() {
     const data = getData();
     const s = data.settings;
@@ -9,6 +9,7 @@ export function createMeView({ getData, header, setTabs, view, icon, esc, initia
     const phone = String(s.phone || '').replace(/\D/g, '');
     const nicePhone = phone.length === 10 ? `${phone.slice(0, 2)} ${phone.slice(2, 6)} ${phone.slice(6)}` : s.phone;
     const ago = s.lastBackup ? daysBetween(s.lastBackup, today()) : null;
+    const nPlaces = (s.savedPlaces || []).length + data.clients.reduce((n, c) => n + (c.savedPlaces || []).length, 0);
     const backup = ago == null ? 'Nunca' : ago === 0 ? 'Hoy' : ago === 1 ? 'Ayer' : `Hace ${ago} días`;
     const row = (attrs, name, value) => `<button type="button" class="fila" ${attrs}><span class="n">${name}</span><span class="v">${value}</span>${icon('right')}</button>`;
     view.innerHTML = `
@@ -20,6 +21,7 @@ export function createMeView({ getData, header, setTabs, view, icon, esc, initia
         ${row('data-edit="2"', 'Mi auto', esc(s.car ? `${s.car} ${s.year}`.trim() : 'Agrégalo'))}
         ${row('data-edit="3"', 'Mi tarifa', `$${esc(s.perKm)}/km · $${esc(s.perHour)}/h`)}
         ${row('data-edit="4"', 'Cómo cobro', esc((s.pays || []).join(', ') || 'Sin elegir'))}
+        ${row('data-places', 'Mis lugares', esc(nPlaces ? `${nPlaces} con nombre` : 'Casa, Trabajo…'))}
       </section>
       <section class="filas">
         <button type="button" class="fila" data-export><span class="n">Copia de mis datos<small>Todo se guarda solo en este teléfono</small></span><span class="pill">${backup}</span>${icon('download')}</button>
@@ -35,6 +37,7 @@ export function createMeView({ getData, header, setTabs, view, icon, esc, initia
     $('[data-import]', view).onclick = pickBackup;
     $('[data-contacts]', view)?.addEventListener('click', importContacts);
     $('[data-lada]', view).onclick = ladaForm;
+    $('[data-places]', view).onclick = placesForm;
     $('[data-tour]', view).onclick = resetOnboarding;
   }
   return renderMe;

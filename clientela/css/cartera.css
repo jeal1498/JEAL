@@ -291,6 +291,26 @@ body.onboarding .tabs, body.onboarding .top { display: none; }
 .stop .loc { border: 0; background: none; color: var(--accent); padding: 8px; }
 .stop .rm { color: var(--muted); font-size: 22px; line-height: 1; }
 .dot.s { background: var(--surface); box-shadow: 0 0 0 2px var(--accent); }
+.stop > .dot { grid-column: 1; grid-row: 1; }
+.stop > input { grid-column: 2; grid-row: 1; }
+.stop > .loc { grid-column: 3; grid-row: 1; }
+.stop > .star { grid-column: 2; grid-row: 1; justify-self: end; z-index: 1; width: 40px; height: 40px; margin-right: 2px; display: grid; place-items: center; border: 0; background: none; color: var(--muted); }
+.stop > .star:hover, .stop > .star:focus-visible { color: var(--accent); }
+.stop.has-star > input { padding-right: 42px; }
+.namer { grid-column: 2 / -1; grid-row: 2; display: grid; gap: 8px; padding: 2px 0 4px; }
+.namer .chips { margin: 0; }
+.namerow { display: flex; gap: 8px; }
+.namerow input { flex: 1; min-width: 0; }
+.namerow .primary { flex: none; padding: 0 14px; }
+.placebar { margin: -4px 0 0; }
+.placebar button.named { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.routetools { display: grid; grid-template-columns: 1fr 40px; align-items: center; }
+.swap { border: 0; background: none; color: var(--text-2); font-size: 18px; min-height: 36px; padding: 0; }
+.swap:hover, .swap:focus-visible { color: var(--accent); }
+.prow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.prow:first-child { border-top: 0; }
+.prow span { display: grid; min-width: 0; }
+.prow small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .addstop { display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 4px; width: 100%; min-height: 36px; padding: 0; border: 0; background: none; color: var(--text-2); font: 600 14px/1 var(--fuente-texto, inherit); text-align: left; cursor: pointer; }
 .addstop .plus { width: 22px; height: 22px; margin-left: 2px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--accent); background: var(--surface); color: var(--accent); font-size: 17px; line-height: 1; }
 .addstop:hover .plus, .addstop:focus-visible .plus { background: var(--accent-soft); }

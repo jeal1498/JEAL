@@ -1,5 +1,5 @@
 // Tarjeta editable de un servicio frecuente de cliente.
-export function createServiceCard({ placeInput, wirePlace, fillRoute, stopsField, $, esc, suggestPrice, svcCtx, autoName, mapSvg, money, priceMath, directionsLink }) {
+export function createServiceCard({ placeInput, wirePlace, fillRoute, stopsField, placeBar, $, esc, suggestPrice, svcCtx, autoName, mapSvg, money, priceMath, directionsLink }) {
   function serviceCard(sv, onRemove, getClient) {
     const el = document.createElement('section');
     el.className = 'svc';
@@ -20,11 +20,12 @@ export function createServiceCard({ placeInput, wirePlace, fillRoute, stopsField
       if (sv.a && sv.b && (!sv.name || sv.name === auto)) { sv.name = auto = autoName(sv); titleEl.textContent = sv.name; }
     };
     for (const which of ['a', 'b']) {
-      wirePlace($(`[data-pt=${which}]`, el), getClient()?.id, (p, typing) => {
+      wirePlace($(`[data-pt=${which}]`, el), () => getClient()?.id, (p, typing) => {
         sv[which] = p;
         if (!typing || !p) update();
-      });
+      }, sv[which]);
     }
+    placeBar($('.route', el), () => getClient()?.id);
     priceIn.oninput = () => { sv.price = priceIn.value === '' ? null : +priceIn.value; };
     $('[data-rm]', el).onclick = onRemove;
     if (sv.a && sv.b) {

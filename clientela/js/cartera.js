@@ -16,7 +16,7 @@ import { createTripCard } from './viaje-vistas.js';
 import { createSummaryView } from './resumen.js';
 import { PAYS, seg, payGrid } from './vistas-pago.js';
 import { PROFILE_STEPS, CAR_EXTRAS, PAY_OPTS, ONB, stepHtml } from './perfil-vistas.js';
-import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute, fold } from './utilidades.js';
+import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute, fold, cleanPt } from './utilidades.js';
 import { encodePage, qrSvg, buildPagePayload } from './qr.js';
 import { icon } from './iconos.js';
 import { createMessaging } from './mensajes.js';
@@ -157,7 +157,7 @@ const renderSummary = createSummaryView({
 // ---------- Yo (perfil y ajustes) ----------
 const renderMe = createMeView({
   getData: () => data, header, setTabs, view, icon, esc, initials, $, today, daysBetween, editProfile,
-  openCard: () => { location.hash = '#/tarjeta'; }, exportBackup, pickBackup, importContacts, ladaForm,
+  openCard: () => { location.hash = '#/tarjeta'; }, exportBackup, pickBackup, importContacts, ladaForm, placesForm,
   resetOnboarding: () => { data.settings.onboarded = false; obStep = 0; refresh(); },
 });
 function exportBackup() {
@@ -170,6 +170,34 @@ function exportBackup() {
   data.settings.lastBackup = today();
   refresh();
   toast('Copia descargada');
+}
+// Lugares con nombre: los tuyos y los de cada cliente. Se crean con la ☆ al elegir un lugar.
+function placesForm() {
+  openSheet(`<h2>Mis lugares</h2>
+    <p class="field wide muted" style="font-weight:400">Al elegir un lugar en un viaje, toca la ☆ para ponerle nombre.</p>
+    <div class="wide" id="plist"></div>
+    <div class="buttons"><button type="button" data-close>Cerrar</button></div>`, (form) => {
+    $('[data-close]', form).onclick = () => sheet.close();
+    const box = $('#plist', form);
+    const draw = () => {
+      const rows = [
+        ...(data.settings.savedPlaces || []).map((p) => ({ p, from: data.settings.savedPlaces, who: 'Tuyo' })),
+        ...data.clients.flatMap((c) => (c.savedPlaces || []).map((p) => ({ p, from: c.savedPlaces, who: c.name }))),
+      ];
+      box.innerHTML = rows.length
+        ? rows.map((r, k) => `<div class="prow"><span><b>${esc(r.p.name)}</b><small>${esc(r.who)} · ${esc(r.p.addr)}</small></span><button type="button" data-rm="${k}">Quitar</button></div>`).join('')
+        : '<p class="muted">Aún no tienes lugares con nombre.</p>';
+      box.onclick = (e) => {
+        const b = e.target.closest('[data-rm]');
+        if (!b) return;
+        const r = rows[+b.dataset.rm];
+        r.from.splice(r.from.indexOf(r.p), 1);
+        refresh();
+        draw();
+      };
+    };
+    draw();
+  });
 }
 function ladaForm() {
   openSheet(`<h2>Lada para WhatsApp</h2>
@@ -257,23 +285,10 @@ function editProfile(n) {
 
 // ---------- Botón + ----------
 // Cotizar, agendar o agregar cliente. En la ficha de un cliente, ya viene elegido.
+// El + abre Cotizar directo (un toque menos); desde ahí se manda el precio, se agenda o se crea un cliente.
 function plusMenu() {
   const [, mod = '', id = ''] = (location.hash || '#/').slice(1).split('/');
-  const preset = mod === 'cliente' && client(id) ? { clientId: id } : {};
-  const opt = (k, ic, title, sub) => `<button type="button" class="opcion wide" data-o="${k}"><span class="ic">${icon(ic)}</span><span><b>${title}</b><small>${sub}</small></span></button>`;
-  openSheet(`<h2>¿Qué quieres hacer?</h2>
-    ${opt('quote', 'calc', 'Cotizar un viaje', 'Precio en segundos para mandarlo')}
-    ${opt('trip', 'calendar', 'Agendar viaje', 'Con cliente, día y hora')}
-    ${opt('client', 'userplus', 'Cliente nuevo', 'contacts' in navigator ? 'O impórtalo de tus contactos' : 'Nombre y WhatsApp')}
-    <button type="button" class="wide" data-close>Cancelar</button>`, (form) => {
-    $('[data-close]', form).onclick = () => sheet.close();
-    form.querySelectorAll('[data-o]').forEach((b) => (b.onclick = () => {
-      sheet.close();
-      if (b.dataset.o === 'quote') quoteForm(preset);
-      else if (b.dataset.o === 'trip') tripForm(null, preset);
-      else clientForm();
-    }));
-  });
+  quoteForm(mod === 'cliente' && client(id) ? { clientId: id } : {});
 }
 
 // ---------- Formularios ----------
@@ -362,13 +377,13 @@ function clientForm(c = null, { onSaved } = {}) {
 
 // ---------- Punto A y punto B ----------
 // Lugares ya usados (servicios y viajes) aparecen primero, sin internet.
-const { knownPlaces, nearPoint, placeInput, usualFrom, wirePlace, fillRoute, stopsField } = createPlaceFields({
+const { knownPlaces, nearPoint, placeInput, usualFrom, wirePlace, setPlace, placeBar, fillRoute, stopsField } = createPlaceFields({
   getData: () => data, client, tripsOf, byWhen, esc, icon, fold, searchPlaces, reverse, parseMapLink, route,
-  directionsLink, mapSvg, money, suggestPrice, isAirport, priceMath,
+  directionsLink, mapSvg, money, suggestPrice, isAirport, priceMath, save,
 });
 
 const serviceCard = createServiceCard({
-  placeInput, wirePlace, fillRoute, stopsField, $, esc, suggestPrice, svcCtx, autoName, mapSvg, money, priceMath, directionsLink,
+  placeInput, wirePlace, fillRoute, stopsField, placeBar, $, esc, suggestPrice, svcCtx, autoName, mapSvg, money, priceMath, directionsLink,
 });
 
 // Atajos de fecha y hora (Ahora · Hoy · Mañana).
@@ -436,8 +451,9 @@ function tripForm(t = null, preset = {}) {
     };
     const cid = () => idIn.value;
     const st = stopsField($('.route', form), { clientId: cid, initial: v.stops || [], onChange: () => { recalc(); suggest(); checkPlaces(); } });
-    wirePlace(fromIn, cid, (p, typing) => { rt.fromPt = p; if (!typing || !p) { recalc(); suggest(); checkPlaces(); } });
-    wirePlace(toIn, cid, (p, typing) => { rt.toPt = p; if (!typing || !p) { recalc(); suggest(); checkPlaces(); } });
+    wirePlace(fromIn, cid, (p, typing) => { rt.fromPt = p; if (!typing || !p) { recalc(); suggest(); checkPlaces(); } }, rt.fromPt);
+    wirePlace(toIn, cid, (p, typing) => { rt.toPt = p; if (!typing || !p) { recalc(); suggest(); checkPlaces(); } }, rt.toPt);
+    placeBar($('.route', form), cid);
     if (rt.fromPt && rt.toPt) {
       routeEl.hidden = false;
       if (rt.path) routeEl.innerHTML = `${mapSvg(rt.path, 'Ruta', st.get())}<div class="how">${els.km.value} km · ${rt.min} min · <a href="${directionsLink(rt.fromPt, rt.toPt, st.get())}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
@@ -450,7 +466,8 @@ function tripForm(t = null, preset = {}) {
       const p = usualFrom(idIn.value);
       if (!p) return;
       fromIn.value = autoFrom = p.label;
-      rt.fromPt = p.lat != null ? { label: p.label, lat: p.lat, lon: p.lon } : null;
+      rt.fromPt = cleanPt(p);
+      setPlace(fromIn, rt.fromPt);
       recalc(); suggest();
     };
     // Mi ubicación como punto A.
@@ -460,7 +477,7 @@ function tripForm(t = null, preset = {}) {
       navigator.geolocation.getCurrentPosition(async ({ coords: { latitude: lat, longitude: lon } }) => {
         let p;
         try { const r = await reverse(lat, lon); p = { label: r.label, lat, lon }; } catch { p = { label: 'Mi ubicación', lat, lon }; }
-        fromIn.value = p.label; autoFrom = ''; rt.fromPt = p;
+        autoFrom = ''; rt.fromPt = p; setPlace(fromIn, p);
         recalc(); suggest(); checkPlaces();
       }, () => toast('No se pudo obtener tu ubicación'), { enableHighAccuracy: true, timeout: 10000 });
     };
@@ -475,6 +492,7 @@ function tripForm(t = null, preset = {}) {
         const f = fromService(client(idIn.value), sv);
         fromIn.value = f.from; toIn.value = f.to; autoFrom = '';
         Object.assign(rt, { fromPt: f.fromPt, toPt: f.toPt, min: f.min, path: f.path });
+        setPlace(fromIn, f.fromPt); setPlace(toIn, f.toPt);
         st.set(f.stops);
         els.km.value = f.km; els.price.value = f.price; priceTyped = true;
         chips.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
@@ -588,13 +606,14 @@ function quoteForm(preset = {}) {
     const st = stopsField($('.route', form), { clientId: () => els.clientId.value, onChange: () => { recalc(); checkPlaces(); } });
     wirePlace(fromIn, () => els.clientId.value, (p, typing) => { rt.fromPt = p; if (!typing || !p) { recalc(); checkPlaces(); } });
     wirePlace(toIn, () => els.clientId.value, (p, typing) => { rt.toPt = p; if (!typing || !p) { recalc(); checkPlaces(); } });
+    placeBar($('.route', form), () => els.clientId.value);
     $('[data-loc]', form).onclick = () => {
       if (!navigator.geolocation) return toast('Tu teléfono no comparte la ubicación');
       toast('Buscando tu ubicación…');
       navigator.geolocation.getCurrentPosition(async ({ coords: { latitude: lat, longitude: lon } }) => {
         let p;
         try { const r = await reverse(lat, lon); p = { label: r.label, lat, lon }; } catch { p = { label: 'Mi ubicación', lat, lon }; }
-        fromIn.value = p.label; rt.fromPt = p;
+        rt.fromPt = p; setPlace(fromIn, p);
         recalc(); checkPlaces();
       }, () => toast('No se pudo obtener tu ubicación'), { enableHighAccuracy: true, timeout: 10000 });
     };
@@ -603,9 +622,11 @@ function quoteForm(preset = {}) {
     const drawClients = () => {
       const list = [...data.clients].sort((a, b) => lastUse(b.id) - lastUse(a.id) || a.name.localeCompare(b.name, 'es')).slice(0, 5);
       if (cur() && !list.includes(cur())) list.unshift(cur());
-      qchips.innerHTML = list.map((c) => `<button type="button" data-c="${c.id}" class="${c.id === els.clientId.value ? 'on' : ''}">${esc(c.name)}</button>`).join('') || '<small class="muted">Aún no tienes clientes: igual puedes cotizar.</small>';
+      const chips = list.map((c) => `<button type="button" data-c="${c.id}" class="${c.id === els.clientId.value ? 'on' : ''}">${esc(c.name)}</button>`).join('');
+      qchips.innerHTML = (chips || '<small class="muted">Aún no tienes clientes: igual puedes cotizar.</small>') + '<button type="button" data-newc>＋ Nuevo</button>';
     };
     qchips.onclick = (e) => {
+      if (e.target.closest('[data-newc]')) { clientForm(null, { onSaved: (c) => quoteForm({ clientId: c.id }) }); return; }
       const b = e.target.closest('[data-c]');
       if (!b) return;
       els.clientId.value = els.clientId.value === b.dataset.c ? '' : b.dataset.c;
@@ -626,6 +647,7 @@ function quoteForm(preset = {}) {
       const f = fromService(cur(), cur().services.find((x) => x.id === b.dataset.sv));
       fromIn.value = f.from; toIn.value = f.to;
       Object.assign(rt, { fromPt: f.fromPt, toPt: f.toPt, km: f.km, min: f.min, path: f.path });
+      setPlace(fromIn, f.fromPt); setPlace(toIn, f.toPt);
       st.set(f.stops);
       els.price.value = f.price; typed = true;
       qsvc.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
@@ -636,7 +658,7 @@ function quoteForm(preset = {}) {
     };
     function prefillFrom() {
       const p = cur() && usualFrom(cur().id);
-      if (p && !fromIn.value.trim()) { fromIn.value = p.label; rt.fromPt = p.lat != null ? { label: p.label, lat: p.lat, lon: p.lon } : null; recalc(); }
+      if (p && !fromIn.value.trim()) { rt.fromPt = cleanPt(p); setPlace(fromIn, rt.fromPt); fromIn.value = p.label; recalc(); }
       else suggest();
     }
     els.time.addEventListener('input', suggest);

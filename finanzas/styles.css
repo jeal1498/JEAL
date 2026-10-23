@@ -408,3 +408,24 @@ input[aria-invalid="true"] { border-color: var(--danger); }
 .hist-row { display: flex; justify-content: space-between; align-items: center; min-height: 44px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 @keyframes flash { from { background: color-mix(in srgb, var(--focus) 20%, transparent); } to { background: transparent; } }
 .row.flash { animation: flash 1.6s ease-out; }
+
+/* ---------- Más opciones, importar y exportar ---------- */
+.menu { display: grid; gap: 4px; margin-top: 4px; }
+.menu-row { width: 100%; display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 8px 14px; border: 0; border-radius: 14px; background: none; text-align: left; color: var(--ink); }
+.menu-row:active { background: var(--surface-2); }
+@media (hover: hover) { .menu-row:hover { background: var(--surface-2); } }
+.menu-row b { display: block; font-size: 16px; font-weight: 600; }
+.menu-row small { display: block; font-size: 14px; font-weight: 500; color: var(--muted); }
+.menu-row .ic { color: var(--muted); }
+.imp-pick { display: grid; gap: 10px; margin: 14px 0 4px; }
+.file-btn { position: relative; overflow: hidden; }
+.file-btn input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 0; }
+.file-btn:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.imp-file { margin: 4px 0 0; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.opt { display: flex; align-items: flex-start; gap: 12px; margin: 8px 0 0; padding: 12px 14px; border: 1.5px solid var(--field-line); border-radius: 14px; color: var(--ink); font-size: 16px; font-weight: 600; cursor: pointer; }
+.opt:has(input:checked) { border-color: var(--ink); background: var(--surface-2); }
+.opt input { flex: none; width: 20px; height: 20px; margin-top: 2px; accent-color: var(--ink); }
+.opt small { display: block; font-size: 14px; font-weight: 500; color: var(--muted); }
+.imp-skip { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+.imp-skip summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
+.imp-skip ul { margin: 0 0 8px 18px; }

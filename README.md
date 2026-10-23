@@ -14,7 +14,7 @@ PWA personal (sin build, sin servidor). Los datos viven solo en el dispositivo (
 - **Gastos**: tus pagos con fecha límite, agrupados por urgencia (vencidos, hoy, esta semana…) o por categoría y mes. Arriba la **meta diaria** (lo pendiente del mes, con lo vencido, entre los días que quedan) y la gráfica de cuándo caen los pagos.
 - **Abonos**: cada pago guarda su historial de abonos ("Abonar o pagar", "Pagar todo", "Deshacer último abono").
 - **Metas**: ahorros con fecha y monto; cada ahorro se registra como abono, con la cuota para llegar a tiempo.
-- Eliminar tiene **Deshacer**; el modo claro/oscuro se cambia en la pantalla.
+- Eliminar tiene **Deshacer**. En ⋯: modo claro/oscuro, **Importar** (JSON o CSV/Excel, agregando o reemplazando, con vista previa y Deshacer) y **Exportar** (JSON completo o CSV para Excel).
 - Los datos están en IndexedDB (`movimientos` y `metas`) y entran al buscador y al respaldo.
 
 ## Respaldo

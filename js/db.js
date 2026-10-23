@@ -43,6 +43,16 @@ async function tx(stores, mode, fn) {
 export const all = (store) => tx(store, 'readonly', (t) => t.objectStore(store).getAll());
 export const put = (store, obj) => tx(store, 'readwrite', (t) => t.objectStore(store).put(obj));
 export const putMany = (store, items) => tx(store, 'readwrite', (t) => { const os = t.objectStore(store); for (const x of items) os.put(x); });
+// Varias escrituras en una sola transacción (o se hacen todas o ninguna):
+// batch({ store: { clear?: true, remove?: [ids], put?: [registros] } })
+export const batch = (ops) => tx(Object.keys(ops), 'readwrite', (t) => {
+  for (const [s, { clear, remove = [], put = [] }] of Object.entries(ops)) {
+    const os = t.objectStore(s);
+    if (clear) os.clear();
+    for (const id of remove) os.delete(id);
+    for (const x of put) os.put(x);
+  }
+});
 export const remove = (store, id) => tx(store, 'readwrite', (t) => t.objectStore(store).delete(id));
 export const getSetting = (key) => tx('settings', 'readonly', (t) => t.objectStore('settings').get(key));
 export const setSetting = (key, val) => tx('settings', 'readwrite', (t) => t.objectStore('settings').put(val, key));

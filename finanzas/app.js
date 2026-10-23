@@ -1,6 +1,7 @@
 import * as db from '../js/db.js';
 import * as backup from '../js/backup.js';
 import { migrateFinance } from '../js/migrar-finanzas.js';
+import { parseImport, exportJSON, exportCSV, templateCSV } from './datos.js';
 
 /* =========================================================
    Utilidades
@@ -621,6 +622,8 @@ const sheet = { el: $('#sheet'), panel: $('#sheet-panel'), body: $('#sheet-body'
 const setInert = on => $$('.app, .bottom-nav').forEach(el => { el.inert = on; });
 
 function openSheet(title, html) {
+  /* Un aviso a medias (p. ej. Deshacer) no debe quedar tapando o interceptando toques de la hoja. */
+  clearTimeout(toastTimer); $('#toast').classList.remove('show');
   if (sheet.el.hidden) sheet.last = document.activeElement;
   sheet.title.textContent = title;
   sheet.body.innerHTML = html;
@@ -941,6 +944,122 @@ function openMonthPicker() {
 }
 
 /* =========================================================
+   Más opciones: tema, importar y exportar
+   ========================================================= */
+const ICO = {
+  upload: svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>'),
+  download: svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>')
+};
+const themeLabel = () => document.documentElement.dataset.theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+
+function openMenu() {
+  sheet.ctx = { type: 'menu' };
+  openSheet('Más opciones', `<div class="menu">
+    <button type="button" class="menu-row" data-action="theme">
+      <svg class="ic i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+      <svg class="ic i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <span><b id="menu-theme">${themeLabel()}</b></span>
+    </button>
+    <button type="button" class="menu-row" data-action="open-import">${ICO.upload}<span><b>Importar datos</b><small>Archivo JSON o CSV (Excel)</small></span></button>
+    <button type="button" class="menu-row" data-action="export-json">${ICO.download}<span><b>Exportar JSON</b><small>Respaldo completo, con historial de abonos</small></span></button>
+    <button type="button" class="menu-row" data-action="export-csv">${ICO.download}<span><b>Exportar CSV</b><small>Para abrir en Excel</small></span></button>
+  </div>`);
+  sheet.panel.focus({ preventScroll: true });
+}
+
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function openImport(msg = '') {
+  sheet.ctx = { type: 'import' };
+  openSheet('Importar datos', `
+    <p class="note">Elige un archivo <b>JSON</b> (el de Exportar) o un <b>CSV</b> con las columnas Tipo, Fecha, Concepto, Categoría, Importe y Abonado. También sirve una hoja de Excel guardada como CSV: se omiten los renglones de Ingreso.</p>
+    <div class="imp-pick">
+      <span class="btn btn-primary file-btn">Elegir archivo<input type="file" id="imp-file" accept=".json,.csv,.txt,application/json,text/csv" aria-label="Elegir archivo para importar"></span>
+      <button type="button" class="btn btn-soft" data-action="template">Descargar plantilla CSV</button>
+    </div>
+    <p class="form-error" id="imp-error" role="alert">${esc(msg)}</p>`);
+  sheet.panel.focus({ preventScroll: true });
+}
+
+async function readImportFile(file) {
+  if (!file) return;
+  try {
+    if (file.size > 5e6) throw new Error('El archivo pesa más de 5 MB.');
+    showImportPreview(file.name, parseImport(await file.text(), CATS));
+  } catch (err) {
+    $('#imp-error').textContent = err.message || 'No pude leer el archivo.';
+  }
+}
+
+function showImportPreview(name, p) {
+  const movIds = new Set(movimientos.map(x => x.id)), metIds = new Set(metas.map(x => x.id));
+  const total = p.movimientos.length + p.metas.length;
+  const existen = p.movimientos.filter(x => movIds.has(x.id)).length + p.metas.filter(x => metIds.has(x.id)).length;
+  const label = `Importar ${plural(total, 'registro', 'registros')}`;
+  const have = movimientos.length + metas.length > 0;
+  sheet.ctx = { type: 'import', parsed: p };
+  openSheet('Importar datos', `
+    <p class="imp-file">${esc(name)}</p>
+    <div class="figs">
+      <div class="fig"><span>Pagos</span><b>${p.movimientos.length}</b></div>
+      <div class="fig"><span>Metas</span><b>${p.metas.length}</b></div>
+      <div class="fig"><span>Importe</span><b>${fmtMoney(sum(p.movimientos, 'imp'))}</b></div>
+    </div>
+    <p class="note">${total ? `${plural(total - existen, 'nuevo', 'nuevos')}${existen ? ` · ${existen} ya existen y se actualizan` : ''}` : 'No encontré pagos ni metas en el archivo.'}${p.ingresos ? ` · ${plural(p.ingresos, 'ingreso omitido', 'ingresos omitidos')} (Finanzas no registra ingresos)` : ''}</p>
+    ${p.skipped.length ? `<details class="imp-skip"><summary>${plural(p.skipped.length, 'renglón omitido', 'renglones omitidos')}</summary><ul>${p.skipped.slice(0, 10).map(s => `<li>${esc(s.where)}: ${esc(s.reason)}</li>`).join('')}${p.skipped.length > 10 ? `<li>…y ${p.skipped.length - 10} más</li>` : ''}</ul></details>` : ''}
+    ${total && have ? `<div role="radiogroup" aria-labelledby="imp-mode-l">
+      <span class="label" id="imp-mode-l">¿Cómo lo importo?</span>
+      <label class="opt"><input type="radio" name="imp-mode" value="add" checked><span>Agregar a lo que ya tengo<small>No borra nada; lo que ya existe se actualiza.</small></span></label>
+      <label class="opt"><input type="radio" name="imp-mode" value="replace"><span>Reemplazar todo<small>Borra tus ${plural(movimientos.length, 'pago', 'pagos')} y ${plural(metas.length, 'meta', 'metas')} actuales y deja solo lo del archivo.</small></span></label>
+    </div>` : ''}
+    <div class="btn-row">
+      <button type="button" class="btn btn-soft" data-action="open-import">Otro archivo</button>
+      ${total ? `<button type="button" class="btn btn-primary" id="imp-go" data-action="import-go" data-label="${label}">${label}</button>` : ''}
+    </div>`);
+  sheet.panel.focus({ preventScroll: true });
+}
+
+const copyOf = list => list.map(x => ({ ...x, pagos: (x.pagos || []).map(p => ({ ...p })) }));
+
+async function applyImport() {
+  const p = sheet.ctx && sheet.ctx.parsed;
+  if (!p) return;
+  const replace = (document.querySelector('input[name=imp-mode]:checked') || {}).value === 'replace';
+  const snap = { mov: copyOf(movimientos), met: copyOf(metas) };
+  const now = Date.now();
+  const stamp = x => ({ ...x, createdAt: x.createdAt || now, updatedAt: now });
+  try {
+    await db.batch({ movimientos: { clear: replace, put: p.movimientos.map(stamp) }, metas: { clear: replace, put: p.metas.map(stamp) } });
+    movimientos = (await db.all('movimientos')).sort(byFecha);
+    metas = (await db.all('metas')).sort(byFecha);
+  } catch (e) {
+    return toast('No se pudo importar en este dispositivo');
+  }
+  backup.scheduleBackup(true, () => {});
+  setView(state.view);
+  toast(`Importado: ${plural(p.movimientos.length, 'pago', 'pagos')} y ${plural(p.metas.length, 'meta', 'metas')}`, { label: 'Deshacer', run: () => undoImport(snap) });
+}
+
+async function undoImport(snap) {
+  try {
+    await db.batch({ movimientos: { clear: true, put: snap.mov }, metas: { clear: true, put: snap.met } });
+  } catch (e) {
+    return toast('No se pudo deshacer');
+  }
+  movimientos = copyOf(snap.mov).sort(byFecha);
+  metas = copyOf(snap.met).sort(byFecha);
+  backup.scheduleBackup(true, () => {});
+  render();
+  toast('Importación deshecha');
+}
+
+/* =========================================================
    Acciones
    ========================================================= */
 function setView(v) {
@@ -997,8 +1116,22 @@ document.addEventListener('click', async e => {
     case 'theme': {
       const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
       applyTheme(next); lsSet(KEYS.theme, next);
+      const lbl = $('#menu-theme');
+      if (lbl) lbl.textContent = themeLabel();
       break;
     }
+    case 'open-menu': openMenu(); break;
+    case 'open-import': openImport(); break;
+    case 'export-json':
+      download(`finanzas-${toISO(HOY)}.json`, exportJSON(movimientos, metas), 'application/json');
+      closeSheet(); toast(`Descargado: ${plural(movimientos.length, 'pago', 'pagos')} y ${plural(metas.length, 'meta', 'metas')}`);
+      break;
+    case 'export-csv':
+      download(`finanzas-${toISO(HOY)}.csv`, '\uFEFF' + exportCSV(movimientos, metas), 'text/csv');
+      closeSheet(); toast(`Descargado: ${plural(movimientos.length, 'pago', 'pagos')} y ${plural(metas.length, 'meta', 'metas')}`);
+      break;
+    case 'template': download('plantilla-finanzas.csv', '\uFEFF' + templateCSV(), 'text/csv'); break;
+    case 'import-go': await applyImport(); break;
     case 'search-toggle': {
       const bar = $('#search-bar');
       bar.hidden = !bar.hidden;
@@ -1077,6 +1210,12 @@ document.addEventListener('click', async e => {
 
 document.addEventListener('change', e => {
   if (e.target.name === 'f-cat' && sheet.ctx) { const c = CATS.find(x => x.id === e.target.value); if (c) sheet.ctx.cat = catString(c); }
+  if (e.target.id === 'imp-file') readImportFile(e.target.files[0]);
+  if (e.target.name === 'imp-mode') {
+    const replace = e.target.value === 'replace', go = $('#imp-go');
+    go.textContent = replace ? 'Reemplazar todo' : go.dataset.label;
+    go.className = `btn ${replace ? 'btn-danger' : 'btn-primary'}`;
+  }
 });
 
 document.addEventListener('submit', e => {

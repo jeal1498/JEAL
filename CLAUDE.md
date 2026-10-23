@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-23, v2.8.0)
+## SecondBrain (estado al 2026-10-23, v2.8.1)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -51,6 +51,7 @@ Saludo + fecha; tiles Pendientes (hoy+vencidos) / Hábitos x/y; "¿Cómo te sien
 
 ### Proyectos (v2.5.0, `#/proyectos`, `renderProjects`)
 - `projects`: name, emoji, status (`activo|pausa|terminado|idea`), description, links (textarea, un acceso por renglón "Nombre https://…"; sin nombre se deduce: github.com→Repositorio, github.io/vercel→Página), tags, notes, pinned.
+- `proj-cerebro` (v2.8.1, estado `idea`): segundo cerebro nuevo centrado en captura (campo único + Hoy + buscar), propuesto el 23-oct porque SecondBrain actual no le gusta; carpeta `cerebro/` aún sin crear, **esperando su OK para construirla**. Se siembra como los demás.
 - Tarjetas con botones de acceso (abren en pestaña nueva), filtro por estado, fijados arriba. Vacío: botón "Agregar SecondBrain" (id `proj-secondbrain`). En buscador y respaldo (pestaña Proyectos).
 
 ### Buscador (`#/buscar`, lupa en Inicio)

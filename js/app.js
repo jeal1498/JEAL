@@ -44,6 +44,19 @@ async function load() {
       projects.push(p);
     }
     await db.setSetting('seeds', [...seeds, 'proj-finanzas']);
+    seeds.push('proj-finanzas');
+  }
+  // Idea (23-oct): segundo cerebro nuevo, centrado en captura.
+  if (!seeds.includes('proj-cerebro')) {
+    if (!projects.some((p) => p.id === 'proj-cerebro')) {
+      const p = { id: 'proj-cerebro', name: 'Cerebro (versión mínima)', emoji: '🧠', status: 'idea', pinned: false,
+        description: 'Segundo cerebro nuevo, centrado en captura: un campo para anotar lo que sea, lo de hoy y lo pendiente debajo, y una barra de búsqueda. Se usa una semana y de lo que estorbe o falte se decide qué construir.',
+        links: '',
+        tags: 'app, segundo cerebro', notes: 'Carpeta nueva cerebro/, sin tocar SecondBrain. Pendiente: dar el OK para construirla. Después: bandeja con clasificación en 1 toque, revisión semanal, etiquetas.', createdAt: Date.now(), updatedAt: Date.now() };
+      await db.put('projects', p);
+      projects.push(p);
+    }
+    await db.setSetting('seeds', [...seeds, 'proj-cerebro']);
   }
   Object.assign(state, { fuel, maintenance, expenses, reminders, movimientos, metas, notes, tasks, habits, journal, projects, vehicle: vehicle || {} });
 }
@@ -1241,7 +1254,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '2.8.0';
+const VERSION = '2.8.1';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

@@ -17,22 +17,74 @@ function labelOf(r) {
   return { label: [name, area && area !== name ? area : ''].filter(Boolean).join(', '), sub: [city, a.state].filter(Boolean).join(', ') };
 }
 
-function searchPlaces(q, near) {
+// Nominatim pide no pasar de 1 consulta por segundo: se espacian las que sí salen a la red.
+let nextAt = 0;
+async function pace() {
+  const now = Date.now();
+  const at = Math.max(now, nextAt);
+  nextAt = at + 1100;
+  if (at > now) await new Promise((r) => setTimeout(r, at - now));
+}
+
+const fold = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+function nominatim(q, near) {
   const p = new URLSearchParams({ q, format: 'jsonv2', addressdetails: '1', limit: '5', 'accept-language': 'es', countrycodes: 'mx' });
   if (near) {
     const d = 0.6;
     p.set('viewbox', [near.lon - d, near.lat + d, near.lon + d, near.lat - d].join(','));
   }
   return cached('s:' + p, async () => {
+    await pace();
     const res = await fetch('https://nominatim.openstreetmap.org/search?' + p);
     if (!res.ok) throw new Error('search');
     return (await res.json()).map((r) => ({ ...labelOf(r), lat: +r.lat, lon: +r.lon }));
   });
 }
 
+// Photon (también OpenStreetMap) tolera palabras a medias y errores al escribir, y prefiere lo cercano.
+function photon(q, near) {
+  const p = new URLSearchParams({ q, limit: '8', bbox: '-118.5,14.4,-86.6,32.8' });
+  if (near) { p.set('lat', near.lat); p.set('lon', near.lon); }
+  return cached('p:' + p, async () => {
+    const res = await fetch('https://photon.komoot.io/api/?' + p);
+    if (!res.ok) throw new Error('search');
+    const out = [];
+    for (const f of (await res.json()).features || []) {
+      const a = f.properties || {};
+      if (a.countrycode && a.countrycode !== 'MX') continue;
+      const name = a.name || [a.street, a.housenumber].filter(Boolean).join(' ');
+      if (!name) continue;
+      const area = a.district || a.locality || (a.name ? a.street : '') || '';
+      const [lon, lat] = f.geometry.coordinates;
+      out.push({ label: [name, area && area !== name ? area : ''].filter(Boolean).join(', '), sub: [a.city || a.county, a.state].filter(Boolean).join(', '), lat, lon });
+    }
+    return out;
+  });
+}
+
+// Busca con la ciudad del conductor (si la puso), luego sin ella y al final con Photon.
+// Si ninguna fuente responde, falla (sin conexión); si responden y no hay nada, regresa [].
+async function searchPlaces(q, near, city) {
+  city = (city || '').trim();
+  let ok = 0;
+  const attempt = async (fn) => { try { const r = await fn(); ok++; return r; } catch { return []; } };
+  const bias = near || (city ? (await attempt(() => nominatim(city, null)))[0] : null);
+  let out = [];
+  if (city && !fold(q).includes(fold(city))) out = await attempt(() => nominatim(`${q}, ${city}`, bias));
+  if (!out.length) out = await attempt(() => nominatim(q, bias));
+  if (!out.length) out = await attempt(() => photon(q, bias));
+  if (!ok) throw new Error('search');
+  const km = (a, b) => Math.hypot(a.lat - b.lat, (a.lon - b.lon) * Math.cos((b.lat * Math.PI) / 180)) * 111;
+  if (bias) out = [...out].sort((x, y) => km(x, bias) - km(y, bias));
+  const seen = new Set();
+  return out.filter((r) => { const k = r.label + r.lat.toFixed(3) + r.lon.toFixed(3); return seen.has(k) ? false : seen.add(k); });
+}
+
 // Dirección a partir de coordenadas (para «Mi ubicación»).
 function reverse(lat, lon) {
   return cached(`v:${lat.toFixed(4)},${lon.toFixed(4)}`, async () => {
+    await pace();
     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=jsonv2&addressdetails=1&accept-language=es`);
     if (!res.ok) throw new Error('reverse');
     const r = await res.json();

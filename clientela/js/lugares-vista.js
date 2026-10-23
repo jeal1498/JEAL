@@ -60,9 +60,10 @@ export function createPlaceFields({ getData, client, tripsOf, byWhen, esc, icon,
       if (q.length < 3) return;
       timer = setTimeout(async () => {
         try {
-          const found = (await searchPlaces(q, nearPoint())).filter((r) => !local.some((l) => l.label === r.label));
+          const city = (getData().settings.city || '').trim();
+          const found = (await searchPlaces(q, nearPoint(), city)).filter((r) => !local.some((l) => l.label === r.label));
           if (input.value.trim() !== q || document.activeElement !== input) return;
-          show([...local, ...found].slice(0, 6), found.length ? 'Mapa: OpenStreetMap' : 'Sin resultados en el mapa. Agrega colonia o ciudad.');
+          show([...local, ...found].slice(0, 6), found.length ? 'Mapa: OpenStreetMap' : `No lo encuentro en el mapa. Prueba otra parte del nombre, la calle o la colonia${city ? '' : ', o pon tu ciudad en Yo → Mis datos'}.`);
         } catch {
           if (input.value.trim() === q) show(local, 'Sin conexión: puedes escribir la dirección y el precio a mano.');
         }

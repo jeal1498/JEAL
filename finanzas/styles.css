@@ -478,15 +478,37 @@ body { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
 /* Dashboard de KPI */
 .kpi-link { display: flex; align-items: center; gap: 4px; min-height: 44px; padding: 0; background: none; border: 0; color: var(--accent); font-size: 15px; font-weight: 700; }
 .kpi-link .ic { width: 18px; height: 18px; }
-.kpi { display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-height: 92px; padding: 14px 16px; border-radius: 20px; background: var(--surface-2); }
+.kpi-ring { position: relative; width: 250px; height: 250px; margin: 4px auto 0; }
+.kpi-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.kpi-ring circle { stroke-width: 22; transition: opacity .25s, stroke-width .25s; }
+.kpi-ring .track { stroke: var(--surface-2); }
+.seg-a { stroke: var(--bar-paid); } .seg-b { stroke: var(--bar-late); } .seg-c { stroke: var(--bar-soon); }
+.kpi-ring[data-sel="a"] .seg-a, .kpi-ring[data-sel="b"] .seg-b, .kpi-ring[data-sel="c"] .seg-c { stroke-width: 28; }
+.kpi-ring[data-sel="a"] .seg-b, .kpi-ring[data-sel="a"] .seg-c,
+.kpi-ring[data-sel="b"] .seg-a, .kpi-ring[data-sel="b"] .seg-c,
+.kpi-ring[data-sel="c"] .seg-a, .kpi-ring[data-sel="c"] .seg-b { opacity: .25; }
+.kpi-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 44px; }
+.kpi-c-l { font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: .08em; }
+.kpi-c-v { font-size: 46px; font-weight: 800; letter-spacing: -.05em; line-height: 1.02; font-variant-numeric: tabular-nums; }
+.kpi-c-s { font-size: 15px; color: var(--muted); }
+.kpi-legend { display: flex; gap: 8px; margin-top: 6px; }
+.kpi-lg { flex: 1; min-width: 0; min-height: 76px; padding: 12px; border: 0; border-radius: 22px; background: var(--surface-2); text-align: left; display: flex; flex-direction: column; justify-content: space-between; transition: background .2s; }
+.kpi-lg[aria-pressed="true"] { background: color-mix(in srgb, var(--ink) 14%, var(--surface-2)); }
+.kpi-lg-t { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.kpi-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.lg-a .kpi-dot { background: var(--bar-paid); } .lg-b .kpi-dot { background: var(--bar-late); } .lg-c .kpi-dot { background: var(--bar-soon); }
+.kpi-lg-m { font-size: 18px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.lg-a .kpi-lg-m { color: var(--ok); } .lg-b .kpi-lg-m { color: var(--danger); } .lg-c .kpi-lg-m { color: var(--warn); }
+.kpi-card { display: flex; align-items: center; gap: 14px; margin-top: 10px; padding: 16px; border-radius: 24px; background: var(--surface-2); }
+.kpi-col { flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; gap: 10px; }
+.kpi-row { display: flex; gap: 10px; }
+.kpi-ico { width: 44px; height: 44px; border-radius: 16px; display: grid; place-items: center; flex: none; background: var(--bg); }
+.kpi-ico .mono { width: 22px; height: 22px; font-size: 12px; }
+.kpi-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.kpi-aside { display: flex; flex-direction: column; align-items: flex-end; }
 .kpi-l { font-size: 14px; font-weight: 600; color: var(--muted); }
 .kpi-v { font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kpi-v-s { font-size: 22px; }
 .kpi-s { font-size: 14px; color: var(--muted); }
-.kpi-hero { background: none; padding: 0 0 12px; min-height: 0; }
-.kpi-hero .kpi-v { font-size: 60px; letter-spacing: -.05em; }
-.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.kpi-ok .kpi-v { color: var(--ok); }
-.kpi-danger { background: var(--danger-bg); }
-.kpi-danger .kpi-l, .kpi-danger .kpi-v, .kpi-danger .kpi-s { color: var(--danger); }
-.kpi-cat { display: inline-flex; align-items: center; gap: 8px; font-size: 20px; }
-.kpi-cat .ic { width: 22px; height: 22px; }
+.kpi-saldo { justify-content: space-between; background: var(--danger-bg); }
+.kpi-saldo .kpi-l, .kpi-saldo .kpi-v { color: var(--danger); }

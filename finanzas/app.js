@@ -856,41 +856,80 @@ function openMenu() {
   sheet.panel.focus({ preventScroll: true });
 }
 
-/* Dashboard con los 9 KPI del Excel original, del mes que se está viendo. */
+/* Dashboard con los 9 KPI del Excel original, del mes que se está viendo:
+   anillo del total de egresos (abonado, atrasado, por vencer) que se explora tocando. */
 function openKpis() {
-  const b = buildGastos();
-  const base = b.base;
+  const base = buildGastos().base;
   const totalImp = sum(base, 'imp'), totalAbo = sum(base, 'abo'), pend = sum(base, 'pendiente');
   const porHacer = base.filter(m => m.pendiente > 0);
   const venc = base.filter(m => m.estado === 'Vencido');
   const atrasado = sum(venc, 'pendiente');
-  const pct = totalImp > 0 ? Math.round(totalAbo / totalImp * 100) : 0;
+  const porVencer = Math.max(0, pend - atrasado);
   const finMes = new Date(HOY.getFullYear(), HOY.getMonth() + 1, 0);
   const dias = Math.max(1, finMes.getDate() - HOY.getDate() + 1);
   const meta = isCurrentMonth() ? fmtMoney(Math.round(pend / dias)) : '—';
+  const metaSub = isCurrentMonth() ? 'por día' : 'solo en el mes actual';
+  const pct = v => totalImp > 0 ? Math.round(v / totalImp * 100) : 0;
 
   const futuros = base.filter(m => m.estado === 'Pendiente').sort((a, c) => a.date - c.date);
   const grupo = futuros.length ? futuros.filter(m => m.fecha === futuros[0].fecha) : [];
+  const dprox = grupo.length ? daysFromToday(grupo[0].date) : 0;
 
   const porCat = new Map();
-  base.forEach(m => { const c = catOf(m.cat); porCat.set(c.id, { c, imp: (porCat.get(c.id)?.imp || 0) + m.imp }); });
+  base.forEach(m => { const c = catOf(m.cat); const e = porCat.get(c.id) || { c, imp: 0 }; e.imp += m.imp; porCat.set(c.id, e); });
   const mayor = [...porCat.values()].sort((a, c) => c.imp - a.imp)[0];
 
-  const tile = (label, value, sub, tone) => `<div class="kpi${tone ? ' kpi-' + tone : ''}"><span class="kpi-l">${label}</span><span class="kpi-v">${value}</span>${sub ? `<span class="kpi-s">${sub}</span>` : ''}</div>`;
+  const R = 88, C = 2 * Math.PI * R, gap = 8;
+  let start = 0;
+  const segs = [
+    { k: 'a', v: totalAbo, label: 'Abonado', sub: `${pct(totalAbo)}% del total` },
+    { k: 'b', v: atrasado, label: 'Atrasado', sub: `${plural(venc.length, 'pago', 'pagos')} · ${pct(atrasado)}%` },
+    { k: 'c', v: porVencer, label: 'Por vencer', sub: `${pct(porVencer)}% del total` }
+  ].map(sg => {
+    const f = totalImp > 0 ? sg.v / totalImp : 0;
+    const len = f > 0 ? Math.max(1, f * C - gap) : 0;
+    const out = { ...sg, dash: `${len} ${C - len}`, off: -(start + gap / 2) };
+    start += f * C;
+    return out;
+  });
+
+  const circles = segs.map(sg => `<circle class="seg seg-${sg.k}" cx="110" cy="110" r="${R}" fill="none" stroke-linecap="butt" stroke-dasharray="${sg.dash}" stroke-dashoffset="${sg.off}"/>`).join('');
+  const legend = segs.map(sg => `<button type="button" class="kpi-lg lg-${sg.k}" data-action="kpi-seg" data-seg="${sg.k}" data-label="${sg.label.toUpperCase()}" data-value="${fmtMoney(sg.v)}" data-sub="${esc(sg.sub)}" aria-pressed="false"><span class="kpi-lg-t"><i class="kpi-dot"></i>${sg.label}</span><span class="kpi-lg-m">${fmtMoney(sg.v)}</span></button>`).join('');
+  const ic = d => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+  const wide = (icon, label, value, sub, aside) => `<div class="kpi-card"><span class="kpi-ico">${icon}</span><span class="kpi-main"><span class="kpi-l">${label}</span><span class="kpi-v">${value}</span></span>${aside ? `<span class="kpi-aside"><span class="kpi-v kpi-v-s">${aside}</span><span class="kpi-s">${sub}</span></span>` : ''}</div>`;
+
   sheet.ctx = { type: 'kpis' };
   openSheet(`KPI de ${MESES[state.month.month].toLowerCase()}`, `
-    <div class="kpi kpi-hero"><span class="kpi-l">Meta diaria</span><span class="kpi-v">${meta}</span><span class="kpi-s">${isCurrentMonth() ? `por día · ${plural(dias, 'día', 'días')}` : 'Solo en el mes actual'}</span></div>
-    <div class="kpi-grid">
-      ${tile('Total egresos', fmtMoney(totalImp), `${plural(base.length, 'pago', 'pagos')}`)}
-      ${tile('Abonado', fmtMoney(totalAbo), `${pct}% del total`, totalAbo > 0 ? 'ok' : '')}
-      ${tile('Por pagar', fmtMoney(pend))}
-      ${tile('Pagos por hacer', String(porHacer.length))}
-      ${tile('Atrasado', fmtMoney(atrasado), plural(venc.length, 'pago', 'pagos'), atrasado > 0 ? 'danger' : '')}
-      ${tile('Próximo vencimiento', grupo.length ? fmtDate(grupo[0].fecha) : '—', grupo.length ? fmtMoney(sum(grupo, 'pendiente')) : 'Sin pendientes')}
-      ${tile('Mayor gasto', mayor ? `<span class="kpi-cat">${catIcon(mayor.c)}${esc(mayor.c.id)}</span>` : '—', mayor ? fmtMoney(mayor.imp) : '')}
-      ${tile('Saldo actual', '—', 'Necesita tus ingresos')}
-    </div>`);
+    <div class="kpi-ring" id="kpi-ring" data-sel="" data-label="META DIARIA" data-value="${meta}" data-sub="${metaSub}">
+      <svg viewBox="0 0 220 220" role="img" aria-label="Del total de egresos: ${pct(totalAbo)}% abonado, ${pct(atrasado)}% atrasado, ${pct(porVencer)}% por vencer">
+        <circle class="track" cx="110" cy="110" r="${R}" fill="none"/>${circles}
+      </svg>
+      <div class="kpi-center"><span class="kpi-c-l" id="kpi-c-l">META DIARIA</span><span class="kpi-c-v" id="kpi-c-v">${meta}</span><span class="kpi-c-s" id="kpi-c-s">${metaSub}</span></div>
+    </div>
+    <div class="kpi-legend">${legend}</div>
+    ${wide(ic('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>'), 'Próximo vencimiento', grupo.length ? fmtDate(grupo[0].fecha) : '—', grupo.length ? (dprox <= 0 ? 'hoy' : `en ${plural(dprox, 'día', 'días')}`) : '', grupo.length ? fmtMoney(sum(grupo, 'pendiente')) : '')}
+    <div class="kpi-row">
+      <div class="kpi-card kpi-col"><span class="kpi-ico">${mayor ? catIcon(mayor.c) : ic('<path d="M4 6h16M4 12h16M4 18h16"/>')}</span><span class="kpi-main"><span class="kpi-l">Mayor gasto</span><span class="kpi-v kpi-v-s">${mayor ? esc(mayor.c.id) : '—'}</span></span></div>
+      <div class="kpi-card kpi-col"><span class="kpi-ico">${ic('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')}</span><span class="kpi-main"><span class="kpi-l">Pagos por hacer</span><span class="kpi-v">${porHacer.length}</span></span></div>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi-card kpi-col"><span class="kpi-l">Total egresos</span><span class="kpi-v">${fmtMoney(totalImp)}</span></div>
+      <div class="kpi-card kpi-col"><span class="kpi-l">Por pagar</span><span class="kpi-v">${fmtMoney(pend)}</span></div>
+    </div>
+    <div class="kpi-card kpi-saldo"><span class="kpi-main"><span class="kpi-l">Saldo actual</span><span class="kpi-s">Necesita tus ingresos</span></span><span class="kpi-v">—</span></div>`);
   sheet.panel.focus({ preventScroll: true });
+}
+
+/* Tocar un tramo del anillo lo resalta y cambia el centro; tocarlo otra vez vuelve a la meta diaria. */
+function kpiSelect(btn) {
+  const ring = $('#kpi-ring');
+  const same = ring.dataset.sel === btn.dataset.seg;
+  const src = same ? ring.dataset : btn.dataset;
+  ring.dataset.sel = same ? '' : btn.dataset.seg;
+  $('#kpi-c-l').textContent = same ? ring.dataset.label : btn.dataset.label;
+  $('#kpi-c-v').textContent = same ? ring.dataset.value : btn.dataset.value;
+  $('#kpi-c-s').textContent = same ? ring.dataset.sub : btn.dataset.sub;
+  $$('.kpi-lg').forEach(b => b.setAttribute('aria-pressed', String(!same && b === btn)));
 }
 
 function download(name, text, type) {
@@ -1048,6 +1087,7 @@ document.addEventListener('click', async e => {
     }
     case 'open-menu': openMenu(); break;
     case 'open-kpis': openKpis(); break;
+    case 'kpi-seg': kpiSelect(t); break;
     case 'open-import': openImport(); break;
     case 'export-json':
       download(`finanzas-${toISO(HOY)}.json`, exportJSON(movimientos, metas), 'application/json');

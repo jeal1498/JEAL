@@ -849,12 +849,13 @@ function kpiDashboard(base) {
   const mayor = [...porCat.values()].sort((a, c) => c.imp - a.imp)[0];
 
   const tiles = [
+    { k: 'd', filter: 'todos', label: 'Todos', v: totalImp },
     { k: 'a', filter: 'pagado', label: 'Abonado', v: totalAbo },
     { k: 'b', filter: 'vencido', label: 'Atrasado', v: atrasado },
     { k: 'c', filter: 'pendiente', label: 'Por vencer', v: porVencer }
   ].map(t => {
     const on = state.filter === t.filter;
-    return `<button type="button" class="kpi-lg lg-${t.k}" data-action="filter" data-filter="${on ? 'todos' : t.filter}" aria-pressed="${on}"><span class="kpi-lg-t"><i class="kpi-dot"></i>${t.label}</span><span class="kpi-lg-m">${fmtMoney(t.v)}</span></button>`;
+    return `<button type="button" class="kpi-lg lg-${t.k}" data-action="filter" data-filter="${t.filter}" aria-pressed="${on}"><span class="kpi-lg-t"><i class="kpi-dot"></i>${t.label}</span><span class="kpi-lg-m">${fmtMoney(t.v)}</span></button>`;
   }).join('');
   const ic = d => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 

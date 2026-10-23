@@ -1,5 +1,17 @@
 // Acciones para cerrar viajes y registrar pagos.
 export function createPaymentHandlers({ client, openSheet, esc, money, payGrid, $, sheet, refresh, learnOffer, toast, today, tripsOf, owed, byWhen, firstName, cap, fdate, hour12, shortRoute, field, debtOf }) {
+  // Termina el viaje con la forma de pago dada ('' = me debe). Con «Deshacer» salvo cuando ofrece guardar la ruta.
+  function finishTrip(t, pay) {
+    const c = client(t.clientId);
+    const prev = { status: t.status, pay: t.pay, paidAt: t.paidAt, updatedAt: t.updatedAt };
+    const prevPay = c?.lastPay;
+    Object.assign(t, { status: 'hecho', pay, paidAt: pay ? today() : '', updatedAt: Date.now() });
+    if (pay && c) c.lastPay = pay;
+    refresh();
+    const offer = learnOffer(t);
+    const undo = { label: 'Deshacer', fn: () => { Object.assign(t, prev); if (c) c.lastPay = prevPay; refresh(); } };
+    toast(offer ? 'Viaje terminado · ruta repetida' : pay ? 'Viaje terminado' : 'Anotado en Cobros', offer || undo);
+  }
   function finishForm(t) {
     const c = client(t.clientId);
     openSheet(`<h2>Terminar viaje</h2>
@@ -8,13 +20,8 @@ export function createPaymentHandlers({ client, openSheet, esc, money, payGrid, 
       <div class="buttons"><button type="button" data-close>Cancelar</button></div>`, (form) => {
       $('[data-close]', form).onclick = () => sheet.close();
       form.querySelectorAll('[data-pay]').forEach((b) => (b.onclick = () => {
-        const pay = b.dataset.pay;
-        Object.assign(t, { status: 'hecho', pay, paidAt: pay ? today() : '', updatedAt: Date.now() });
-        if (pay && c) c.lastPay = pay;
         sheet.close();
-        refresh();
-        const offer = learnOffer(t);
-        toast(offer ? 'Viaje terminado · ruta repetida' : pay ? 'Viaje terminado' : 'Anotado en Cobros', offer);
+        finishTrip(t, b.dataset.pay);
       }));
     });
   }
@@ -76,5 +83,5 @@ export function createPaymentHandlers({ client, openSheet, esc, money, payGrid, 
       }));
     });
   }
-  return { finishForm, payForm, collectForm };
+  return { finishTrip, finishForm, payForm, collectForm };
 }

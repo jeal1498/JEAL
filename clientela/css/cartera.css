@@ -99,6 +99,7 @@ button.wa, a.wa { color: var(--wa); }
 .actions button, .actions a, a.btn { flex: 1; min-height: 40px; font-size: 13px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1.5px solid var(--humo); border-radius: 999px; background: none; color: var(--hueso); font-weight: 700; white-space: nowrap; }
 .actions .primary, a.btn.primary { background: var(--hueso); border-color: var(--hueso); color: var(--asfalto); }
 .actions .i { width: 16px; height: 16px; }
+.actions .mini { flex: 0 0 auto; padding: 0 14px; border-color: transparent; color: var(--text-2, var(--humo)); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
 /* Listas */
 .list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
@@ -429,6 +430,9 @@ input[type=number] { -moz-appearance: textfield; }
 .avatar.big { width: 72px; height: 72px; font-size: 22px; border: 1.5px solid var(--borde-logo); box-shadow: none; }
 .hero h2 { font-size: 28px; }
 .list .pill { flex: none; }
+.list .again { flex: none; width: 40px; height: 40px; margin: -6px -8px -6px 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--text-2); }
+.list .again .i { width: 18px; height: 18px; }
+.list .again:hover, .list .again:focus-visible { background: var(--surface-2, var(--bg)); color: var(--accent); }
 .list li b.mono { font-size: 14px; }
 .card h3.eti { font-size: 12px; font-weight: 500; }
 

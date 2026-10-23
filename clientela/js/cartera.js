@@ -14,7 +14,7 @@ import { createChargesView } from './cobros-vista.js';
 import { createAgendaView } from './agenda-vista.js';
 import { createTripCard } from './viaje-vistas.js';
 import { createSummaryView } from './resumen.js';
-import { PAYS, seg, payGrid } from './vistas-pago.js';
+import { PAYS, PAY_LABEL, seg, payGrid } from './vistas-pago.js';
 import { PROFILE_STEPS, CAR_EXTRAS, PAY_OPTS, ONB, stepHtml } from './perfil-vistas.js';
 import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute, fold, cleanPt } from './utilidades.js';
 import { encodePage, qrSvg, buildPagePayload } from './qr.js';
@@ -104,8 +104,22 @@ function refresh() { save(); render(); }
 
 // ---------- Tarjeta de viaje ----------
 const tripCard = createTripCard({
-  client, today, owed, lateDebt, cap, waLink, MSG, icon, hour12, dayLabel, esc, money,
+  client, today, owed, lateDebt, cap, waLink, MSG, icon, hour12, dayLabel, esc, money, payLabel: PAY_LABEL,
 });
+
+// Repetir un viaje en un toque: mismo cliente, ruta, paradas y precio, para hoy. Se ajusta tocando la tarjeta.
+function repeatTrip(src) {
+  if (!src) return;
+  const now = Date.now();
+  const x = {
+    id: uid(), createdAt: now, updatedAt: now, clientId: src.clientId, date: today(), time: '',
+    from: src.from, to: src.to, fromPt: src.fromPt, toPt: src.toPt, stops: src.stops || [], km: src.km, min: src.min, path: src.path,
+    price: src.price, wait: '', status: 'agendado', pay: '', notes: '',
+  };
+  data.trips.push(x);
+  refresh();
+  toast('Viaje repetido para hoy', { label: 'Deshacer', fn: () => { data.trips = data.trips.filter((t) => t.id !== x.id); refresh(); } });
+}
 
 function bindTrips() {
   view.querySelectorAll('[data-trip]').forEach((el) => {
@@ -115,6 +129,9 @@ function bindTrips() {
   });
   view.querySelectorAll('[data-finish]').forEach((b) => (b.onclick = () => finishForm(data.trips.find((t) => t.id === b.dataset.finish))));
   view.querySelectorAll('[data-paid]').forEach((b) => (b.onclick = () => payForm([data.trips.find((t) => t.id === b.dataset.paid)])));
+  // Terminar con la forma de pago habitual del cliente: un toque.
+  view.querySelectorAll('[data-fpay]').forEach((b) => (b.onclick = () => finishTrip(data.trips.find((t) => t.id === b.dataset.fpay), b.dataset.method)));
+  view.querySelectorAll('[data-again]').forEach((b) => (b.onclick = () => repeatTrip(data.trips.find((t) => t.id === b.dataset.again))));
   // Confirmar abre WhatsApp y deja el viaje como «Confirmado».
   view.querySelectorAll('[data-confirm]').forEach((a) => (a.onclick = () => {
     const t = data.trips.find((x) => x.id === a.dataset.confirm);
@@ -679,7 +696,7 @@ function quoteForm(preset = {}) {
 
 // ---------- Cobro en un toque ----------
 // Terminar un viaje: un toque en cómo te pagó y listo.
-const { finishForm, payForm, collectForm } = createPaymentHandlers({
+const { finishTrip, finishForm, payForm, collectForm } = createPaymentHandlers({
   client, openSheet, esc, money, payGrid, $, sheet, refresh, learnOffer, toast, today,
   tripsOf, owed, byWhen, firstName, cap, fdate, hour12, shortRoute, field, debtOf,
 });
@@ -692,7 +709,7 @@ const renderCharges = createChargesView({
 const renderClient = createClientDetailView({
   client, header, top, icon, esc, $, clientForm, setTabs, tripsOf, byWhen, debtOf, lateDebt, owed, tripForm,
   view, initials, firstName, phoneIntl, waLink, MSG, weekSummary, money, dayLabel, hour12, cap, autoName,
-  svcPrice, sleeping, weekForm, collectForm, quickTrip, fromService, bindTrips,
+  svcPrice, sleeping, weekForm, collectForm, quickTrip, repeatTrip, fromService, bindTrips,
 });
 
 // ---------- Inicio ----------

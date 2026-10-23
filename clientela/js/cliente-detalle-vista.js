@@ -1,5 +1,5 @@
 // Ficha del cliente: contacto, lo que te debe, sus viajes de siempre y su historial compacto.
-export function createClientDetailView({ client, header, top, icon, esc, $, clientForm, setTabs, tripsOf, byWhen, debtOf, lateDebt, owed, tripForm, view, initials, firstName, phoneIntl, waLink, MSG, weekSummary, money, dayLabel, hour12, cap, autoName, svcPrice, sleeping, weekForm, collectForm, quickTrip, fromService, bindTrips }) {
+export function createClientDetailView({ client, header, top, icon, esc, $, clientForm, setTabs, tripsOf, byWhen, debtOf, lateDebt, owed, tripForm, view, initials, firstName, phoneIntl, waLink, MSG, weekSummary, money, dayLabel, hour12, cap, autoName, svcPrice, sleeping, weekForm, collectForm, quickTrip, repeatTrip, fromService, bindTrips }) {
   function renderClient(id) {
     const c = client(id);
     header(c.name, { back: '#/clientes' });
@@ -38,12 +38,12 @@ export function createClientDetailView({ client, header, top, icon, esc, $, clie
         ${c.notes ? `<dt>Notas</dt><dd>${esc(c.notes)}</dd>` : ''}</dl></section>` : ''}
       ${c.phone && sleeping(c) && done.length ? `<a class="strip" href="${waLink(c, MSG.hello(c))}" target="_blank" rel="noopener">${icon('wa')}<span class="grow">Lleva más de 30 días sin viajar. Mándale un saludo</span>${icon('right')}</a>` : ''}
       <p class="group"><span>Historial</span><em>${trips.length}</em></p>
-      ${trips.length ? `<ul class="list">${trips.map((t) => `<li data-trip="${t.id}" tabindex="0"><span class="body"><b class="mono">${cap(dayLabel(t.date))}${t.time ? ' · ' + hour12(t.time) : ''}</b><small>${t.from || t.to ? `${esc(t.from || '…')} → ${esc(t.to || '…')}` : 'Sin ruta'}</small></span>${tag(t)}</li>`).join('')}</ul>` : '<div class="card muted">Aún no hay viajes con este cliente.</div>'}`;
+      ${trips.length ? `<ul class="list">${trips.map((t) => `<li data-trip="${t.id}" tabindex="0"><span class="body"><b class="mono">${cap(dayLabel(t.date))}${t.time ? ' · ' + hour12(t.time) : ''}</b><small>${t.from || t.to ? `${esc(t.from || '…')} → ${esc(t.to || '…')}` : 'Sin ruta'}</small></span>${tag(t)}${t.status === 'hecho' ? `<button type="button" class="again" data-again="${t.id}" aria-label="Repetir este viaje para hoy" title="Repetir para hoy">${icon('repeat')}</button>` : ''}</li>`).join('')}</ul>` : '<div class="card muted">Aún no hay viajes con este cliente.</div>'}`;
     $('[data-new]', view).onclick = () => tripForm(null, { clientId: id });
     $('[data-week]', view)?.addEventListener('click', () => weekForm(c));
     $('[data-collect]', view)?.addEventListener('click', () => collectForm(c));
     view.querySelectorAll('[data-book]').forEach((b) => (b.onclick = () => { const sv = c.services.find((x) => x.id === b.dataset.book); quickTrip(fromService(c, sv), sv.name || autoName(sv)); }));
-    $('[data-repeat]', view)?.addEventListener('click', () => quickTrip({ clientId: id, from: last.from, to: last.to, fromPt: last.fromPt, toPt: last.toPt, stops: last.stops || [], price: last.price, time: last.time, km: last.km, min: last.min, path: last.path }, 'Repetir viaje'));
+    $('[data-repeat]', view)?.addEventListener('click', () => repeatTrip(last));
     $('[data-editc2]', view)?.addEventListener('click', () => clientForm(c));
     bindTrips();
   }

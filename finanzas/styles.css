@@ -474,3 +474,19 @@ body { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
 .hp-label { min-height: 44px; font-size: 30px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); }
 .hp-label .ic { width: 22px; height: 22px; color: var(--muted); }
 .today-pill { flex: none; font-size: 14px; font-weight: 700; background: var(--surface-2); border-radius: 99px; padding: 6px 12px; }
+
+/* Dashboard de KPI */
+.kpi-link { display: flex; align-items: center; gap: 4px; min-height: 44px; padding: 0; background: none; border: 0; color: var(--accent); font-size: 15px; font-weight: 700; }
+.kpi-link .ic { width: 18px; height: 18px; }
+.kpi { display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-height: 92px; padding: 14px 16px; border-radius: 20px; background: var(--surface-2); }
+.kpi-l { font-size: 14px; font-weight: 600; color: var(--muted); }
+.kpi-v { font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kpi-s { font-size: 14px; color: var(--muted); }
+.kpi-hero { background: none; padding: 0 0 12px; min-height: 0; }
+.kpi-hero .kpi-v { font-size: 60px; letter-spacing: -.05em; }
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kpi-ok .kpi-v { color: var(--ok); }
+.kpi-danger { background: var(--danger-bg); }
+.kpi-danger .kpi-l, .kpi-danger .kpi-v, .kpi-danger .kpi-s { color: var(--danger); }
+.kpi-cat { display: inline-flex; align-items: center; gap: 8px; font-size: 20px; }
+.kpi-cat .ic { width: 22px; height: 22px; }

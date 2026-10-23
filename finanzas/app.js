@@ -470,6 +470,7 @@ function render() {
   $('#today-pill').textContent = `Hoy · ${DIAS[HOY.getDay()].slice(0, 3).toLowerCase()} ${HOY.getDate()}`;
   $$('.nav-btn').forEach(b => b.setAttribute('aria-current', b.dataset.view === state.view ? 'page' : 'false'));
   $('#month-label').hidden = !isG;
+  $('.kpi-link').hidden = !isG;
   $('#title-metas').hidden = isG;
   $('#seg').hidden = !isG;
   const addBtn = $('.nav-add'), addLabel = isG ? 'Agregar pago o abono' : 'Agregar meta o ahorro';
@@ -855,6 +856,43 @@ function openMenu() {
   sheet.panel.focus({ preventScroll: true });
 }
 
+/* Dashboard con los 9 KPI del Excel original, del mes que se está viendo. */
+function openKpis() {
+  const b = buildGastos();
+  const base = b.base;
+  const totalImp = sum(base, 'imp'), totalAbo = sum(base, 'abo'), pend = sum(base, 'pendiente');
+  const porHacer = base.filter(m => m.pendiente > 0);
+  const venc = base.filter(m => m.estado === 'Vencido');
+  const atrasado = sum(venc, 'pendiente');
+  const pct = totalImp > 0 ? Math.round(totalAbo / totalImp * 100) : 0;
+  const finMes = new Date(HOY.getFullYear(), HOY.getMonth() + 1, 0);
+  const dias = Math.max(1, finMes.getDate() - HOY.getDate() + 1);
+  const meta = isCurrentMonth() ? fmtMoney(Math.round(pend / dias)) : '—';
+
+  const futuros = base.filter(m => m.estado === 'Pendiente').sort((a, c) => a.date - c.date);
+  const grupo = futuros.length ? futuros.filter(m => m.fecha === futuros[0].fecha) : [];
+
+  const porCat = new Map();
+  base.forEach(m => { const c = catOf(m.cat); porCat.set(c.id, { c, imp: (porCat.get(c.id)?.imp || 0) + m.imp }); });
+  const mayor = [...porCat.values()].sort((a, c) => c.imp - a.imp)[0];
+
+  const tile = (label, value, sub, tone) => `<div class="kpi${tone ? ' kpi-' + tone : ''}"><span class="kpi-l">${label}</span><span class="kpi-v">${value}</span>${sub ? `<span class="kpi-s">${sub}</span>` : ''}</div>`;
+  sheet.ctx = { type: 'kpis' };
+  openSheet(`KPI de ${MESES[state.month.month].toLowerCase()}`, `
+    <div class="kpi kpi-hero"><span class="kpi-l">Meta diaria</span><span class="kpi-v">${meta}</span><span class="kpi-s">${isCurrentMonth() ? `por día · ${plural(dias, 'día', 'días')}` : 'Solo en el mes actual'}</span></div>
+    <div class="kpi-grid">
+      ${tile('Total egresos', fmtMoney(totalImp), `${plural(base.length, 'pago', 'pagos')}`)}
+      ${tile('Abonado', fmtMoney(totalAbo), `${pct}% del total`, totalAbo > 0 ? 'ok' : '')}
+      ${tile('Por pagar', fmtMoney(pend))}
+      ${tile('Pagos por hacer', String(porHacer.length))}
+      ${tile('Atrasado', fmtMoney(atrasado), plural(venc.length, 'pago', 'pagos'), atrasado > 0 ? 'danger' : '')}
+      ${tile('Próximo vencimiento', grupo.length ? fmtDate(grupo[0].fecha) : '—', grupo.length ? fmtMoney(sum(grupo, 'pendiente')) : 'Sin pendientes')}
+      ${tile('Mayor gasto', mayor ? `<span class="kpi-cat">${catIcon(mayor.c)}${esc(mayor.c.id)}</span>` : '—', mayor ? fmtMoney(mayor.imp) : '')}
+      ${tile('Saldo actual', '—', 'Necesita tus ingresos')}
+    </div>`);
+  sheet.panel.focus({ preventScroll: true });
+}
+
 function download(name, text, type) {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement('a');
@@ -1009,6 +1047,7 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'open-menu': openMenu(); break;
+    case 'open-kpis': openKpis(); break;
     case 'open-import': openImport(); break;
     case 'export-json':
       download(`finanzas-${toISO(HOY)}.json`, exportJSON(movimientos, metas), 'application/json');

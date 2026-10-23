@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-23, v2.8.1)
+## SecondBrain (estado al 2026-10-23, v2.9.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -51,7 +51,6 @@ Saludo + fecha; tiles Pendientes (hoy+vencidos) / Hábitos x/y; "¿Cómo te sien
 
 ### Proyectos (v2.5.0, `#/proyectos`, `renderProjects`)
 - `projects`: name, emoji, status (`activo|pausa|terminado|idea`), description, links (textarea, un acceso por renglón "Nombre https://…"; sin nombre se deduce: github.com→Repositorio, github.io/vercel→Página), tags, notes, pinned.
-- `proj-cerebro` (v2.8.1, estado `idea`): segundo cerebro nuevo centrado en captura (campo único + Hoy + buscar), propuesto el 23-oct porque SecondBrain actual no le gusta; carpeta `cerebro/` aún sin crear, **esperando su OK para construirla**. Se siembra como los demás.
 - Tarjetas con botones de acceso (abren en pestaña nueva), filtro por estado, fijados arriba. Vacío: botón "Agregar SecondBrain" (id `proj-secondbrain`). En buscador y respaldo (pestaña Proyectos).
 
 ### Buscador (`#/buscar`, lupa en Inicio)
@@ -72,6 +71,12 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 - Para pasarle datos: JSON `{app:'secondbrain', <store>: [...]}` con ids estables y `createdAt`; decirle siempre **Respaldo → Agregar desde archivo**.
 
 - Proyectos (14-oct): `proyectos.json` con `proj-checa` (app Android en repo privado `jeal1498/Mi-Ruta`, web en `jeal1498/checa-web`) y `proj-reservas` = **Cartera de clientes**. El usuario de CHECA es **Eduardo (Lalo)** según el CLAUDE.md de Mi-Ruta; aquí se ha escrito «ella»: usar lenguaje neutro.
+
+## Cerebro (`cerebro/`, v1, 23-oct)
+- Segundo cerebro **centrado en captura** (SecondBrain no le gustaba; no sabía qué quería, se acordó probar una versión mínima una semana y decidir con lo que estorbe/falte). PWA aparte, sin build: `index.html`, `styles.css`, `app.js`, `sw.js` (**subir `CACHE` cerebro-vN**), `manifest.webmanifest`, `icon.svg`. Publicada en https://jeal1498.github.io/JEAL/cerebro/ y abierta desde Proyectos (`proj-cerebro`, sembrado con clave `proj-cerebro-app`).
+- Datos en `localStorage` clave `cerebro` `{items:[{id,text,kind:'nota'|'pendiente',done,doneAt,createdAt,updatedAt}]}`; borrador sin enviar en `cerebro-borrador`. Copia: ⋯ → Exportar/Importar JSON (merge por id). No entra al respaldo de Sheets ni al buscador de SecondBrain (aún).
+- Pantalla: campo único (Enter guarda en compu; en celular el botón), chip «Pendiente», búsqueda sin acentos (todas las palabras), chips de `#etiquetas`, secciones Pendientes / Hoy / Antes / Hechos, links tocables, tocar un renglón abre editar (Eliminar → Deshacer). Pendientes de ≥3 días marcan «hace N días».
+- Ideas siguientes (no hechas): bandeja con clasificación en 1 toque, revisión semanal, fecha en pendientes, dictado/compartir a la app, respaldo en la nube.
 
 ## Cartera 2.0 (`cartera-2/`, v2.6.0)
 - Carpeta con los archivos de la versión 2.0: `cartera-completa.html` (app todo-en-uno, igual a `cartera/cartera-completa.html` al 15-oct) y `perfil-conductor.html` (perfil público de Eduardo; usa Leaflet de unpkg, requiere internet).

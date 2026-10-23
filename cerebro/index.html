@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cerebro</title>
+<meta name="description" content="Anota lo que sea y encuéntralo después.">
+<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Cerebro</h1>
+    <p id="fecha" class="fecha"></p>
+  </div>
+  <button type="button" id="menuBtn" class="icon-btn" aria-label="Copia de seguridad">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+  </button>
+</header>
+
+<div class="capture">
+  <form id="capture" class="card" autocomplete="off">
+    <label class="sr" for="texto">Anotar</label>
+    <textarea id="texto" rows="1" placeholder="¿Qué tienes en la cabeza?"></textarea>
+    <div class="row">
+      <label class="chip-toggle"><input type="checkbox" id="pend"><span>Pendiente</span></label>
+      <button type="submit" class="primary">Guardar</button>
+    </div>
+  </form>
+  <input type="search" id="buscar" class="search" placeholder="Buscar en todo" aria-label="Buscar" autocomplete="off">
+  <div id="tags" class="tags" hidden></div>
+</div>
+
+<main id="vista"></main>
+
+<dialog id="editar">
+  <form id="editForm" method="dialog">
+    <label class="sr" for="editTexto">Texto</label>
+    <textarea id="editTexto" rows="5"></textarea>
+    <label class="chip-toggle"><input type="checkbox" id="editPend"><span>Pendiente</span></label>
+    <div class="actions">
+      <button type="button" id="editBorrar" class="danger">Eliminar</button>
+      <span class="grow"></span>
+      <button type="button" id="editCancelar" class="ghost">Cancelar</button>
+      <button type="submit" class="primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="menu">
+  <h2>Copia de seguridad</h2>
+  <p id="stats" class="muted"></p>
+  <p class="muted small">Tus notas viven solo en este teléfono. Baja una copia de vez en cuando.</p>
+  <div class="actions stack">
+    <button type="button" id="exportar" class="primary">Exportar copia (JSON)</button>
+    <label class="ghost file">Importar copia<input type="file" id="importar" accept="application/json,.json" hidden></label>
+    <button type="button" id="menuCerrar" class="ghost">Cerrar</button>
+  </div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

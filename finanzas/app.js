@@ -242,36 +242,9 @@ function setHero(h) {
 }
 
 function renderHeroGastos(b) {
-  const { base } = b;
-  const totalImp = sum(base, 'imp'), totalAbo = sum(base, 'abo'), pend = sum(base, 'pendiente');
-  const atrasado = sum(base.filter(m => m.estado === 'Vencido'), 'pendiente');
-
-  /* Cifra principal: la meta diaria, es decir, lo que hay que generar por día
-     para cerrar el mes (incluye lo vencido). */
-  const finMes = new Date(HOY.getFullYear(), HOY.getMonth() + 1, 0);
-  const diasRestantes = Math.max(1, finMes.getDate() - HOY.getDate() + 1);
-  const stats = {
-    stat1: { label: 'Por pagar', value: fmtMoney(pend) },
-    stat2: { label: 'Vencido', value: fmtMoney(atrasado), tone: atrasado > 0 ? 'danger' : '' },
-    stat3: { label: 'Pagado', value: fmtMoney(totalAbo), tone: totalAbo > 0 ? 'ok' : '' }
-  };
-
-  if (isCurrentMonth()) {
-    setHero({
-      label: 'Meta diaria',
-      amount: fmtMoney(Math.round(pend / diasRestantes)),
-      note: pend > 0 ? `por día · ${plural(diasRestantes, 'día', 'días')}` : 'Todo al día este mes',
-      ...stats
-    });
-  } else {
-    setHero({
-      label: `Por pagar en ${MESES[state.month.month].toLowerCase()}`,
-      amount: fmtMoney(pend),
-      note: totalImp > 0 ? `de ${fmtMoney(totalImp)} en total` : 'No hay movimientos en este periodo',
-      ...stats
-    });
-  }
-  $('#s-meter').hidden = true;
+  $('#kpi-dash').innerHTML = kpiDashboard(b.base);
+  $('#kpi-dash').hidden = false;
+  $('#hero-simple').hidden = true;
 }
 
 function renderHeroMetas(b) {
@@ -298,6 +271,8 @@ function renderHeroMetas(b) {
 
   $('#s-meter').hidden = false;
   $('#s-meter span').style.width = pct + '%';
+  $('#kpi-dash').hidden = true;
+  $('#hero-simple').hidden = false;
 }
 
 /* =========================================================
@@ -470,7 +445,6 @@ function render() {
   $('#today-pill').textContent = `Hoy · ${DIAS[HOY.getDay()].slice(0, 3).toLowerCase()} ${HOY.getDate()}`;
   $$('.nav-btn').forEach(b => b.setAttribute('aria-current', b.dataset.view === state.view ? 'page' : 'false'));
   $('#month-label').hidden = !isG;
-  $('.kpi-link').hidden = !isG;
   $('#title-metas').hidden = isG;
   $('#seg').hidden = !isG;
   const addBtn = $('.nav-add'), addLabel = isG ? 'Agregar pago o abono' : 'Agregar meta o ahorro';
@@ -858,8 +832,7 @@ function openMenu() {
 
 /* Dashboard con los 9 KPI del Excel original, del mes que se está viendo:
    anillo del total de egresos (abonado, atrasado, por vencer) que se explora tocando. */
-function openKpis() {
-  const base = buildGastos().base;
+function kpiDashboard(base) {
   const totalImp = sum(base, 'imp'), totalAbo = sum(base, 'abo'), pend = sum(base, 'pendiente');
   const porHacer = base.filter(m => m.pendiente > 0);
   const venc = base.filter(m => m.estado === 'Vencido');
@@ -898,8 +871,7 @@ function openKpis() {
   const ic = d => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
   const wide = (icon, label, value, sub, aside) => `<div class="kpi-card"><span class="kpi-ico">${icon}</span><span class="kpi-main"><span class="kpi-l">${label}</span><span class="kpi-v">${value}</span></span>${aside ? `<span class="kpi-aside"><span class="kpi-v kpi-v-s">${aside}</span><span class="kpi-s">${sub}</span></span>` : ''}</div>`;
 
-  sheet.ctx = { type: 'kpis' };
-  openSheet(`KPI de ${MESES[state.month.month].toLowerCase()}`, `
+  return `
     <div class="kpi-ring" id="kpi-ring" data-sel="" data-label="META DIARIA" data-value="${meta}" data-sub="${metaSub}">
       <svg viewBox="0 0 220 220" role="img" aria-label="Del total de egresos: ${pct(totalAbo)}% abonado, ${pct(atrasado)}% atrasado, ${pct(porVencer)}% por vencer">
         <circle class="track" cx="110" cy="110" r="${R}" fill="none"/>${circles}
@@ -916,8 +888,7 @@ function openKpis() {
       <div class="kpi-card kpi-col"><span class="kpi-l">Total egresos</span><span class="kpi-v">${fmtMoney(totalImp)}</span></div>
       <div class="kpi-card kpi-col"><span class="kpi-l">Por pagar</span><span class="kpi-v">${fmtMoney(pend)}</span></div>
     </div>
-    <div class="kpi-card kpi-saldo"><span class="kpi-main"><span class="kpi-l">Saldo actual</span><span class="kpi-s">Necesita tus ingresos</span></span><span class="kpi-v">—</span></div>`);
-  sheet.panel.focus({ preventScroll: true });
+    <div class="kpi-card kpi-saldo"><span class="kpi-main"><span class="kpi-l">Saldo actual</span><span class="kpi-s">Necesita tus ingresos</span></span><span class="kpi-v">—</span></div>`;
 }
 
 /* Tocar un tramo del anillo lo resalta y cambia el centro; tocarlo otra vez vuelve a la meta diaria. */
@@ -1086,7 +1057,6 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'open-menu': openMenu(); break;
-    case 'open-kpis': openKpis(); break;
     case 'kpi-seg': kpiSelect(t); break;
     case 'open-import': openImport(); break;
     case 'export-json':

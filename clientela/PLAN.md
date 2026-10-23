@@ -1,6 +1,6 @@
 # Plan de Clientela
 
-Se actualiza en cada avance: `[x]` hecho, `[ ]` pendiente. Última actualización: 18 oct 2026.
+Se actualiza en cada avance: `[x]` hecho, `[ ]` pendiente. Última actualización: 23 oct 2026.
 
 ## Resultado final
 Clientela publicada para conductores de Uber, DiDi, taxi y choferes independientes, gratis por ahora para recibir comentarios:
@@ -42,7 +42,8 @@ Clientela publicada para conductores de Uber, DiDi, taxi y choferes independient
 - [x] Parte 6: Mi tarjeta en pantalla completa y su página `tarjeta.html`; se borró `perfil-conductor.html`.
 - [x] Parte 7: arranque con la marca y repaso a 390 px con Playwright.
 - [x] OK de Eduardo para pasarlo a `main` (18 oct).
-- [ ] Prueba en el teléfono de Eduardo (sobre todo rutas y precio con mapa).
+- [x] Prueba en el teléfono: a Eduardo **no lo convence el diseño de las pantallas** (23 oct).
+- [ ] Nuevo acomodo de pantallas: dos direcciones en https://claude.ai/artifact/LNFP8ikEjpyCwYPuhnnphm (A línea del día, B un solo foco). Esperando que Eduardo elija; no se toca el código hasta entonces. Resumen, Yo, Mi tarjeta y arranque quedan igual por ahora.
 
 ### 5. Acceso con Google y nube
 - [ ] Maqueta de la pantalla de acceso.

@@ -231,151 +231,47 @@ function setHero(h) {
   $('#s-label').textContent = h.label;
   $('#s-amount').textContent = h.amount;
   $('#s-note').textContent = h.note;
-  const badge = $('#s-badge');
-  badge.textContent = h.badge.text;
-  badge.className = 'badge ' + h.badge.tone;
-  [['#stat-1', h.stat1], ['#stat-2', h.stat2]].forEach(([sel, s]) => {
+  [['#stat-1', h.stat1], ['#stat-2', h.stat2], ['#stat-3', h.stat3]].forEach(([sel, s]) => {
     const el = $(sel);
     $('.stat-label', el).textContent = s.label;
-    $('.stat-value', el).textContent = s.value;
-    $('.stat-sub', el).textContent = s.sub;
+    const v = $('.stat-value', el);
+    v.textContent = s.value;
+    v.className = 'stat-value' + (s.tone ? ' t-' + s.tone : '');
+    $('.stat-sub', el).textContent = s.sub || '';
   });
-}
-
-/* Gráfica del ritmo: leyenda por defecto; al tocar o deslizar sobre las barras se lee el día. */
-let rhythmInfo = [], rhythmLegend = '', rhythmSel = -1, rhythmTimer;
-function rhythmClear() {
-  rhythmSel = -1;
-  $$('#cols .col.sel').forEach(el => el.classList.remove('sel'));
-  $('#cols').classList.remove('has-sel');
-  $('#rhythm-foot').innerHTML = rhythmLegend;
-}
-function rhythmShow(i) {
-  const c = rhythmInfo[i];
-  if (!c) return;
-  clearTimeout(rhythmTimer);
-  rhythmTimer = setTimeout(rhythmClear, 4000);
-  if (i === rhythmSel) return;
-  rhythmSel = i;
-  $$('#cols .col').forEach((el, k) => el.classList.toggle('sel', k === i));
-  $('#cols').classList.add('has-sel');
-  $('#rhythm-foot').innerHTML = `<span class="lg"><i class="lg-dot ${c.cls}"></i><b>${esc(c.text)}</b></span>`;
-}
-
-function renderRhythm(items, start, n, monthMode) {
-  const cols = Array.from({ length: n }, () => ({ imp: 0, pend: 0, rank: -1, count: 0 }));
-  items.forEach(m => {
-    const i = Math.round((m.date - start) / MS_DAY);
-    if (i < 0 || i >= n) return;
-    const c = cols[i];
-    c.imp += m.imp; c.pend += m.pendiente; c.count++;
-    const rank = m.estado === 'Vencido' ? 3 : m.estado === 'Pendiente' ? (daysFromToday(m.date) <= 7 ? 2 : 1) : 0;
-    if (rank > c.rank) c.rank = rank;
-  });
-  const max = Math.max(1, ...cols.map(c => c.imp));
-  const todayIdx = Math.round((HOY - start) / MS_DAY);
-  const classes = ['paid', '', 'soon', 'late'];
-  rhythmInfo = cols.map((c, i) => {
-    const date = new Date(start.getTime() + i * MS_DAY);
-    const label = `${date.getDate()} ${MESES_CORTO[date.getMonth()]}`;
-    return {
-      cls: c.count ? ['paid', 'later', 'soon', 'late'][c.rank] : 'none',
-      text: c.count ? `${label}: ${fmtMoney(c.pend > 0 ? c.pend : c.imp)} ${c.pend > 0 ? 'por pagar' : 'pagado'}, ${plural(c.count, 'pago', 'pagos')}` : `${label}: sin pagos`
-    };
-  });
-  $('#cols').innerHTML = cols.map((c, i) => {
-    const bar = c.count
-      ? `<span class="bar ${classes[c.rank]}" style="height:${Math.max(16, Math.round(c.imp / max * 100))}%"></span>`
-      : '<span class="bar none"></span>';
-    return `<span class="col${i === todayIdx ? ' today' : ''}" title="${esc(rhythmInfo[i].text)}">${bar}</span>`;
-  }).join('');
-
-  /* Leyenda con solo los colores presentes y resumen para lectores de pantalla */
-  const used = new Set(cols.filter(c => c.count).map(c => c.rank));
-  rhythmLegend = used.size
-    ? [[3, 'late', 'Vencido'], [2, 'soon', 'Esta semana'], [1, 'later', 'Más adelante'], [0, 'paid', 'Pagado']]
-        .filter(l => used.has(l[0]))
-        .map(l => `<span class="lg"><i class="lg-dot ${l[1]}"></i>${l[2]}</span>`).join('') + '<span class="lg-hint">Toca un día</span>'
-    : '';
-  clearTimeout(rhythmTimer);
-  rhythmClear();
-  const cap = monthMode ? 'Pagos por día del mes' : `Pagos de los próximos ${n} días`;
-  $('#rhythm-cap').textContent = cap;
-  const days = cols.filter(c => c.count).length;
-  let big = -1;
-  cols.forEach((c, i) => { if (c.count && (big < 0 || c.imp > cols[big].imp)) big = i; });
-  $('#rhythm').setAttribute('aria-label', days
-    ? `${cap}: ${plural(days, 'día con pagos', 'días con pagos')}. Mayor: ${rhythmInfo[big].text}.`
-    : `${cap}: sin pagos.`);
-
-  const labels = [];
-  const hasToday = todayIdx >= 0 && todayIdx < n;
-  if (hasToday) labels.push({ text: 'hoy', pos: (todayIdx + 0.5) / n * 100, now: true });
-  const lastDate = new Date(start.getTime() + (n - 1) * MS_DAY);
-  const first = monthMode ? '1' : null;
-  const last = monthMode ? String(n) : `${lastDate.getDate()} ${MESES_CORTO[lastDate.getMonth()]}`;
-  if (first && (!hasToday || todayIdx > 3)) labels.push({ text: first, pos: 0, cls: 'start' });
-  if (!hasToday || todayIdx < n - 4) labels.push({ text: last, pos: 100, cls: 'end' });
-  $('#axis').innerHTML = labels.map(l => {
-    let cls = l.cls || '';
-    if (l.now) { cls = 'now'; if (l.pos < 8) cls += ' start'; else if (l.pos > 92) cls += ' end'; }
-    return `<span class="${cls}" style="left:${l.pos}%">${esc(l.text)}</span>`;
-  }).join('');
 }
 
 function renderHeroGastos(b) {
   const { base } = b;
   const totalImp = sum(base, 'imp'), totalAbo = sum(base, 'abo'), pend = sum(base, 'pendiente');
-  const venc = base.filter(m => m.estado === 'Vencido');
-  const atrasado = sum(venc, 'pendiente');
-  const pct = totalImp > 0 ? Math.round(totalAbo / totalImp * 100) : 0;
-
-  let badge;
-  if (atrasado > 0) badge = { text: `${fmtMoney(atrasado)} vencido`, tone: 'danger' };
-  else if (pend > 0) badge = { text: 'Al corriente', tone: 'ok' };
-  else badge = { text: 'Sin deuda', tone: 'ok' };
+  const atrasado = sum(base.filter(m => m.estado === 'Vencido'), 'pendiente');
 
   /* Cifra principal: la meta diaria, es decir, lo que hay que generar por día
      para cerrar el mes (incluye lo vencido). */
   const finMes = new Date(HOY.getFullYear(), HOY.getMonth() + 1, 0);
   const diasRestantes = Math.max(1, finMes.getDate() - HOY.getDate() + 1);
-  const mostrarDiaria = isCurrentMonth();
-  const debeMes = pend;
-
-  const futuros = base.filter(m => m.estado === 'Pendiente').sort((a, c) => a.date - c.date);
-  let proximo;
-  if (futuros.length) {
-    const grupo = futuros.filter(m => m.fecha === futuros[0].fecha);
-    proximo = { label: 'Próximo pago', value: fmtMoney(sum(grupo, 'pendiente')), sub: `${fmtDate(futuros[0].fecha)}, ${plural(grupo.length, 'pago', 'pagos')}` };
-  } else {
-    proximo = { label: 'Próximo pago', value: '—', sub: venc.length ? 'Solo vencidos' : 'Sin pendientes' };
-  }
-
-  const porPagar = {
-    label: isCurrentMonth() ? 'Por pagar este mes' : `Por pagar en ${MESES[state.month.month].toLowerCase()} ${state.month.year}`,
-    value: fmtMoney(pend),
-    sub: totalImp > 0 ? `Pagado ${fmtMoney(totalAbo)}` : 'Sin movimientos'
+  const stats = {
+    stat1: { label: 'Por pagar', value: fmtMoney(pend) },
+    stat2: { label: 'Vencido', value: fmtMoney(atrasado), tone: atrasado > 0 ? 'danger' : '' },
+    stat3: { label: 'Pagado', value: fmtMoney(totalAbo), tone: totalAbo > 0 ? 'ok' : '' }
   };
 
-  if (mostrarDiaria) {
+  if (isCurrentMonth()) {
     setHero({
       label: 'Meta diaria',
-      amount: fmtMoney(Math.round(debeMes / diasRestantes)),
-      note: debeMes > 0 ? `Para cerrar ${MESES[HOY.getMonth()].toLowerCase()}: ${fmtMoney(debeMes)} en ${plural(diasRestantes, 'día', 'días')}` : 'Todo al día este mes',
-      badge, stat1: porPagar, stat2: proximo
+      amount: fmtMoney(Math.round(pend / diasRestantes)),
+      note: pend > 0 ? `por día · ${plural(diasRestantes, 'día', 'días')}` : 'Todo al día este mes',
+      ...stats
     });
   } else {
     setHero({
-      label: porPagar.label,
-      amount: porPagar.value,
-      note: totalImp > 0 ? `${pct}% pagado` : 'No hay movimientos en este periodo',
-      badge, stat1: { label: 'Pagado', value: fmtMoney(totalAbo), sub: `de ${fmtMoney(totalImp)}` }, stat2: proximo
+      label: `Por pagar en ${MESES[state.month.month].toLowerCase()}`,
+      amount: fmtMoney(pend),
+      note: totalImp > 0 ? `de ${fmtMoney(totalImp)} en total` : 'No hay movimientos en este periodo',
+      ...stats
     });
   }
-
-  $('#rhythm').hidden = false;
   $('#s-meter').hidden = true;
-  renderRhythm(base, new Date(state.month.year, state.month.month, 1), new Date(state.month.year, state.month.month + 1, 0).getDate(), true);
 }
 
 function renderHeroMetas(b) {
@@ -387,10 +283,6 @@ function renderHeroMetas(b) {
   const vencidas = base.filter(m => plazoKey(m) === 'vencida');
   const atrasado = vencidas.reduce((t, m) => t + (m.imp - m.abo), 0);
 
-  const badge = atrasado > 0
-    ? { text: `${fmtMoney(atrasado)} atrasado`, tone: 'danger' }
-    : { text: plural(alcanzadas.length, 'meta alcanzada', 'metas alcanzadas'), tone: alcanzadas.length ? 'ok' : 'neutral' };
-
   const siguiente = base
     .filter(m => m.imp > 0 && m.abo < m.imp && daysFromToday(m.date) <= 180)
     .sort((a, c) => a.date - c.date)[0];
@@ -399,14 +291,11 @@ function renderHeroMetas(b) {
     label: 'Te falta ahorrar',
     amount: fmtMoney(pend),
     note: totalObj > 0 ? `Llevas ahorrado ${fmtMoney(totalAbo)} de ${fmtMoney(totalObj)} (${pct}%)` : 'Aún no hay metas con monto',
-    badge,
-    stat1: { label: 'Ahorrado', value: fmtMoney(totalAbo), sub: `${alcanzadas.length} de ${base.length} logradas` },
-    stat2: siguiente
-      ? { label: 'Siguiente meta', value: fmtMoney(siguiente.imp - siguiente.abo), sub: `${siguiente.conc}, ${fmtDate(siguiente.fecha)}` }
-      : { label: 'Siguiente meta', value: '—', sub: 'Sin metas en curso' }
+    stat1: { label: 'Ahorrado', value: fmtMoney(totalAbo), tone: totalAbo > 0 ? 'ok' : '' },
+    stat2: { label: 'Atrasado', value: fmtMoney(atrasado), tone: atrasado > 0 ? 'danger' : '' },
+    stat3: { label: 'Siguiente', value: siguiente ? fmtMoney(siguiente.imp - siguiente.abo) : '—', sub: siguiente ? fmtDate(siguiente.fecha) : '' }
   });
 
-  $('#rhythm').hidden = true;
   $('#s-meter').hidden = false;
   $('#s-meter span').style.width = pct + '%';
 }
@@ -581,7 +470,6 @@ function render() {
   $$('.nav-btn').forEach(b => b.setAttribute('aria-current', b.dataset.view === state.view ? 'page' : 'false'));
   $('#hero-period').hidden = !isG;
   $('#seg').hidden = !isG;
-  $('#stat-2').disabled = !isG;
   const addBtn = $('.nav-add'), addLabel = isG ? 'Agregar pago o abono' : 'Agregar meta o ahorro';
   addBtn.setAttribute('aria-label', addLabel); addBtn.title = addLabel;
 
@@ -1167,12 +1055,6 @@ document.addEventListener('click', async e => {
       state.open[t.dataset.gkey] = open;
       break;
     }
-    case 'go-urgency':
-      if (state.view === 'gastos') {
-        if (state.grouping !== 'urgencia') setGrouping('urgencia');
-        $('.list-head').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      break;
     case 'open': openDetail(t.dataset.kind, t.dataset.id); break;
     case 'abono-all': {
       const { kind, id } = sheet.ctx;
@@ -1249,22 +1131,10 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* Gráfica del ritmo: tocar o deslizar sobre las barras muestra el día (con mouse, solo al arrastrar) */
-(() => {
-  const colsEl = $('#cols');
-  const pick = e => {
-    const r = colsEl.getBoundingClientRect(), n = colsEl.children.length;
-    if (!n || !r.width) return;
-    rhythmShow(Math.min(n - 1, Math.max(0, Math.floor((e.clientX - r.left) / r.width * n))));
-  };
-  colsEl.addEventListener('pointerdown', pick);
-  colsEl.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse' || e.buttons) pick(e); });
-})();
-
 /* Swipe horizontal para cambiar de mes (gastos agrupados por categoría) */
 (() => {
   let sx = 0, sy = 0, t0 = 0, tracking = false;
-  const zone = el => el && el.closest && !el.closest('#cols') && el.closest('.hero, .list-head, #list');
+  const zone = el => el && el.closest && el.closest('.hero, .list-head, #list');
   document.addEventListener('touchstart', e => {
     tracking = e.touches.length === 1 && !!zone(e.target);
     if (!tracking) return;

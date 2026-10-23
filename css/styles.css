@@ -264,6 +264,7 @@ textarea { resize: vertical; }
 .progress.done i { background: var(--ok); }
 .row-body .progress { height: 6px; margin-top: 6px; }
 .tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tiles.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .tiles.three .tile b { font-size: 16px; }
 .monthnav { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; }
 .monthnav b { font-size: 16px; }

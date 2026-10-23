@@ -1,5 +1,5 @@
 // Service worker: la app funciona offline. Sube CACHE al publicar cambios.
-const CACHE = 'secondbrain-v25';
+const CACHE = 'secondbrain-v26';
 const ASSETS = [
   './',
   'index.html',
@@ -8,7 +8,6 @@ const ASSETS = [
   'js/db.js',
   'js/calc.js',
   'js/finance.js',
-  'js/gastos.js',
   'js/migrar-finanzas.js',
   'js/backup.js',
   'finanzas/',

@@ -1,6 +1,5 @@
 import * as db from './db.js';
 import * as backup from './backup.js';
-import { resumenGastos, pendiente, daysUntil } from './gastos.js';
 import { migrateFinance } from './migrar-finanzas.js';
 import { fuelStats, fuelStatsByType, FUELS, fuelTypeOf, currentOdometer, firstOdometer, totals, monthlySpend, reminderStatus, amountOf } from './calc.js';
 
@@ -32,6 +31,19 @@ async function load() {
       projects.push(p);
     }
     await db.setSetting('seeds', [...seeds, 'proj-cartera-2']);
+    seeds.push('proj-cartera-2');
+  }
+  // Finanzas dejó de ser módulo de Inicio: se abre desde Proyectos.
+  if (!seeds.includes('proj-finanzas')) {
+    if (!projects.some((p) => p.id === 'proj-finanzas')) {
+      const p = { id: 'proj-finanzas', name: 'Finanzas', emoji: '💰', status: 'activo', pinned: true,
+        description: 'Pagos con abonos y metas de ahorro: meta diaria, gráfica de cuándo caen los pagos y grupos por urgencia.',
+        links: 'Abrir Finanzas ./finanzas/\nCarpeta del repo https://github.com/jeal1498/JEAL/tree/main/finanzas',
+        tags: 'app, dinero', notes: 'Datos en el teléfono (movimientos y metas); entran al respaldo y al buscador.', createdAt: Date.now(), updatedAt: Date.now() };
+      await db.put('projects', p);
+      projects.push(p);
+    }
+    await db.setSetting('seeds', [...seeds, 'proj-finanzas']);
   }
   Object.assign(state, { fuel, maintenance, expenses, reminders, movimientos, metas, notes, tasks, habits, journal, projects, vehicle: vehicle || {} });
 }
@@ -494,15 +506,12 @@ function renderHome() {
   const h = new Date().getHours();
   const hello = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
   // Números del día
-  const plan = resumenGastos(state.movimientos, t);
-  const hasFin = state.movimientos.length || state.metas.length;
   const tasks = state.tasks.filter((x) => !x.done && x.due && x.due <= t).sort((a, b) => a.due.localeCompare(b.due));
   const late = tasks.filter((x) => x.due < t).length;
   const habits = [...state.habits].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   const habitsDone = habits.filter((x) => (x.done || []).includes(t)).length;
   const j = state.journal.find((x) => x.date === t) || {};
   // Lo de hoy
-  const bills = hasFin ? plan.proximos : [];
   const odo = currentOdometer(state);
   const alerts = alertsFor(odo).filter((a) => a.s.level !== 'ok');
   const month = monthlySpend(state, 1)[0].total;
@@ -512,8 +521,7 @@ function renderHome() {
   dayDate = t;
   view.innerHTML = `
     <section class="hello"><b>${hello}</b><span>${cap(fdate(t, { weekday: 'long', day: 'numeric', month: 'long' }))}</span></section>
-    <section class="tiles three">
-      ${tile('finanzas/', 'Meta diaria', hasFin ? m0(plan.meta) : '—', hasFin ? (plan.debeMes > 0 ? `faltan ${m0(plan.debeMes)} del mes` : 'mes cubierto') : 'Configura Finanzas', hasFin && !plan.debeMes ? 'good' : '')}
+    <section class="tiles two">
       ${tile('#/pendientes', 'Pendientes', tasks.length, late ? `<em class="badge">${late} vencido${late > 1 ? 's' : ''}</em>` : 'para hoy')}
       ${tile('#/dia', 'Hábitos', habits.length ? `${habitsDone}/${habits.length}` : '—', habits.length ? (habitsDone === habits.length ? '¡completos! 🎉' : 'hoy') : 'Agrega en Mi día', habits.length && habitsDone === habits.length ? 'good' : '')}
     </section>
@@ -522,23 +530,16 @@ function renderHome() {
       <a class="link" href="#/dia">${j.text ? 'Ver tu diario de hoy →' : 'Escribir en el diario →'}</a></section>
     ${tasks.length ? `<section class="card"><h3>Pendientes de hoy</h3><ul class="list flat">${tasks.map(taskRow).join('')}</ul><a class="link" href="#/pendientes">Ver todos →</a></section>` : ''}
     ${habits.length ? `<section class="card"><h3>Hábitos de hoy</h3><ul class="list flat">${habits.map((x) => habitRow(x, t)).join('')}</ul></section>` : ''}
-    ${bills.length ? `<section class="card"><h3>Pagos de esta semana</h3><ul class="list flat">${bills.map((m) => payRow(m, t)).join('')}</ul><a class="link" href="finanzas/">Ver finanzas →</a></section>` : ''}
     ${alerts.length ? `<p class="group"><span>Avisos del auto</span></p>${alerts.map(alertCard).join('')}` : ''}
     <p class="group"><span>Módulos</span></p>
     <nav class="modgrid">
       ${modTile('#/vehiculo', 'car', esc(state.vehicle.name || 'Vehículo'), !state.vehicle.name ? 'Configúralo' : `${m0(month)} este mes`)}
-      ${modTile('finanzas/', 'wallet', 'Finanzas', hasFin ? (plan.debeMes > 0 ? `Faltan ${m0(plan.debeMes)}` : 'Mes cubierto') : 'Empieza aquí')}
       ${modTile('#/pendientes', 'tasks', 'Pendientes', `${state.tasks.filter((x) => !x.done).length} abiertos`)}
       ${modTile('#/notas', 'note', 'Notas', `${state.notes.length} nota${state.notes.length === 1 ? '' : 's'}`)}
       ${modTile('#/dia', 'heart', 'Mi día', 'Diario y hábitos')}
       ${modTile('#/proyectos', 'folder', 'Proyectos', state.projects.length ? ((n) => `${n} activo${n === 1 ? '' : 's'}`)(state.projects.filter((x) => (x.status || 'activo') === 'activo').length) : 'Accesos y repos')}
       ${modTile('#/respaldo', 'cloud', 'Respaldo', !bk.url ? '<span class="badge">Sin configurar</span>' : bk.error ? '<span class="badge">Falló</span>' : bk.last ? `Al día · ${ago(bk.last)}` : 'Pendiente')}
     </nav>`;
-  view.querySelectorAll('[data-fin]').forEach((li) => {
-    const go = () => { location.href = 'finanzas/#' + li.dataset.fin; };
-    li.onclick = go;
-    li.onkeydown = (e) => { if (e.key === 'Enter') go(); };
-  });
   bindTicks();
   view.querySelectorAll('[data-hmood]').forEach((b) => (b.onclick = async () => {
     const mood = j.mood === b.dataset.hmood ? '' : b.dataset.hmood;
@@ -548,18 +549,7 @@ function renderHome() {
     await refresh();
   }));
 }
-// Pago que vence pronto (o ya venció), tal como aparece en Finanzas; al tocarlo se abre ahí.
 const catEmoji = (c) => (c || '📦').split(' ')[0];
-const daysText = (d) => (d < 0 ? 'Vencido' : d === 0 ? 'vence hoy' : d === 1 ? 'mañana' : `en ${d} días`);
-function payRow(m, t) {
-  const d = daysUntil(t, m.fecha);
-  const abo = +m.abo || 0;
-  return `<li data-fin="gasto-${encodeURIComponent(m.id)}" tabindex="0" class="bill ${d < 0 ? 'overdue' : 'soon'}">
-    <span class="row-icon emoji">${catEmoji(m.cat)}</span>
-    <span class="row-body"><b>${esc(m.conc)}</b>
-      <small><span class="status">${daysText(d)}</span> · ${fdate(m.fecha, { day: 'numeric', month: 'short' })}</small></span>
-    <span class="row-amount">${money(pendiente(m))}${abo > 0 ? `<small>de ${money(m.imp)}</small>` : ''}</span></li>`;
-}
 const modTile = (href, ic, name, sub) => `<a class="modtile" href="${href}"><span class="module-icon">${icon(ic)}</span><b>${name}</b><small>${sub}</small></a>`;
 
 // ---------- Buscador general ----------
@@ -709,9 +699,9 @@ let projectStatus = '';
 // "Nombre https://…" por renglón; sin nombre se deduce del sitio.
 function linksOf(x) {
   return String(x.links || '').split('\n').map((line) => {
-    const m = line.match(/(https?:\/\/\S+|[\w.-]+\.[a-z]{2,}\/\S*)/i);
+    const m = line.match(/(https?:\/\/\S+|\.\/\S+|[\w.-]+\.[a-z]{2,}\/\S*)/i);
     if (!m) return null;
-    const url = /^https?:/i.test(m[1]) ? m[1] : 'https://' + m[1];
+    const url = /^https?:/i.test(m[1]) || m[1].startsWith('./') ? m[1] : 'https://' + m[1];
     const label = line.replace(m[1], '').replace(/[\s:|—–-]+$/, '').replace(/^[\s:|—–-]+/, '').trim();
     return { url, label: label || autoLabel(url) };
   }).filter(Boolean);
@@ -744,7 +734,7 @@ function renderProjects() {
         return `<li data-store="projects" data-id="${x.id}" tabindex="0">
         <span class="row-body"><b>${x.pinned ? '📌 ' : ''}${esc(x.emoji || '📁')} ${esc(x.name)} <em class="pstatus s-${esc(x.status || 'activo')}">${statusLabel(x.status)}</em></b>
           ${x.description ? `<small>${esc(x.description.replace(/\s+/g, ' '))}</small>` : ''}
-          ${links.length ? `<span class="plinks">${links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${icon('link')}${esc(l.label)}</a>`).join('')}</span>` : ''}
+          ${links.length ? `<span class="plinks">${links.map((l) => `<a href="${esc(l.url)}"${l.url.startsWith('./') ? '' : ' target="_blank" rel="noopener"'}>${icon('link')}${esc(l.label)}</a>`).join('')}</span>` : ''}
           ${x.notes ? `<small class="pnotes">${esc(x.notes)}</small>` : ''}
           ${tagsOf(x).length ? `<span class="tags">${tagsOf(x).map((t) => `<i>${esc(t)}</i>`).join('')}</span>` : ''}</span></li>`;
       }).join('')}</ul>`;
@@ -1251,7 +1241,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const VERSION = '2.7.0';
+const VERSION = '2.7.1';
 
 // changed = hubo un cambio en los datos (dispara el respaldo automático).
 async function refresh(changed = true) {

@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-23, v2.7.0)
+## SecondBrain (estado al 2026-10-23, v2.7.1)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -20,8 +20,8 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 ### Archivos
 - `index.html` — shell (header, `#view`, tabs, FAB, `<dialog>` de formularios).
 - `js/app.js` — router por hash (`#/`, `#/vehiculo/<tab>`, `#/respaldo`, `#/buscar`, `#/pendientes`, `#/notas`, `#/dia`, `#/proyectos`; `#/finanzas` redirige a `finanzas/`), vistas, formularios por esquema (`SCHEMAS`), gráficas SVG propias.
-- `finanzas/` — **Finanzas v3 (2.7.0)**: página propia (`index.html`, `styles.css`, `app.js` módulo, fuente Bricolage en `fonts/`) con el diseño aprobado (auditoría ui-ux-pro-max). Lee/escribe `movimientos` y `metas` con `js/db.js`, programa el respaldo y abre registros con `finanzas/#gasto-<id>` / `#meta-<id>`.
-- `js/gastos.js` — cuentas puras de movimientos para Inicio (pendiente, meta diaria, próximos). `js/migrar-finanzas.js` — migración única de las finanzas anteriores. `js/finance.js` — motor de las finanzas anteriores (solo lo usa la migración).
+- `finanzas/` — **Finanzas v3 (2.7.0)**: página propia (`index.html`, `styles.css`, `app.js` módulo, fuente Bricolage en `fonts/`) con el diseño aprobado (auditoría ui-ux-pro-max). Lee/escribe `movimientos` y `metas` con `js/db.js`, programa el respaldo y abre registros con `finanzas/#gasto-<id>` / `#meta-<id>`. **Ya no es módulo de Inicio** (v2.7.1): se abre desde Proyectos (`proj-finanzas`) y el buscador; su botón ‹ vuelve a `#/proyectos`.
+- `js/migrar-finanzas.js` — migración única de las finanzas anteriores. `js/finance.js` — motor de las finanzas anteriores (solo lo usa la migración).
 - `js/backup.js` — respaldo/restauración en Google Sheets y texto del Apps Script (`scriptFor`).
 - `js/calc.js` — cálculos puros (rendimiento tanque lleno→tanque lleno, gasto mensual, recordatorios).
 - `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `movimientos`, `metas`, `notes`, `tasks`, `habits`, `journal`, `projects`, más los **anteriores** `income`, `bills`, `goals`, `budgets`, `spending` (sin pantalla, se conservan y respaldan; de ahí sale la migración), `settings` (claves `vehicle`, `finance` (lleva la marca `migrated: 'finanzas-2'`; `savings` es del modelo anterior), `backup` (`dirty` = hay cambios sin respaldar)). DB `VERSION` 7.
@@ -40,7 +40,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Respaldo: pestañas «Pagos» y «Metas» (nuevas); las de Ingresos, Presupuestos y Apartado por mes quedan sin actualizar en la hoja (el JSON `_respaldo` lo trae todo).
 
 ### Inicio = tablero del día (v2.4.0, `renderHome`)
-Saludo + fecha; tiles Meta diaria (de `finanzas/`) / Pendientes (hoy+vencidos) / Hábitos x/y; "¿Cómo te sientes hoy?" (guarda mood en `journal`); Pendientes de hoy y Hábitos de hoy con check directo; Pagos de esta semana (≤7 días o vencidos, sin pagar; al tocar abren `finanzas/#gasto-<id>`); Avisos del auto (no ok); cuadrícula de módulos 2×. Secciones vacías se ocultan.
+Saludo + fecha; tiles Pendientes (hoy+vencidos) / Hábitos x/y; "¿Cómo te sientes hoy?" (guarda mood en `journal`); Pendientes de hoy y Hábitos de hoy con check directo; Avisos del auto (no ok); cuadrícula de módulos 2×. Secciones vacías se ocultan.
 
 ### Pendientes, Notas, Mi día (v2.3.0)
 - **Pendientes** (`tasks`: title, due opcional, done, doneAt): grupos Vencidos/Hoy/Próximos/Sin fecha + Hechos; círculo para marcar.
@@ -72,7 +72,7 @@ Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en 
 
 ## Cartera 2.0 (`cartera-2/`, v2.6.0)
 - Carpeta con los archivos de la versión 2.0: `cartera-completa.html` (app todo-en-uno, igual a `cartera/cartera-completa.html` al 15-oct) y `perfil-conductor.html` (perfil público de Eduardo; usa Leaflet de unpkg, requiere internet).
-- Publicados en https://jeal1498.github.io/JEAL/cartera-2/ . Aparecen en Proyectos como `proj-cartera-2` (se siembra una vez por dispositivo desde `load()` con la clave `seeds` en `settings`; es el patrón para proyectos de fábrica).
+- Publicados en https://jeal1498.github.io/JEAL/cartera-2/ . Aparecen en Proyectos como `proj-cartera-2` (se siembra una vez por dispositivo desde `load()` con la clave `seeds` en `settings`; es el patrón para proyectos de fábrica). `proj-finanzas` se siembra igual (v2.7.1); su acceso `./finanzas/` es un enlace interno (en `links` un `./ruta` se abre en la misma app, sin pestaña nueva).
 
 ## Cartera de clientes (`cartera/`, tercer proyecto, v1.2)
 - PWA aparte para conductores: gestionar su cartera de **clientes privados** (los que les piden viajes por fuera de Uber/DiDi). No es venta de tarjetas impresas ni captar pasajeros de la app.

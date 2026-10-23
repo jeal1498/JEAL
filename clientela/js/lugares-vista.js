@@ -117,11 +117,21 @@ export function createPlaceFields({ getData, client, tripsOf, byWhen, esc, icon,
       const used = new Set(savedFor(cidOf(clientId)).map((x) => fold(x.label)));
       namer = document.createElement('div');
       namer.className = 'namer';
-      namer.innerHTML = `<div class="chips">${['Casa', 'Trabajo', 'Escuela'].filter((n) => !used.has(fold(n))).map((n) => `<button type="button" data-n="${n}">${n}</button>`).join('')}</div>
-        <div class="namerow"><input placeholder="Otro nombre" maxlength="30" aria-label="Nombre del lugar" autocomplete="off"><button type="button" class="primary" data-ok>Guardar</button></div>`;
+      namer.innerHTML = `<div class="chips">${['Casa', 'Trabajo', 'Escuela'].filter((n) => !used.has(fold(n))).map((n) => `<button type="button" data-n="${n}">${n}</button>`).join('')}<button type="button" data-otro aria-expanded="false">Otro</button></div>
+        <div class="namerow" hidden><input placeholder="Nombre del lugar" maxlength="30" aria-label="Nombre del lugar" autocomplete="off"><button type="button" class="primary" data-ok>Guardar</button></div>`;
       row.append(namer);
       const ti = namer.querySelector('input');
-      namer.onclick = (e) => { const b = e.target.closest('[data-n]'); if (b) nameIt(b.dataset.n); };
+      // El campo para escribir un nombre aparece solo al tocar «Otro».
+      namer.onclick = (e) => {
+        const b = e.target.closest('[data-n]');
+        if (b) return nameIt(b.dataset.n);
+        const o = e.target.closest('[data-otro]');
+        if (!o) return;
+        const row2 = namer.querySelector('.namerow');
+        row2.hidden = false;
+        o.classList.add('on'); o.setAttribute('aria-expanded', 'true');
+        ti.focus();
+      };
       namer.querySelector('[data-ok]').onclick = () => nameIt(ti.value);
       ti.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); nameIt(ti.value); } });
     };

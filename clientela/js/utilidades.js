@@ -28,3 +28,13 @@ export const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u0
 export const shortRoute = (from, to) => `${(from || '…').split(',')[0]} → ${(to || '…').split(',')[0]}`;
 // Punto de mapa sin campos de más. `addr` es la dirección real cuando el lugar tiene nombre («Casa»).
 export const cleanPt = (p) => (p && p.lat != null ? { label: p.label, ...(p.addr ? { addr: p.addr } : {}), lat: p.lat, lon: p.lon } : null);
+// Empalmes: no se puede estar en dos viajes a la vez. Un viaje ocupa lo que dura su ruta (mínimo 30 min).
+const toMin = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return h * 60 + (m || 0); };
+const span = (t) => Math.max(30, +t.min || 0);
+// Viajes (no cancelados) del mismo día que se cruzan con `x`; `x.id` se ignora (para editar).
+export const clashes = (trips, x) => {
+  if (!x.time || x.status === 'cancelado') return [];
+  const s = toMin(x.time), e = s + span(x);
+  return trips.filter((o) => o.id !== x.id && o.date === x.date && o.time && o.status !== 'cancelado' && s < toMin(o.time) + span(o) && toMin(o.time) < e).sort(byWhen);
+};
+export const clashLine = (list, nameOf) => `A esa hora ya tienes a ${nameOf(list[0].clientId)} (${hour12(list[0].time)})${list.length > 1 ? ` y ${list.length - 1} más` : ''}.`;

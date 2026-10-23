@@ -1,4 +1,5 @@
 // Acciones compartidas para fechas, viajes rápidos y rutas frecuentes.
+import { clashes, clashLine } from './utilidades.js';
 export function createTripActions({ getData, today, addDays, tripsOf, client, toast, waLink, MSG, uid, autoName, refresh, firstName, tripForm, openSheet, esc, money, field, whenHtml, $, sheet }) {
   function wireWhen(form, onChange = () => {}) {
     const d = form.elements.date, tm = form.elements.time;
@@ -51,12 +52,27 @@ export function createTripActions({ getData, today, addDays, tripsOf, client, to
       ${field('Fecha', `<input name="date" type="date" required value="${today()}">`)}
       ${field('Hora', `<input name="time" type="time" value="${esc(preset.time)}">`)}
       ${whenHtml}
+      <small class="wide clash" id="qclash" hidden></small>
       <div class="buttons"><button type="button" data-close>Cancelar</button><button type="button" data-more>Más opciones</button><button class="primary">Agendar</button></div>`, (form) => {
       $('[data-close]', form).onclick = () => sheet.close();
-      wireWhen(form);
       const read = () => ({ ...preset, date: form.elements.date.value || today(), time: form.elements.time.value || '' });
+      // Dos viajes a la misma hora: avisa y el segundo toque en «Agendar igual» lo guarda.
+      const box = $('#qclash', form);
+      const okBtn = form.querySelector('button.primary');
+      let sig = '', ack = false;
+      const check = () => {
+        const list = clashes(data.trips, read());
+        const s = list.map((o) => o.id).join();
+        if (s !== sig) { sig = s; ack = false; okBtn.textContent = 'Agendar'; }
+        box.hidden = !list.length;
+        box.textContent = list.length ? `⚠ ${clashLine(list, (id) => client(id)?.name || 'otro cliente')} Cambia la hora o agéndalo igual.` : '';
+      };
+      wireWhen(form, check);
+      form.elements.time.addEventListener('input', check);
+      check();
       $('[data-more]', form).onclick = () => { const p = read(); sheet.close(); tripForm(null, p); };
-      form.onsubmit = () => {
+      form.onsubmit = (e) => {
+        if (clashes(data.trips, read()).length && !ack) { e.preventDefault(); ack = true; okBtn.textContent = 'Agendar igual'; return; }
         const x = { id: uid(), createdAt: Date.now(), updatedAt: Date.now(), status: 'agendado', pay: '', notes: '', wait: '', ...read() };
         data.trips.push(x);
         sheet.close();

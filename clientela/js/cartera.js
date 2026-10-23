@@ -16,7 +16,7 @@ import { createTripCard } from './viaje-vistas.js';
 import { createSummaryView } from './resumen.js';
 import { PAYS, PAY_LABEL, seg, payGrid } from './vistas-pago.js';
 import { PROFILE_STEPS, CAR_EXTRAS, PAY_OPTS, ONB, stepHtml } from './perfil-vistas.js';
-import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute, fold, cleanPt } from './utilidades.js';
+import { uid, esc, money, today, addDays, daysBetween, fdate, cap, dayLabel, hour12, initials, firstName, byWhen, mondayOf, shortRoute, fold, cleanPt, clashes, clashLine } from './utilidades.js';
 import { encodePage, qrSvg, buildPagePayload } from './qr.js';
 import { icon } from './iconos.js';
 import { createMessaging } from './mensajes.js';
@@ -419,6 +419,7 @@ function tripForm(t = null, preset = {}) {
     ${field('Fecha', `<input name="date" type="date" required value="${esc(v.date)}">`)}
     ${field('Hora', `<input name="time" type="time" value="${esc(v.time)}">`)}
     ${whenHtml}
+    <small class="wide clash" id="clash" hidden></small>
     <div class="chips wide" id="svcchips"></div>
     <div class="route wide">${placeInput(v.fromPt || (v.from ? { label: v.from } : null), 'a', 'Punto A · origen', true)}${placeInput(v.toPt || (v.to ? { label: v.to } : null), 'b', 'Punto B · destino')}</div>
     <small class="field wide muted" id="pnote"></small>
@@ -454,7 +455,21 @@ function tripForm(t = null, preset = {}) {
       if (km) tips.push(`Con tu tarifa: ${money(suggestPrice(km, min, ctx))} (${priceMath(km, min, ctx)})`);
       hint.textContent = tips.join(' · ');
       if (!priceTyped && (same || km)) els.price.value = same ? same.price : suggestPrice(km, min, ctx);
+      checkClash();
     };
+    // Dos viajes a la misma hora: avisa y pide confirmar (el segundo toque en «Agendar igual» lo guarda).
+    const clashBox = $('#clash', form);
+    const saveBtn = form.querySelector('button.primary');
+    let clashSig = '', clashAck = false;
+    const clashList = () => { const x = { id: t?.id, ...readForm() }; return clashes(data.trips, x); };
+    const checkClash = () => {
+      const list = clashList();
+      const sig = list.map((o) => o.id).join();
+      if (sig !== clashSig) { clashSig = sig; clashAck = false; saveBtn.textContent = 'Guardar'; }
+      clashBox.hidden = !list.length;
+      clashBox.textContent = list.length ? `⚠ ${clashLine(list, (id) => client(id)?.name || 'otro cliente')} Cambia la hora o agéndalo igual.` : '';
+    };
+    form.querySelectorAll('[name=status]').forEach((r) => r.addEventListener('change', checkClash));
     const checkPlaces = () => {
       const bad = (fromIn.value.trim() && !rt.fromPt) || (toIn.value.trim() && !rt.toPt) || st.bad();
       $('#pnote', form).textContent = bad ? 'Toca una opción de la lista para calcular ruta y precio, o escribe el precio a mano.' : '';
@@ -562,6 +577,7 @@ function tripForm(t = null, preset = {}) {
     form.onsubmit = (e) => {
       const x = { ...(t || { id: uid(), createdAt: Date.now() }), ...readForm(), updatedAt: Date.now() };
       if (!client(x.clientId)) { e.preventDefault(); toast('Elige un cliente'); return; }
+      if (clashList().length && !clashAck) { e.preventDefault(); clashAck = true; saveBtn.textContent = 'Agendar igual'; clashBox.scrollIntoView({ block: 'nearest' }); return; }
       if (t) Object.assign(t, x);
       else data.trips.push(x);
       sheet.close();
@@ -783,8 +799,9 @@ function weekForm(c, { start } = {}) {
     };
     const sum = () => {
       const { fresh, dup } = plan();
+      const hit = fresh.filter((o) => clashes(data.trips, o).length).length;
       $('#wsum', form).textContent = fresh.length
-        ? `${fresh.length} viaje${fresh.length === 1 ? '' : 's'} · ${money(fresh.reduce((s, o) => s + +o.price, 0))}${dup ? ` · ${dup} ya estaban agendados` : ''}`
+        ? `${fresh.length} viaje${fresh.length === 1 ? '' : 's'} · ${money(fresh.reduce((s, o) => s + +o.price, 0))}${dup ? ` · ${dup} ya estaban agendados` : ''}${hit ? ` · ⚠ ${hit} chocan con otro viaje` : ''}`
         : dup ? 'Todo eso ya está agendado' : 'Marca al menos un viaje y un día';
     };
     form.querySelectorAll('#wdays button').forEach((b) => (b.onclick = () => {

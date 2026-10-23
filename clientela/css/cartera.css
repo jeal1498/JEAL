@@ -470,3 +470,5 @@ body.full .top, body.full .tabs { display: none; }
   @keyframes chk-on { 0%, 55% { stroke-dashoffset: 20; } 100% { stroke-dashoffset: 0; } }
 }
 .nav button { border-radius: 999px; min-height: 52px; }
+
+.clash { padding: 8px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-size: 13px; font-weight: 600; line-height: 1.35; }

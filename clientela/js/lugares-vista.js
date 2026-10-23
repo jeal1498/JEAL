@@ -83,19 +83,51 @@ export function createPlaceFields({ getData, client, tripsOf, byWhen, esc, icon,
     input.addEventListener('blur', () => setTimeout(close, 150));
   }
   // Distancia, tiempo, mapa y precio sugerido de A a B.
-  async function fillRoute(el, a, b) {
+  async function fillRoute(el, a, b, via = []) {
     if (!a || !b) { el.innerHTML = '<div class="empty-route">Elige el punto A y el punto B de la lista para ver distancia, tiempo y precio.</div>'; return null; }
     el.innerHTML = '<div class="empty-route">Calculando ruta…</div>';
     try {
-      const r = await route(a, b);
-      el.innerHTML = `${mapSvg(r.path, `Ruta de ${esc(a.label)} a ${esc(b.label)}`)}
+      const r = await route(a, b, via);
+      el.innerHTML = `${mapSvg(r.path, `Ruta de ${esc(a.label)} a ${esc(b.label)}${via.length ? ` con ${via.length} parada${via.length > 1 ? 's' : ''}` : ''}`, via)}
         <div class="stats"><div><small>Distancia</small><b>${r.km} km</b></div><div><small>Tiempo</small><b>${r.min} min</b></div><div class="price"><small>Sugerido</small><b>${money(suggestPrice(r.km, r.min, { airport: isAirport(a.label, b.label) }))}</b></div></div>
-        <div class="how">${priceMath(r.km, r.min, { airport: isAirport(a.label, b.label) })} · <a href="${directionsLink(a, b)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
+        <div class="how">${priceMath(r.km, r.min, { airport: isAirport(a.label, b.label) })} · <a href="${directionsLink(a, b, via)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
       return r;
     } catch {
       el.innerHTML = '<div class="empty-route">No se pudo calcular la ruta (¿sin internet?). Pon el precio a mano.</div>';
       return null;
     }
   }
-  return { knownPlaces, nearPoint, placeInput, usualFrom, wirePlace, fillRoute };
+  // Paradas entre A y B: el «+» queda justo arriba de B y cada parada nueva se agrega antes de él.
+  // Cada parada se elige igual que A y B (lista, enlace de Google Maps o coordenadas).
+  function stopsField(box, { clientId, onChange, initial = [] }) {
+    const bRow = box.querySelector('[data-pt=b]').parentElement;
+    const add = document.createElement('button');
+    add.type = 'button'; add.className = 'addstop';
+    add.innerHTML = '<span class="plus" aria-hidden="true">+</span><span>Agregar parada</span>';
+    box.insertBefore(add, bRow);
+    const rows = [];
+    const addRow = (pt) => {
+      const row = document.createElement('div');
+      row.className = 'stop has-x';
+      row.innerHTML = `<span class="dot s"></span><input data-pt="s" value="${esc(pt?.label || '')}" placeholder="Parada ${rows.length + 1}" autocomplete="off" enterkeyhint="search"><button type="button" class="loc rm" aria-label="Quitar parada">×</button>`;
+      row._pt = pt && pt.lat != null ? { label: pt.label, lat: pt.lat, lon: pt.lon } : null;
+      box.insertBefore(row, add);
+      rows.push(row);
+      const input = row.querySelector('input');
+      wirePlace(input, clientId, (p, typing) => { row._pt = p; if (!typing || !p) onChange(); });
+      row.querySelector('.rm').onclick = () => { row.remove(); rows.splice(rows.indexOf(row), 1); onChange(); };
+      return input;
+    };
+    const renumber = () => rows.forEach((r, i) => { r.querySelector('input').placeholder = `Parada ${i + 1}`; });
+    add.onclick = () => addRow(null).focus();
+    box.addEventListener('click', (e) => { if (e.target.closest('.rm')) renumber(); });
+    initial.forEach((p) => addRow(p));
+    return {
+      get: () => rows.map((r) => r._pt).filter(Boolean).map(({ label, lat, lon }) => ({ label, lat, lon })),
+      // Hay una parada escrita a medias (sin elegir de la lista): la ruta aún no se puede calcular.
+      bad: () => rows.some((r) => r.querySelector('input').value.trim() && !r._pt),
+      set: (list) => { rows.splice(0).forEach((r) => r.remove()); (list || []).forEach((p) => addRow(p)); },
+    };
+  }
+  return { knownPlaces, nearPoint, placeInput, usualFrom, wirePlace, fillRoute, stopsField };
 }

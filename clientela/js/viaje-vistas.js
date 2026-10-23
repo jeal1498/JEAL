@@ -22,7 +22,8 @@ export function createTripCard({ client, today, owed, lateDebt, cap, waLink, MSG
         actions = confirm + arrived + `<button type="button" class="${confirm ? '' : 'primary'}" data-finish="${t.id}">${icon('check')}Terminar</button>`;
       } else actions = confirm;
     } else if (owed(t)) actions = `<button type="button" data-paid="${t.id}">${icon('cash')}Ya me pagó</button>`;
-    const way = t.from || t.to ? `${esc(t.from || '…')} → ${esc(t.to || '…')}` : 'Sin ruta';
+    const n = (t.stops || []).length;
+    const way = t.from || t.to ? `${esc(t.from || '…')} → ${esc(t.to || '…')}${n ? ` · ${n} parada${n > 1 ? 's' : ''}` : ''}` : 'Sin ruta';
     return `<article class="trip ${t.status !== 'agendado' ? 'done' : ''}" data-trip="${t.id}" tabindex="0">
     <div class="t1"><span class="when">${when}</span>${tag}</div>
     <div class="t2"><b class="who">${showClient ? esc(c.name) : way}</b><span class="price">${money(t.price)}</span></div>

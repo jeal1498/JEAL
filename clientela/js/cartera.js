@@ -362,13 +362,13 @@ function clientForm(c = null, { onSaved } = {}) {
 
 // ---------- Punto A y punto B ----------
 // Lugares ya usados (servicios y viajes) aparecen primero, sin internet.
-const { knownPlaces, nearPoint, placeInput, usualFrom, wirePlace, fillRoute } = createPlaceFields({
+const { knownPlaces, nearPoint, placeInput, usualFrom, wirePlace, fillRoute, stopsField } = createPlaceFields({
   getData: () => data, client, tripsOf, byWhen, esc, icon, fold, searchPlaces, reverse, parseMapLink, route,
   directionsLink, mapSvg, money, suggestPrice, isAirport, priceMath,
 });
 
 const serviceCard = createServiceCard({
-  placeInput, wirePlace, fillRoute, $, esc, suggestPrice, svcCtx, autoName, mapSvg, money, priceMath, directionsLink,
+  placeInput, wirePlace, fillRoute, stopsField, $, esc, suggestPrice, svcCtx, autoName, mapSvg, money, priceMath, directionsLink,
 });
 
 // Atajos de fecha y hora (Ahora · Hoy · Mañana).
@@ -424,22 +424,23 @@ function tripForm(t = null, preset = {}) {
       if (!priceTyped && (same || km)) els.price.value = same ? same.price : suggestPrice(km, min, ctx);
     };
     const checkPlaces = () => {
-      const bad = (fromIn.value.trim() && !rt.fromPt) || (toIn.value.trim() && !rt.toPt);
+      const bad = (fromIn.value.trim() && !rt.fromPt) || (toIn.value.trim() && !rt.toPt) || st.bad();
       $('#pnote', form).textContent = bad ? 'Toca una opción de la lista para calcular ruta y precio, o escribe el precio a mano.' : '';
     };
     [fromIn, toIn].forEach((i) => i.addEventListener('blur', () => setTimeout(checkPlaces, 300)));
     const recalc = async () => {
-      routeEl.hidden = !(rt.fromPt && rt.toPt);
+      routeEl.hidden = !(rt.fromPt && rt.toPt) || st.bad();
       if (routeEl.hidden) { rt.min = ''; rt.path = null; return; }
-      const r = await fillRoute(routeEl, rt.fromPt, rt.toPt);
+      const r = await fillRoute(routeEl, rt.fromPt, rt.toPt, st.get());
       if (r) { els.km.value = r.km; rt.min = r.min; rt.path = r.path; suggest(); }
     };
     const cid = () => idIn.value;
+    const st = stopsField($('.route', form), { clientId: cid, initial: v.stops || [], onChange: () => { recalc(); suggest(); checkPlaces(); } });
     wirePlace(fromIn, cid, (p, typing) => { rt.fromPt = p; if (!typing || !p) { recalc(); suggest(); checkPlaces(); } });
     wirePlace(toIn, cid, (p, typing) => { rt.toPt = p; if (!typing || !p) { recalc(); suggest(); checkPlaces(); } });
     if (rt.fromPt && rt.toPt) {
       routeEl.hidden = false;
-      if (rt.path) routeEl.innerHTML = `${mapSvg(rt.path)}<div class="how">${els.km.value} km · ${rt.min} min · <a href="${directionsLink(rt.fromPt, rt.toPt)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
+      if (rt.path) routeEl.innerHTML = `${mapSvg(rt.path, 'Ruta', st.get())}<div class="how">${els.km.value} km · ${rt.min} min · <a href="${directionsLink(rt.fromPt, rt.toPt, st.get())}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
       else recalc();
     }
     // Origen: el habitual del cliente, mientras no lo cambies a mano.
@@ -474,10 +475,11 @@ function tripForm(t = null, preset = {}) {
         const f = fromService(client(idIn.value), sv);
         fromIn.value = f.from; toIn.value = f.to; autoFrom = '';
         Object.assign(rt, { fromPt: f.fromPt, toPt: f.toPt, min: f.min, path: f.path });
+        st.set(f.stops);
         els.km.value = f.km; els.price.value = f.price; priceTyped = true;
         chips.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
         routeEl.hidden = !(f.fromPt && f.toPt);
-        if (f.path) routeEl.innerHTML = `${mapSvg(f.path)}<div class="how">${f.km} km · ${f.min} min · <a href="${directionsLink(f.fromPt, f.toPt)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
+        if (f.path) routeEl.innerHTML = `${mapSvg(f.path, 'Ruta', f.stops)}<div class="how">${f.km} km · ${f.min} min · <a href="${directionsLink(f.fromPt, f.toPt, f.stops)}" target="_blank" rel="noopener">Ver en Google Maps</a></div>`;
         hint.textContent = `Servicio frecuente: ${money(f.price)}`;
         checkPlaces();
       }));
@@ -517,7 +519,7 @@ function tripForm(t = null, preset = {}) {
       const f = new FormData(form);
       return {
         clientId: f.get('clientId'), date: f.get('date'), time: f.get('time') || '',
-        from: fromIn.value.trim(), to: toIn.value.trim(), fromPt: rt.fromPt, toPt: rt.toPt, km: f.get('km'), min: rt.min, path: rt.path, wait: f.get('wait') || '',
+        from: fromIn.value.trim(), to: toIn.value.trim(), fromPt: rt.fromPt, toPt: rt.toPt, stops: st.get(), km: f.get('km'), min: rt.min, path: rt.path, wait: f.get('wait') || '',
         price: +f.get('price') || 0,
         status: f.get('status'), pay: f.get('status') === 'hecho' ? f.get('pay') || '' : '', notes: f.get('notes').trim(),
       };
@@ -563,7 +565,7 @@ function quoteForm(preset = {}) {
     els.price.addEventListener('input', () => { typed = true; });
     $('[data-close]', form).onclick = () => sheet.close();
     const cur = () => client(els.clientId.value);
-    const read = () => ({ clientId: els.clientId.value, from: fromIn.value.trim(), to: toIn.value.trim(), fromPt: rt.fromPt, toPt: rt.toPt, km: rt.km, min: rt.min, path: rt.path, price: +els.price.value || 0, date: els.date.value || today(), time: els.time.value || '' });
+    const read = () => ({ clientId: els.clientId.value, from: fromIn.value.trim(), to: toIn.value.trim(), fromPt: rt.fromPt, toPt: rt.toPt, stops: st.get(), km: rt.km, min: rt.min, path: rt.path, price: +els.price.value || 0, date: els.date.value || today(), time: els.time.value || '' });
     const suggest = () => {
       const ctx = { airport: isAirport(fromIn.value, toIn.value), night: isNight(els.time.value) };
       const same = cur() && data.trips.filter((x) => x.clientId === cur().id && x.status !== 'cancelado' && x.from === fromIn.value.trim() && x.to === toIn.value.trim() && (x.from || x.to)).sort(byWhen).pop();
@@ -572,17 +574,18 @@ function quoteForm(preset = {}) {
       if (!typed && q) els.price.value = q.total;
     };
     const recalc = async () => {
-      routeEl.hidden = !(rt.fromPt && rt.toPt);
+      routeEl.hidden = !(rt.fromPt && rt.toPt) || st.bad();
       if (routeEl.hidden) { Object.assign(rt, { km: '', min: '', path: null }); suggest(); return; }
-      const r = await fillRoute(routeEl, rt.fromPt, rt.toPt);
+      const r = await fillRoute(routeEl, rt.fromPt, rt.toPt, st.get());
       if (r) Object.assign(rt, { km: r.km, min: r.min, path: r.path });
       suggest();
     };
     const checkPlaces = () => {
-      const bad = (fromIn.value.trim() && !rt.fromPt) || (toIn.value.trim() && !rt.toPt);
+      const bad = (fromIn.value.trim() && !rt.fromPt) || (toIn.value.trim() && !rt.toPt) || st.bad();
       $('#pnote', form).textContent = bad ? 'Toca una opción de la lista para calcular, o escribe el precio a mano.' : '';
     };
     [fromIn, toIn].forEach((i) => i.addEventListener('blur', () => setTimeout(checkPlaces, 300)));
+    const st = stopsField($('.route', form), { clientId: () => els.clientId.value, onChange: () => { recalc(); checkPlaces(); } });
     wirePlace(fromIn, () => els.clientId.value, (p, typing) => { rt.fromPt = p; if (!typing || !p) { recalc(); checkPlaces(); } });
     wirePlace(toIn, () => els.clientId.value, (p, typing) => { rt.toPt = p; if (!typing || !p) { recalc(); checkPlaces(); } });
     $('[data-loc]', form).onclick = () => {
@@ -623,10 +626,11 @@ function quoteForm(preset = {}) {
       const f = fromService(cur(), cur().services.find((x) => x.id === b.dataset.sv));
       fromIn.value = f.from; toIn.value = f.to;
       Object.assign(rt, { fromPt: f.fromPt, toPt: f.toPt, km: f.km, min: f.min, path: f.path });
+      st.set(f.stops);
       els.price.value = f.price; typed = true;
       qsvc.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
       routeEl.hidden = !(f.fromPt && f.toPt && f.path);
-      if (!routeEl.hidden) routeEl.innerHTML = `${mapSvg(f.path)}<div class="stats"><div><small>Distancia</small><b>${f.km} km</b></div><div><small>Tiempo</small><b>${f.min} min</b></div></div>`;
+      if (!routeEl.hidden) routeEl.innerHTML = `${mapSvg(f.path, 'Ruta', f.stops)}<div class="stats"><div><small>Distancia</small><b>${f.km} km</b></div><div><small>Tiempo</small><b>${f.min} min</b></div></div>`;
       $('#qcalc', form).innerHTML = '<small>Precio de su viaje de siempre.</small>';
       checkPlaces();
     };
@@ -696,7 +700,7 @@ function weekCandidates(c) {
   const seen = new Map();
   tripsOf(c.id).filter((t) => t.status === 'hecho' && (t.from || t.to)).sort(byWhen).reverse().forEach((t) => {
     const key = `${t.from}|${t.to}`;
-    if (!seen.has(key) && seen.size < 6) seen.set(key, { key, label: shortRoute(t.from, t.to), time: t.time || '', clientId: c.id, from: t.from, to: t.to, fromPt: t.fromPt, toPt: t.toPt, km: t.km, min: t.min, path: t.path, price: t.price });
+    if (!seen.has(key) && seen.size < 6) seen.set(key, { key, label: shortRoute(t.from, t.to), time: t.time || '', clientId: c.id, from: t.from, to: t.to, fromPt: t.fromPt, toPt: t.toPt, stops: t.stops || [], km: t.km, min: t.min, path: t.path, price: t.price });
   });
   return [...seen.values()];
 }
@@ -731,7 +735,7 @@ function weekForm(c, { start } = {}) {
           if (!days.has(d)) continue;
           const date = addDays(base, w * 7 + ((d + 6) % 7));
           if (date < today()) continue;
-          for (const { x, time } of items) all.push({ clientId: c.id, date, time, from: x.from, to: x.to, fromPt: x.fromPt, toPt: x.toPt, km: x.km, min: x.min, path: x.path, price: x.price });
+          for (const { x, time } of items) all.push({ clientId: c.id, date, time, from: x.from, to: x.to, fromPt: x.fromPt, toPt: x.toPt, stops: x.stops || [], km: x.km, min: x.min, path: x.path, price: x.price });
         }
       }
       const exists = (o) => data.trips.some((t) => t.clientId === c.id && t.status !== 'cancelado' && t.date === o.date && (t.time || '') === (o.time || '') && t.from === o.from && t.to === o.to);

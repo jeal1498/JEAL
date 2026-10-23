@@ -43,7 +43,7 @@ export function createClientDetailView({ client, header, top, icon, esc, $, clie
     $('[data-week]', view)?.addEventListener('click', () => weekForm(c));
     $('[data-collect]', view)?.addEventListener('click', () => collectForm(c));
     view.querySelectorAll('[data-book]').forEach((b) => (b.onclick = () => { const sv = c.services.find((x) => x.id === b.dataset.book); quickTrip(fromService(c, sv), sv.name || autoName(sv)); }));
-    $('[data-repeat]', view)?.addEventListener('click', () => quickTrip({ clientId: id, from: last.from, to: last.to, fromPt: last.fromPt, toPt: last.toPt, price: last.price, time: last.time, km: last.km, min: last.min, path: last.path }, 'Repetir viaje'));
+    $('[data-repeat]', view)?.addEventListener('click', () => quickTrip({ clientId: id, from: last.from, to: last.to, fromPt: last.fromPt, toPt: last.toPt, stops: last.stops || [], price: last.price, time: last.time, km: last.km, min: last.min, path: last.path }, 'Repetir viaje'));
     $('[data-editc2]', view)?.addEventListener('click', () => clientForm(c));
     bindTrips();
   }

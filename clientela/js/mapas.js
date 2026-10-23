@@ -128,8 +128,9 @@ function reverse(lat, lon) {
   });
 }
 
-function route(a, b) {
-  const k = `r:${a.lon.toFixed(5)},${a.lat.toFixed(5)};${b.lon.toFixed(5)},${b.lat.toFixed(5)}`;
+// a → paradas (via) → b. OSRM acepta todos los puntos en orden; distancia y tiempo son del recorrido completo.
+function route(a, b, via = []) {
+  const k = 'r:' + [a, ...via, b].map((p) => `${p.lon.toFixed(5)},${p.lat.toFixed(5)}`).join(';');
   return cached(k, async () => {
     const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${k.slice(2)}?overview=simplified&geometries=geojson`);
     const d = await res.json();
@@ -140,10 +141,10 @@ function route(a, b) {
   });
 }
 
-const directionsLink = (a, b) => `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lon}&destination=${b.lat},${b.lon}&travelmode=driving`;
+const directionsLink = (a, b, via = []) => `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lon}&destination=${b.lat},${b.lon}${via.length ? `&waypoints=${via.map((p) => `${p.lat},${p.lon}`).join('%7C')}` : ''}&travelmode=driving`;
 
 // Mini mapa: el trazo de la ruta sobre un fondo neutro (sin mosaicos externos).
-function mapSvg(path, label = 'Ruta') {
+function mapSvg(path, label = 'Ruta', stops = []) {
   if (!path?.length) return '';
   const W = 360, H = 120, pad = 16;
   const xs = path.map((p) => p[0]), ys = path.map((p) => p[1]);
@@ -153,10 +154,13 @@ function mapSvg(path, label = 'Ruta') {
   const pt = ([x, y]) => [ox + (x - x0) * k, H - (oy + (y - y0) * k)].map((n) => n.toFixed(1));
   const pts = path.map(pt);
   const [ax, ay] = pts[0], [bx, by] = pts[pts.length - 1];
+  const via = (stops || []).filter((s) => s && s.lat != null).map((s) => pt([s.lon, s.lat]))
+    .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5" fill="var(--surface)" stroke="var(--accent)" stroke-width="3"/>`).join('');
   return `<svg class="map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">
     <rect width="${W}" height="${H}" fill="var(--map)"/>
     <g stroke="var(--road)" stroke-width="5" fill="none"><path d="M0 38H${W}M0 86H${W}M80 0V${H}M190 0V${H}M290 0V${H}"/></g>
     <polyline points="${pts.map((p) => p.join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    ${via}
     <circle cx="${ax}" cy="${ay}" r="7" fill="var(--pin-a)" stroke="var(--surface)" stroke-width="3"/>
     <rect x="${bx - 7}" y="${by - 7}" width="14" height="14" rx="3" fill="var(--pin-b)" stroke="var(--surface)" stroke-width="3"/>
   </svg>`;

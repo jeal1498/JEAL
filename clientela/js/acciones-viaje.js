@@ -26,11 +26,12 @@ export function createTripActions({ getData, today, addDays, tripsOf, client, to
     const c = client(t.clientId);
     if (!c || !t.fromPt?.label || !t.toPt?.label || t.status !== 'hecho') return null;
     c.services ||= [];
-    if (c.services.some((sv) => sv.a?.label === t.fromPt.label && sv.b?.label === t.toPt.label)) return null;
-    const n = tripsOf(c.id).filter((x) => x.status === 'hecho' && x.fromPt?.label === t.fromPt.label && x.toPt?.label === t.toPt.label).length;
+    const sig = (s) => (s || []).map((p) => p.label).join('|');
+    if (c.services.some((sv) => sv.a?.label === t.fromPt.label && sv.b?.label === t.toPt.label && sig(sv.stops) === sig(t.stops))) return null;
+    const n = tripsOf(c.id).filter((x) => x.status === 'hecho' && x.fromPt?.label === t.fromPt.label && x.toPt?.label === t.toPt.label && sig(x.stops) === sig(t.stops)).length;
     if (n !== 2) return null;
     return { label: 'Guardar ruta frecuente', fn: () => {
-      const sv = { id: uid(), a: t.fromPt, b: t.toPt, km: t.km || '', min: t.min || '', path: t.path || null, price: +t.price || null };
+      const sv = { id: uid(), a: t.fromPt, b: t.toPt, stops: t.stops || [], km: t.km || '', min: t.min || '', path: t.path || null, price: +t.price || null };
       sv.name = autoName(sv);
       c.services.push(sv);
       c.updatedAt = Date.now();

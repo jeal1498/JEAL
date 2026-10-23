@@ -7,7 +7,7 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Ideas sueltas; propón alcance concreto y pregunta solo lo que cambie el diseño.
 - Moneda MXN. Su auto usa **gas LP como combustible principal** (gasolina solo arranque/respaldo).
 
-## SecondBrain (estado al 2026-10-15, v2.6.0)
+## SecondBrain (estado al 2026-10-23, v2.7.0)
 - **Sin build ni dependencias**: HTML + CSS + JS (ES modules) puros. Se sirve tal cual.
 - Datos en el dispositivo (IndexedDB, `js/db.js`) + respaldo automático en Google Sheets (ver Respaldo).
 - Offline con `sw.js` (stale-while-revalidate). **Sube `CACHE` en `sw.js` en cada cambio** o el teléfono no se actualiza.
@@ -19,11 +19,12 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 
 ### Archivos
 - `index.html` — shell (header, `#view`, tabs, FAB, `<dialog>` de formularios).
-- `js/app.js` — router por hash (`#/`, `#/vehiculo/<tab>`, `#/finanzas/<tab>`, `#/respaldo`, `#/buscar`, `#/pendientes`, `#/notas`, `#/dia`, `#/proyectos`), vistas, formularios por esquema (`SCHEMAS`), gráficas SVG propias.
-- `js/finance.js` — finanzas puras: pagos repetidos, reparto del ingreso por fecha, metas, meta diaria.
+- `js/app.js` — router por hash (`#/`, `#/vehiculo/<tab>`, `#/respaldo`, `#/buscar`, `#/pendientes`, `#/notas`, `#/dia`, `#/proyectos`; `#/finanzas` redirige a `finanzas/`), vistas, formularios por esquema (`SCHEMAS`), gráficas SVG propias.
+- `finanzas/` — **Finanzas v3 (2.7.0)**: página propia (`index.html`, `styles.css`, `app.js` módulo, fuente Bricolage en `fonts/`) con el diseño aprobado (auditoría ui-ux-pro-max). Lee/escribe `movimientos` y `metas` con `js/db.js`, programa el respaldo y abre registros con `finanzas/#gasto-<id>` / `#meta-<id>`.
+- `js/gastos.js` — cuentas puras de movimientos para Inicio (pendiente, meta diaria, próximos). `js/migrar-finanzas.js` — migración única de las finanzas anteriores. `js/finance.js` — motor de las finanzas anteriores (solo lo usa la migración).
 - `js/backup.js` — respaldo/restauración en Google Sheets y texto del Apps Script (`scriptFor`).
 - `js/calc.js` — cálculos puros (rendimiento tanque lleno→tanque lleno, gasto mensual, recordatorios).
-- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `income`, `bills`, `goals`, `budgets`, `spending` (en desuso: al cargar se convierte en `bills`), `notes`, `tasks`, `habits`, `journal`, `projects`, `settings` (claves `vehicle`, `finance` (incl. `savings` {'YYYY-MM': monto}), `backup`). DB `VERSION` 6.
+- `js/db.js` — IndexedDB `secondbrain`: stores `fuel`, `maintenance`, `expenses`, `reminders`, `movimientos`, `metas`, `notes`, `tasks`, `habits`, `journal`, `projects`, más los **anteriores** `income`, `bills`, `goals`, `budgets`, `spending` (sin pantalla, se conservan y respaldan; de ahí sale la migración), `settings` (claves `vehicle`, `finance` (lleva la marca `migrated: 'finanzas-2'`; `savings` es del modelo anterior), `backup` (`dirty` = hay cambios sin respaldar)). DB `VERSION` 7.
 - `css/styles.css` — tokens en `:root` con modo oscuro; series de gráficas `--s1..--s4` (paleta validada).
 
 ### Módulo Vehículo
@@ -31,17 +32,15 @@ Repo "laboratorio" personal: aquí se prueba de todo. Proyecto principal actual:
 - Cargas con `fuelType` `gasolina|lp`. Con LP activo: km/l solo con cargas LP; gasolina = gasto; "Ahorro con LP": km/l gasolina = `vehicle.kmlGas` (opcional en Ajustes) o el de sus cargas de gasolina o LP×1.25 estimado. No se pide en la configuración inicial.
 - Servicio, Gastos, Avisos (por km y/o meses, botón "Hecho" los reinicia).
 
-### Módulo Finanzas (`#/finanzas`) — réplica de su Excel (v2, pedido por ella: "así tal cual me funciona")
-- Es conductora de **Uber y Didi**: captura solo el **total generado por día** (`income`).
-- Pestañas: **Hoy** (meta diaria + registrar lo de hoy) / **Mes** (`#/finanzas/mes`, = hoja `1026`: Objetivo/Generado/Faltante, calendario semanal, lista de pagos) / **Budget familiar** (`#/finanzas/metas`).
-- Mes (`monthPlan`): lo generado en el mes abona los pagos **del mismo mes** en orden de fecha (fórmula ABONADO); no se arrastra nada entre meses. Meta diaria = faltante (con lo generado antes de hoy) / días que quedan contando hoy. Botones: "Copiar pagos del mes anterior" (no repetidos) y "Pasar sobrante" (ingreso `fromMonth` el día 1 del siguiente, "Saldo de <mes>").
-- Vehículo → finanzas: cargas/servicios/gastos del Vehículo salen solos como pagos del mes (`vehicleItems`); pagos 🚗 iguales (fecha+monto) se ocultan. Tope opcional (`budgets` kind `fuel`) cuyo resto se reserva a fin de mes, en Ajustes de finanzas. Un pago 🚗 capturado en finanzas se manda a Vehículo.
-- Ingreso con `month: 'YYYY-MM'` cuenta en esa hoja aunque su fecha sea de otro mes (el 30/9 $1,490 cuenta en octubre, como el Excel); se muestra en el calendario de esa hoja.
-- Budget familiar (`goalsPlan`): lo **apartado a mano** cada mes (`finance.savings`) abona metas por fecha. Diaria = cuotas de metas a ≤120 días; semanal ×7, mensual ×24, anual ×24×12 (igual que el Excel).
-- Se retiraron la vista estilo MonAi y los presupuestos por categoría (no le gustaron).
+### Módulo Finanzas (`finanzas/`, v3 desde 2.7.0; reemplazó a la réplica del Excel)
+- Decisión (23-oct): **reemplazo literal** del diseño nuevo. Modelo: `movimientos` {id, fecha 'YYYY-MM-DD', cat 'emoji Nombre', conc, imp, abo, pagos [{fecha|null, monto}]} y `metas` (misma forma). `abo` = suma de `pagos`. Se **retiraron**: lo generado por día (Uber/Didi), pagos repetidos, enlace con Vehículo (cargas/servicios/gastos ya no salen solos), topes de presupuesto y apartado por mes.
+- Pantalla: Gastos (resumen con **meta diaria** = pendiente hasta fin de mes incl. vencido ÷ días que quedan contando hoy, gráfica «ritmo» tocable, chips de estado, grupos por urgencia o por categoría+mes con swipe de mes) y Metas (plazos). Hojas: detalle, «Abonar o pagar», nuevo/editar. Eliminar → toast «Deshacer». Categorías con ícono SVG (Yo/Karen/Julieta con inicial); el texto guardado sigue «emoji Nombre». Solo 7 categorías en el formulario (Casa, Súper, Comida fuera y Otro de la versión anterior se muestran pero ya no se pueden elegir).
+- **Migración** (`migrar-finanzas.js`, una vez, marca en `finance.migrated`): cada hoja del mes de la versión anterior (con repetidos, cargas/servicios/gastos del Vehículo y resto del tope) pasa a `movimientos` con lo que cubría lo generado como abono sin fecha (plain bills conservan su id; el resto `mig-…`); las metas pasan con lo ahorrado (incl. apartado por mes) como abono. Los stores anteriores no se borran. Los repetidos se escriben 3 meses adelante.
+- Para pasarle datos nuevos: JSON `{app:'secondbrain', movimientos:[…], metas:[…]}` con ids estables y `pagos` (**no** `bills`/`goals`: ya no se ven). **El repo es público: no van pagos ni nombres reales en el código** (la página arranca vacía).
+- Respaldo: pestañas «Pagos» y «Metas» (nuevas); las de Ingresos, Presupuestos y Apartado por mes quedan sin actualizar en la hoja (el JSON `_respaldo` lo trae todo).
 
 ### Inicio = tablero del día (v2.4.0, `renderHome`)
-Saludo + fecha; tiles Meta de hoy / Pendientes (hoy+vencidos) / Hábitos x/y; "¿Cómo te sientes hoy?" (guarda mood en `journal`); Pendientes de hoy y Hábitos de hoy con check directo; Pagos de esta semana (≤7 días, sin cubrir); Avisos del auto (no ok); cuadrícula de módulos 2×. Secciones vacías se ocultan.
+Saludo + fecha; tiles Meta diaria (de `finanzas/`) / Pendientes (hoy+vencidos) / Hábitos x/y; "¿Cómo te sientes hoy?" (guarda mood en `journal`); Pendientes de hoy y Hábitos de hoy con check directo; Pagos de esta semana (≤7 días o vencidos, sin pagar; al tocar abren `finanzas/#gasto-<id>`); Avisos del auto (no ok); cuadrícula de módulos 2×. Secciones vacías se ocultan.
 
 ### Pendientes, Notas, Mi día (v2.3.0)
 - **Pendientes** (`tasks`: title, due opcional, done, doneAt): grupos Vencidos/Hoy/Próximos/Sin fecha + Hechos; círculo para marcar.
@@ -54,14 +53,14 @@ Saludo + fecha; tiles Meta de hoy / Pendientes (hoy+vencidos) / Hábitos x/y; "�
 - Tarjetas con botones de acceso (abren en pestaña nueva), filtro por estado, fijados arriba. Vacío: botón "Agregar SecondBrain" (id `proj-secondbrain`). En buscador y respaldo (pestaña Proyectos).
 
 ### Buscador (`#/buscar`, lupa en Inicio)
-- `renderSearch`/`SEARCH` en `app.js`: busca en todos los stores (menos budgets) sin acentos, todas las palabras deben aparecer; incluye fechas en texto ("octubre") y montos ("$1,490" → 1490). Tocar abre el formulario. Al agregar un módulo, súmalo a `SEARCH`.
+- `renderSearch`/`SEARCH` en `app.js`: busca en los stores con pantalla (incl. `movimientos` y `metas`, no los de finanzas anteriores) sin acentos, todas las palabras deben aparecer; incluye fechas en texto ("octubre") y montos ("$1,490" → 1490). Tocar abre el formulario (pagos y metas abren `finanzas/#gasto-<id>` / `#meta-<id>`). Al agregar un módulo, súmalo a `SEARCH`.
 
 ### Agregar un módulo nuevo
 Home (`renderHome`) lista módulos; agrega su tarjeta, una ruta `#/<modulo>` en `render()`, sus stores en `db.js` (subir `VERSION` de la DB y crear stores en `onupgradeneeded`) y sus esquemas de formulario.
 
 ## Estado de los datos del usuario (2026-10-10)
 - Vehículo: Cavalier (Chevrolet Cavalier), placas UTN260R, ~90,810 km, LP 60 L, gasolina 41 L. Placas/datos personales **no** van en el código (repo público): se pasan por JSON.
-- Finanzas = su Excel tal cual (hojas 1026/1126/1226 + BUDGET FAMILIAR): 75 pagos oct–dic sin repetición (ids `xl-<hoja>-<fila>`, Combustible como renglones), 5 ingresos de oct (`xl-in-<fecha>`, el 30/9 con `month`), 10 metas (`xl-meta-<fila>`), sin tope de combustible, apartado por mes vacío. Verificado oct: Objetivo 37,176 / Generado 8,990 / Faltante 28,186; diaria del budget = Excel.
+- Finanzas **antes de 2.7.0** = su Excel tal cual (hojas 1026/1126/1226 + BUDGET FAMILIAR): 75 pagos oct–dic sin repetición (ids `xl-<hoja>-<fila>`, Combustible como renglones), 5 ingresos de oct (`xl-in-<fecha>`, el 30/9 con `month`), 10 metas (`xl-meta-<fila>`), sin tope de combustible, apartado por mes vacío. Verificado oct: Objetivo 37,176 / Generado 8,990 / Faltante 28,186. Esos datos siguen en los stores anteriores y se migraron a `movimientos`/`metas` (revisar en el teléfono que oct muestre 37,176 de importes y 8,990 abonados).
 - Cargas LP: 11 `hist-lp-0..10` (15-jul a 9-sep; 15-jul no-llena) + 13 `lp-YYYY-MM-DD` (12-sep a 9-oct, de sus tickets; 20-sep sin km en ticket → 88,340 estimado y no-llena). Llenado no viene en los tickets: se marcaron llenas.
 - Archivos que se le dieron (en el scratchpad de la sesión, no en el repo): `secondbrain-completo.json` (vehículo + 11 cargas + finanzas con `replace`) y `cargas-sep-oct.json` (13 cargas). Por accidentes con "Importar" perdió datos dos veces; se le indicó subir ambos con **Agregar** (probado: 24 cargas, sin duplicados).
 - **Decidió (10-oct): opción 1** — combustible = cargas reales del Cavalier. Se le dio `combustible-real.json` (`deleteWhere` bills concept "Combustible" + budget `tope-combustible` $6,700 kind `fuel`); confirmar que lo subió con Agregar.

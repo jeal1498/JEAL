@@ -10,14 +10,12 @@ PWA personal (sin build, sin servidor). Los datos viven solo en el dispositivo (
 - **Avisos**: recordatorios por km y/o meses ("Hecho" los reinicia).
 - **Respaldo**: exportar/importar JSON y CSV de cargas (Ajustes).
 
-## Módulo Finanzas
-- **Hoy**: meta del día (pagos del mes + apartado para metas), lo que llevas hoy y próximos pagos.
-- **Ingresos**: calendario del mes con total por semana; toca un día para registrar.
-- **Pagos**: con fecha límite y repetición (semanal, quincenal, mensual). El ingreso del mes los cubre en orden de fecha; muestra pagado, pendiente y cuánto juntar por día.
-- **Presupuestos**: tope al mes (ej. combustible $6,000); cada gasto lo descuenta, lo que queda se reserva en la meta diaria y avisa al pasar 80% y 100%.
-- **Metas**: lo que sobra cada mes se aparta para las metas en orden de fecha; cuota diaria/semanal/mensual (metas a 120 días o menos).
-- **Conectado con Vehículo**: cargas, servicios y gastos del vehículo aparecen solos en Pagos; un pago de 🚗 Vehículo capturado en finanzas se guarda en Vehículo. Sin duplicados.
-- **Ajustes**: importar movimientos (JSON) sin borrar nada.
+## Módulo Finanzas (`finanzas/`, página propia dentro de la app)
+- **Gastos**: tus pagos con fecha límite, agrupados por urgencia (vencidos, hoy, esta semana…) o por categoría y mes. Arriba la **meta diaria** (lo pendiente del mes, con lo vencido, entre los días que quedan) y la gráfica de cuándo caen los pagos.
+- **Abonos**: cada pago guarda su historial de abonos ("Abonar o pagar", "Pagar todo", "Deshacer último abono").
+- **Metas**: ahorros con fecha y monto; cada ahorro se registra como abono, con la cuota para llegar a tiempo.
+- Eliminar tiene **Deshacer**; el modo claro/oscuro se cambia en la pantalla.
+- Los datos están en IndexedDB (`movimientos` y `metas`) y entran al buscador, a Inicio y al respaldo.
 
 ## Respaldo
 En **Respaldo** (inicio): conecta una hoja de Google Sheets de tu Drive (gratis, vía Apps Script). Se respalda sola cada vez que guardas algo, con una pestaña por tipo de dato; **Restaurar desde Drive** recupera todo en otro teléfono. También hay exportar/importar JSON.

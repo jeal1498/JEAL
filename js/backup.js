@@ -4,8 +4,7 @@
 import * as db from './db.js';
 
 const FUEL = { gasolina: 'Gasolina', lp: 'Gas LP' };
-const REPEAT = { '': 'No', week: 'Cada semana', '2week': 'Cada 2 semanas', month: 'Cada mes' };
-const KIND = { category: 'Todo lo de la categoría', fuel: 'Cargas de combustible' };
+const abonosTxt = (v) => (v || []).map((p) => `${p.fecha || 'sin fecha'}: ${p.monto}`).join(' · ');
 
 // [pestaña, store, [[campo, encabezado, formato?]]]
 const TABLES = [
@@ -13,15 +12,13 @@ const TABLES = [
   ['Servicio', 'maintenance', [['date', 'Fecha'], ['type', 'Tipo'], ['odometer', 'Odómetro'], ['cost', 'Costo'], ['shop', 'Taller'], ['notes', 'Notas']]],
   ['Gastos vehículo', 'expenses', [['date', 'Fecha'], ['category', 'Categoría'], ['amount', 'Monto'], ['notes', 'Notas']]],
   ['Avisos', 'reminders', [['title', 'Qué'], ['everyKm', 'Cada (km)'], ['everyMonths', 'Cada (meses)'], ['lastKm', 'Última vez (km)'], ['lastDate', 'Última vez (fecha)'], ['notes', 'Notas']]],
-  ['Ingresos', 'income', [['date', 'Fecha'], ['amount', 'Monto'], ['concept', 'Concepto'], ['notes', 'Notas']]],
-  ['Pagos', 'bills', [['date', 'Fecha límite'], ['concept', 'Concepto'], ['amount', 'Monto'], ['category', 'Categoría'], ['repeat', 'Se repite', (v) => REPEAT[v || '']], ['until', 'Repetir hasta'], ['notes', 'Notas']]],
-  ['Metas', 'goals', [['date', 'Para cuándo'], ['concept', 'Concepto'], ['amount', 'Monto'], ['category', 'Categoría'], ['saved', 'Ya ahorrado'], ['notes', 'Notas']]],
+  ['Pagos', 'movimientos', [['fecha', 'Fecha límite'], ['conc', 'Concepto'], ['imp', 'Importe'], ['abo', 'Abonado'], ['cat', 'Categoría'], ['pagos', 'Abonos', abonosTxt]]],
+  ['Metas', 'metas', [['fecha', 'Para cuándo'], ['conc', 'Concepto'], ['imp', 'Monto'], ['abo', 'Ahorrado'], ['cat', 'Categoría'], ['pagos', 'Abonos', abonosTxt]]],
   ['Notas', 'notes', [['title', 'Título'], ['body', 'Nota'], ['tags', 'Etiquetas'], ['pinned', 'Fijada', (v) => (v ? 'Sí' : '')]]],
   ['Pendientes', 'tasks', [['due', 'Para cuándo'], ['title', 'Qué'], ['done', 'Hecho', (v) => (v ? 'Sí' : 'No')], ['doneAt', 'Hecho el'], ['notes', 'Notas']]],
   ['Hábitos', 'habits', [['name', 'Hábito'], ['emoji', 'Emoji'], ['done', 'Días cumplidos', (v) => (v || []).length], ['done', 'Último', (v) => (v || []).slice(-1)[0] || '']]],
   ['Proyectos', 'projects', [['name', 'Proyecto'], ['emoji', 'Emoji'], ['status', 'Estado'], ['description', 'De qué trata'], ['links', 'Accesos'], ['tags', 'Etiquetas'], ['notes', 'Notas'], ['pinned', 'Fijado', (v) => (v ? 'Sí' : '')]]],
   ['Diario', 'journal', [['date', 'Fecha'], ['mood', 'Ánimo'], ['text', 'Texto']]],
-  ['Presupuestos', 'budgets', [['concept', 'Nombre'], ['amount', 'Tope al mes'], ['category', 'Categoría'], ['kind', 'Qué cuenta', (v) => KIND[v || 'category']], ['notes', 'Notas']]],
 ];
 
 // Un texto que empieza con "=" Sheets lo tomaría como fórmula.
@@ -32,7 +29,7 @@ function tables(data) {
     name,
     headers: cols.map((c) => c[1]),
     rows: [...(data[store] || [])]
-      .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+      .sort((a, b) => String(a.date || a.fecha || '').localeCompare(String(b.date || b.fecha || '')))
       .map((x) => cols.map(([k, , f]) => cell(f ? f(x[k]) : x[k]))),
   }));
   const settings = [
@@ -40,8 +37,6 @@ function tables(data) {
     ...Object.entries(data.finance || {}).filter(([k]) => k !== 'savings').map(([k, v]) => ['Finanzas', k, cell(v)]),
   ];
   out.push({ name: 'Ajustes', headers: ['Módulo', 'Dato', 'Valor'], rows: settings });
-  const savings = Object.entries(data.finance?.savings || {}).sort(([a], [b]) => a.localeCompare(b));
-  out.push({ name: 'Apartado por mes', headers: ['Mes', 'Apartado'], rows: savings.map(([k, v]) => [k, cell(v)]) });
   return out;
 }
 
@@ -69,11 +64,14 @@ async function call(url, opts) {
 export async function backupNow() {
   const cfg = await getConfig();
   if (!cfg.url) throw new Error('Respaldo no configurado');
+  const started = Date.now();
   const data = await db.exportAll();
   try {
     const out = await call(cfg.url, { method: 'POST', body: JSON.stringify({ token: cfg.token, tables: tables(data), raw: JSON.stringify(data) }) });
     if (!out.ok) throw new Error(out.error || 'Error en la hoja');
-    return await setConfig({ last: Date.now(), error: '' });
+    // Si algo cambió mientras se enviaba, sigue pendiente.
+    const now = await getConfig();
+    return await setConfig({ last: Date.now(), error: '', dirty: now.dirty > started ? now.dirty : 0 });
   } catch (err) {
     await setConfig({ error: err.message || 'Sin conexión', failedAt: Date.now() });
     throw err;
@@ -92,9 +90,11 @@ export async function fetchBackup() {
 // Respaldo automático: tras cada cambio (agrupando varios seguidos) y al abrir la app si pasó más de un día.
 let timer;
 export async function scheduleBackup(changed, onDone) {
-  const cfg = await getConfig();
+  let cfg = await getConfig();
   if (!cfg.url) return;
-  const stale = !cfg.last || Date.now() - cfg.last > 864e5 || cfg.error;
+  // Se anota el cambio: si la pantalla se cierra antes de que corra el temporizador, el respaldo sale al abrir la app.
+  if (changed) cfg = await setConfig({ dirty: Date.now() });
+  const stale = !cfg.last || Date.now() - cfg.last > 864e5 || cfg.error || cfg.dirty;
   if (!changed && !stale) return;
   clearTimeout(timer);
   timer = setTimeout(() => backupNow().then(onDone, onDone), changed ? 4000 : 1500);

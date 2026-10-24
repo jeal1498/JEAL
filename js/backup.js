@@ -12,8 +12,6 @@ const TABLES = [
   ['Servicio', 'maintenance', [['date', 'Fecha'], ['type', 'Tipo'], ['odometer', 'Odómetro'], ['cost', 'Costo'], ['shop', 'Taller'], ['notes', 'Notas']]],
   ['Gastos vehículo', 'expenses', [['date', 'Fecha'], ['category', 'Categoría'], ['amount', 'Monto'], ['notes', 'Notas']]],
   ['Avisos', 'reminders', [['title', 'Qué'], ['everyKm', 'Cada (km)'], ['everyMonths', 'Cada (meses)'], ['lastKm', 'Última vez (km)'], ['lastDate', 'Última vez (fecha)'], ['notes', 'Notas']]],
-  ['Pagos', 'movimientos', [['fecha', 'Fecha límite'], ['conc', 'Concepto'], ['imp', 'Importe'], ['abo', 'Abonado'], ['cat', 'Categoría'], ['pagos', 'Abonos', abonosTxt]]],
-  ['Metas', 'metas', [['fecha', 'Para cuándo'], ['conc', 'Concepto'], ['imp', 'Monto'], ['abo', 'Ahorrado'], ['cat', 'Categoría'], ['pagos', 'Abonos', abonosTxt]]],
   ['Notas', 'notes', [['title', 'Título'], ['body', 'Nota'], ['tags', 'Etiquetas'], ['pinned', 'Fijada', (v) => (v ? 'Sí' : '')]]],
   ['Pendientes', 'tasks', [['due', 'Para cuándo'], ['title', 'Qué'], ['done', 'Hecho', (v) => (v ? 'Sí' : 'No')], ['doneAt', 'Hecho el'], ['notes', 'Notas']]],
   ['Hábitos', 'habits', [['name', 'Hábito'], ['emoji', 'Emoji'], ['done', 'Días cumplidos', (v) => (v || []).length], ['done', 'Último', (v) => (v || []).slice(-1)[0] || '']]],

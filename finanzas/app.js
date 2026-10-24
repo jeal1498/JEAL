@@ -795,7 +795,7 @@ function openMenu() {
       <svg class="ic i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       <span><b id="menu-theme">${themeLabel()}</b></span>
     </button>
-    <button type="button" class="menu-row" data-action="open-sync">${ICO.upload}<span><b>Sincronizar con Google Sheets</b><small>${cfg.url ? (cfg.last ? 'Última vez: ' + new Date(cfg.last).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : 'Conectada, aún sin sincronizar') : 'Tú decides cuándo; aún no la conectas'}</small></span></button>
+    <button type="button" class="menu-row" data-action="open-sync">${ICO.upload}<span><b>Sincronizar con Google Sheets</b><small>${cfg.last ? 'Última vez: ' + new Date(cfg.last).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : 'Misma hoja de SecondBrain, otra pestaña; tú decides cuándo'}</small></span></button>
     <button type="button" class="menu-row" data-action="open-import">${ICO.upload}<span><b>Importar datos</b><small>Archivo JSON o CSV (Excel)</small></span></button>
     <button type="button" class="menu-row" data-action="export-json">${ICO.download}<span><b>Exportar JSON</b><small>Respaldo completo, con historial de abonos</small></span></button>
     <button type="button" class="menu-row" data-action="export-csv">${ICO.download}<span><b>Exportar CSV</b><small>Para abrir en Excel</small></span></button>
@@ -842,60 +842,26 @@ function kpiDashboard(base) {
     <button type="button" class="kpi-card kpi-total" data-action="filter" data-filter="todos" aria-pressed="${state.filter === 'todos'}"><span class="kpi-main"><span class="kpi-sec">RESUMEN OPERATIVO</span><span class="kpi-s">${plural(base.length, 'pago registrado', 'pagos registrados')}</span></span><span class="kpi-aside"><span class="kpi-l">Total cartera</span><span class="kpi-v">${fmtMoney(totalImp)}</span></span></button>`;
 }
 
-/* Sincronización manual con una hoja de Google (independiente de SecondBrain). */
-function openSync(note) {
+/* Sincronización manual con la hoja de Google que ya usa SecondBrain (mismo script y archivo, otras pestañas). */
+async function openSync(note) {
   sheet.ctx = { type: 'sync' };
   const cfg = sync.getCfg();
+  const conn = await sync.connection();
   const when = cfg.last ? new Date(cfg.last).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : 'nunca';
   const msg = note ? `<p class="note" role="status">${esc(note)}</p>` : (cfg.error ? `<p class="form-error" role="alert">${esc(cfg.error)}</p>` : '');
-  if (cfg.url) {
+  if (!conn) {
     openSheet('Sincronizar con Google Sheets', `
-      <p class="note">Hoja conectada. Última sincronización: <b>${when}</b>.</p>${msg}
+      <p class="note">Usa la misma hoja y el mismo script que ya tienes en SecondBrain, pero en otras pestañas y solo cuando tú lo pidas.</p>${msg}
+      <p class="hint">Aún no hay una hoja conectada. Entra a SecondBrain → Respaldo, conéctala una vez y vuelve aquí.</p>
+      <div class="btn-row"><a class="btn btn-primary" href="../#/respaldo">Ir a Respaldo</a></div>`);
+  } else {
+    openSheet('Sincronizar con Google Sheets', `
+      <p class="note">Misma hoja y mismo script de SecondBrain; tus datos van a las pestañas «Finanzas · Pagos» y «Finanzas · Metas». Última sincronización: <b>${when}</b>.</p>${msg}
       <div class="btn-row"><button type="button" class="btn btn-primary" data-action="sync-push" id="sync-push">Sincronizar ahora</button></div>
       <div class="btn-row"><button type="button" class="btn btn-soft" data-action="sync-pull">Traer de la hoja</button></div>
-      <p class="hint">«Sincronizar ahora» manda tus pagos y metas a las pestañas «Finanzas · Pagos» y «Finanzas · Metas». «Traer de la hoja» reemplaza lo que tienes aquí por la última copia enviada.</p>
-      <div class="btn-row"><button type="button" class="btn btn-danger" data-action="sync-off">Desconectar</button></div>`);
-  } else {
-    const id = cfg.id || '';
-    const code = id ? sync.scriptFor(id, cfg.token) : '';
-    openSheet('Sincronizar con Google Sheets', `
-      <p class="note">Elige tú cuándo guardar tus pagos y metas en una hoja de Google. Es independiente de SecondBrain.</p>${msg}
-      <label for="sy-sheet">1. Enlace de tu hoja de Google</label>
-      <input id="sy-sheet" type="text" inputmode="url" autocomplete="off" placeholder="https://docs.google.com/spreadsheets/d/…" value="${esc(cfg.link || '')}">
-      <div class="btn-row"><button type="button" class="btn btn-soft" data-action="sync-gen">Generar código</button></div>
-      ${id ? `<label for="sy-code">2. Copia este código</label>
-      <textarea id="sy-code" class="sy-code" readonly rows="6">${esc(code)}</textarea>
-      <div class="btn-row"><button type="button" class="btn btn-soft" data-action="sync-copy">Copiar código</button></div>
-      <p class="hint">Entra a script.google.com → Nuevo proyecto → borra lo que haya y pega el código → Guardar. Luego Implementar → Nueva implementación → tipo «Aplicación web» → «Ejecutar como: yo» y «Quién tiene acceso: Cualquier persona» → Implementar. Autoriza y copia la URL (termina en /exec).</p>
-      <label for="sy-url">3. Pega la URL de la aplicación web</label>
-      <input id="sy-url" type="text" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(cfg.urlDraft || '')}">
-      <div class="btn-row"><button type="button" class="btn btn-primary" data-action="sync-connect" id="sync-connect">Conectar</button></div>` : ''}`);
+      <p class="hint">«Traer de la hoja» reemplaza tus pagos y metas de este teléfono por la última copia guardada en la hoja.</p>`);
   }
   sheet.panel.focus({ preventScroll: true });
-}
-
-function syncGen() {
-  const link = ($('#sy-sheet') || {}).value || '';
-  const id = sync.sheetId(link);
-  if (!id) return openSync('No encontré el identificador de la hoja. Pega el enlace completo, el que aparece en la barra de direcciones.');
-  const cfg = sync.getCfg();
-  sync.setCfg({ id, link, token: cfg.id === id && cfg.token ? cfg.token : sync.newToken() });
-  openSync();
-}
-
-async function syncConnect() {
-  const url = (($('#sy-url') || {}).value || '').trim();
-  if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(url)) return openSync('La URL debe empezar con https://script.google.com y terminar en /exec.');
-  const btn = $('#sync-connect');
-  if (btn) { btn.disabled = true; btn.textContent = 'Probando…'; }
-  const cfg = sync.setCfg({ urlDraft: url });
-  try {
-    await sync.ping({ ...cfg, url });
-    sync.setCfg({ url, urlDraft: '', error: '' });
-    openSync('Conectada. Toca «Sincronizar ahora» cuando quieras.');
-  } catch (e) {
-    openSync(e.message || 'No se pudo conectar');
-  }
 }
 
 async function syncPush() {
@@ -1080,14 +1046,8 @@ document.addEventListener('click', async e => {
     }
     case 'open-menu': openMenu(); break;
     case 'open-sync': openSync(); break;
-    case 'sync-gen': syncGen(); break;
-    case 'sync-copy':
-      try { navigator.clipboard.writeText(($('#sy-code') || {}).value || '').then(() => toast('Código copiado')); } catch (e) { toast('Selecciona el texto y cópialo a mano'); }
-      break;
-    case 'sync-connect': syncConnect(); break;
     case 'sync-push': syncPush(); break;
     case 'sync-pull': syncPull(); break;
-    case 'sync-off': sync.clearCfg(); openSync('Hoja desconectada.'); break;
     case 'open-import': openImport(); break;
     case 'export-json':
       download(`finanzas-${toISO(HOY)}.json`, exportJSON(movimientos, metas), 'application/json');

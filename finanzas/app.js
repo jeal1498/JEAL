@@ -432,7 +432,7 @@ function renderList(groups, caption, countText, emptyKind, baseEmpty) {
   if (groups.length) { $('#list').innerHTML = groups.map(groupHTML).join(''); return; }
   const isMeta = state.view === 'metas';
   $('#list').innerHTML = baseEmpty
-    ? `<div class="empty"><strong>${isMeta ? 'Aún no hay metas' : `Nada en ${MESES[state.month.month].toLowerCase()}`}</strong>${isMeta ? 'Crea la primera meta de ahorro.' : 'Agrega el primer gasto de este mes.'}<button type="button" class="btn btn-primary" data-action="add" data-mode="new">${isMeta ? 'Nueva meta' : 'Nuevo gasto'}</button></div>`
+    ? `<div class="empty"><strong>${isMeta ? 'Aún no hay metas' : `Nada en ${MESES[state.month.month].toLowerCase()}`}</strong>${isMeta ? 'Crea la primera meta de ahorro.' : 'Agrega el primer movimiento de este mes.'}<button type="button" class="btn btn-primary" data-action="add" data-mode="new">${isMeta ? 'Nueva meta' : 'Nuevo movimiento'}</button></div>`
     : `<div class="empty"><strong>Sin resultados</strong>Prueba con otro filtro o con otra búsqueda.</div>`;
 }
 

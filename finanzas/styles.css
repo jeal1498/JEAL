@@ -528,3 +528,7 @@ body { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
 .kpi-alert-meta .kpi-sec { color: var(--meta); }
 .lg-m .kpi-lg-t, .lg-m .kpi-lg-m { color: var(--meta); }
 body { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+
+/* Ajustes y sincronización */
+.ajustes-link { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; margin-top: 8px; background: none; border: 0; color: var(--muted); font-size: 15px; font-weight: 700; }
+.sy-code { width: 100%; padding: 12px; border-radius: 14px; border: 1px solid var(--field-line); background: var(--bg); color: var(--ink); font: 12px/1.4 ui-monospace, monospace; resize: none; }

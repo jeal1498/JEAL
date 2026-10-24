@@ -99,7 +99,7 @@ const syncAbo = m => { m.abo = r2((m.pagos || []).reduce((t, p) => t + p.monto, 
 const state = {
   view: 'gastos',
   filter: 'todos',
-  grouping: lsGet(KEYS.group) === 'categoria' ? 'categoria' : 'urgencia',
+  grouping: lsGet(KEYS.group) === 'urgencia' ? 'urgencia' : 'categoria',
   month: { year: HOY.getFullYear(), month: HOY.getMonth() },
   open: {},
   search: ''
@@ -831,45 +831,43 @@ function openMenu() {
   sheet.panel.focus({ preventScroll: true });
 }
 
-/* KPI de Gastos: tres mosaicos de color que además filtran la lista (Pagados, Vencidos, Pendientes)
-   y debajo próximo vencimiento, mayor gasto, pagos por hacer, total egresos y por pagar. */
+/* Dashboard de Gastos: atención inmediata, meta diaria, tres mosaicos de estado (filtran la lista)
+   y resumen operativo (total cartera; vuelve a mostrar todo). */
 function kpiDashboard(base) {
   const totalImp = sum(base, 'imp'), totalAbo = sum(base, 'abo'), pend = sum(base, 'pendiente');
-  const porHacer = base.filter(m => m.pendiente > 0);
   const venc = base.filter(m => m.estado === 'Vencido');
+  const porV = base.filter(m => m.estado === 'Pendiente');
+  const pagados = base.filter(m => m.estado === 'Pagado');
   const atrasado = sum(venc, 'pendiente');
-  const porVencer = Math.max(0, pend - atrasado);
+  const porVencer = sum(porV, 'pendiente');
 
-  const futuros = base.filter(m => m.estado === 'Pendiente').sort((a, c) => a.date - c.date);
+  const finMes = new Date(HOY.getFullYear(), HOY.getMonth() + 1, 0);
+  const dias = Math.max(1, finMes.getDate() - HOY.getDate() + 1);
+  const meta = isCurrentMonth() ? fmtMoney(Math.round(pend / dias)) : '—';
+
+  const futuros = [...porV].sort((a, c) => a.date - c.date);
   const grupo = futuros.length ? futuros.filter(m => m.fecha === futuros[0].fecha) : [];
   const dprox = grupo.length ? daysFromToday(grupo[0].date) : 0;
 
-  const porCat = new Map();
-  base.forEach(m => { const c = catOf(m.cat); const e = porCat.get(c.id) || { c, imp: 0 }; e.imp += m.imp; porCat.set(c.id, e); });
-  const mayor = [...porCat.values()].sort((a, c) => c.imp - a.imp)[0];
-
+  const ic = d => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
   const tiles = [
-    { k: 'd', filter: 'todos', label: 'Todos', v: totalImp },
-    { k: 'a', filter: 'pagado', label: 'Abonado', v: totalAbo },
-    { k: 'b', filter: 'vencido', label: 'Atrasado', v: atrasado },
-    { k: 'c', filter: 'pendiente', label: 'Por vencer', v: porVencer }
+    { k: 'a', filter: 'pagado', label: 'Pagado', v: totalAbo, n: pagados.length },
+    { k: 'c', filter: 'pendiente', label: 'Por vencer', v: porVencer, n: porV.length },
+    { k: 'b', filter: 'vencido', label: 'Atrasado', v: atrasado, n: venc.length }
   ].map(t => {
     const on = state.filter === t.filter;
-    return `<button type="button" class="kpi-lg lg-${t.k}" data-action="filter" data-filter="${t.filter}" aria-pressed="${on}"><span class="kpi-lg-t"><i class="kpi-dot"></i>${t.label}</span><span class="kpi-lg-m">${fmtMoney(t.v)}</span></button>`;
+    return `<button type="button" class="kpi-lg lg-${t.k}" data-action="filter" data-filter="${on ? 'todos' : t.filter}" aria-pressed="${on}"><span class="kpi-lg-t">${t.label}</span><span><span class="kpi-lg-m">${fmtMoney(t.v)}</span><span class="kpi-s">${plural(t.n, 'pago', 'pagos')}</span></span></button>`;
   }).join('');
-  const ic = d => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 
   return `
-    <div class="kpi-legend">${tiles}</div>
-    <div class="kpi-card"><span class="kpi-ico">${ic('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>')}</span><span class="kpi-main"><span class="kpi-l">Próximo vencimiento</span><span class="kpi-v">${grupo.length ? fmtDate(grupo[0].fecha) : '—'}</span></span>${grupo.length ? `<span class="kpi-aside"><span class="kpi-v kpi-v-s">${fmtMoney(sum(grupo, 'pendiente'))}</span><span class="kpi-s">${dprox <= 0 ? 'hoy' : `en ${plural(dprox, 'día', 'días')}`}</span></span>` : ''}</div>
-    <div class="kpi-row">
-      <div class="kpi-card kpi-col"><span class="kpi-ico">${mayor ? catIcon(mayor.c) : ic('<path d="M4 6h16M4 12h16M4 18h16"/>')}</span><span class="kpi-main"><span class="kpi-l">Mayor gasto</span><span class="kpi-v kpi-v-s">${mayor ? esc(mayor.c.id) : '—'}</span></span></div>
-      <div class="kpi-card kpi-col"><span class="kpi-ico">${ic('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')}</span><span class="kpi-main"><span class="kpi-l">Pagos por hacer</span><span class="kpi-v">${porHacer.length}</span></span></div>
+    <div class="kpi-alert">
+      <span class="kpi-alert-ico">${ic('<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>')}</span>
+      <span class="kpi-main"><span class="kpi-sec">ATENCIÓN INMEDIATA</span><span class="kpi-alert-v">${grupo.length ? `Próximo: ${fmtDate(grupo[0].fecha)} · ${fmtMoney(sum(grupo, 'pendiente'))}` : (venc.length ? 'Solo hay pagos vencidos' : 'Sin pagos pendientes')}</span></span>
     </div>
-    <div class="kpi-row">
-      <div class="kpi-card kpi-col"><span class="kpi-l">Total egresos</span><span class="kpi-v">${fmtMoney(totalImp)}</span></div>
-      <div class="kpi-card kpi-col"><span class="kpi-l">Por pagar</span><span class="kpi-v">${fmtMoney(pend)}</span></div>
-    </div>`;
+    ${grupo.length ? `<p class="kpi-note">${dprox <= 0 ? 'Vence hoy' : `Vence en ${plural(dprox, 'día', 'días')}`}</p>` : ''}
+    <div class="kpi-card kpi-meta"><span class="kpi-sec">META DIARIA PARA ESTAR AL DÍA</span><span class="kpi-meta-v">${meta}</span><span class="kpi-s">${isCurrentMonth() ? 'por día' : 'solo en el mes actual'}</span></div>
+    <div class="kpi-legend">${tiles}</div>
+    <button type="button" class="kpi-card kpi-total" data-action="filter" data-filter="todos" aria-pressed="${state.filter === 'todos'}"><span class="kpi-main"><span class="kpi-sec">RESUMEN OPERATIVO</span><span class="kpi-s">${plural(base.length, 'pago registrado', 'pagos registrados')}</span></span><span class="kpi-aside"><span class="kpi-l">Total cartera</span><span class="kpi-v">${fmtMoney(totalImp)}</span></span></button>`;
 }
 
 function download(name, text, type) {

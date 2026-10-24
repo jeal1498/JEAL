@@ -476,25 +476,27 @@ body { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
 .today-pill { flex: none; font-size: 14px; font-weight: 700; background: var(--surface-2); border-radius: 99px; padding: 6px 12px; }
 
 /* Dashboard de KPI */
-.kpi-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
-.kpi-lg { cursor: pointer; flex: 1; min-width: 0; min-height: 76px; padding: 12px; border: 0; border-radius: 22px; background: var(--surface-2); text-align: left; display: flex; flex-direction: column; justify-content: space-between; transition: background .2s; }
-.kpi-lg[aria-pressed="true"] { background: color-mix(in srgb, var(--ink) 14%, var(--surface-2)); }
-.kpi-lg-t { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
-.kpi-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.lg-a .kpi-dot { background: var(--bar-paid); } .lg-b .kpi-dot { background: var(--bar-late); } .lg-c .kpi-dot { background: var(--bar-soon); }
-.kpi-lg-m { font-size: 18px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.lg-a .kpi-lg-m { color: var(--ok); } .lg-b .kpi-lg-m { color: var(--danger); } .lg-c .kpi-lg-m { color: var(--warn); }
-.kpi-card { display: flex; align-items: center; gap: 14px; margin-top: 10px; padding: 16px; border-radius: 24px; background: var(--surface-2); }
-.kpi-col { flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; gap: 10px; }
-.kpi-row { display: flex; gap: 10px; }
-.kpi-ico { width: 44px; height: 44px; border-radius: 16px; display: grid; place-items: center; flex: none; background: var(--bg); }
-.kpi-ico .mono { width: 22px; height: 22px; font-size: 12px; }
-.kpi-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.kpi-aside { display: flex; flex-direction: column; align-items: flex-end; }
-.kpi-l { font-size: 14px; font-weight: 600; color: var(--muted); }
-.kpi-v { font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.kpi-v-s { font-size: 22px; }
-.kpi-s { font-size: 14px; color: var(--muted); }
+.kpi-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.kpi-lg { cursor: pointer; min-width: 0; min-height: 104px; padding: 12px; border: 0; border-radius: 22px; background: var(--surface-2); color: var(--ink); text-align: left; display: flex; flex-direction: column; justify-content: space-between; }
 .kpi-lg[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
-.lg-d .kpi-dot { background: var(--ink); }
-.lg-d .kpi-lg-m { color: var(--ink); }
+.kpi-lg-t { font-size: 14px; font-weight: 700; }
+.kpi-lg-m { display: block; font-size: 20px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.lg-a .kpi-lg-t, .lg-a .kpi-lg-m { color: var(--ok); }
+.lg-c .kpi-lg-t, .lg-c .kpi-lg-m { color: var(--warn); }
+.lg-b { background: var(--danger-bg); }
+.lg-b .kpi-lg-t, .lg-b .kpi-lg-m, .lg-b .kpi-s { color: var(--danger); }
+.kpi-s { display: block; font-size: 14px; color: var(--muted); }
+.kpi-l { font-size: 14px; color: var(--muted); }
+.kpi-v { font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kpi-sec { font-size: 14px; font-weight: 700; color: var(--muted); letter-spacing: .08em; }
+.kpi-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.kpi-aside { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.kpi-card { display: flex; align-items: center; gap: 14px; margin-top: 12px; padding: 16px; border-radius: 24px; background: var(--surface-2); width: 100%; border: 0; color: var(--ink); text-align: left; }
+.kpi-total[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
+.kpi-meta { flex-direction: column; align-items: flex-start; gap: 2px; }
+.kpi-meta-v { font-size: 56px; font-weight: 800; letter-spacing: -.05em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kpi-alert { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 16px; border-radius: 24px; background: var(--warn-bg); }
+.kpi-alert-ico { width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center; flex: none; color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.kpi-alert .kpi-sec { color: var(--warn); }
+.kpi-alert-v { font-size: 18px; font-weight: 800; letter-spacing: -.02em; margin-top: 2px; }
+.kpi-note { margin: 8px 0 0 4px; font-size: 14px; color: var(--muted); }

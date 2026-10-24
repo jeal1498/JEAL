@@ -218,7 +218,7 @@ function buildMetas() {
   const base = metas.map(procesarMeta);
   const q = state.search.trim().toLowerCase();
   const items = base.filter(m =>
-    (state.filter === 'todas' || plazoKey(m) === state.filter) &&
+    (state.filter === 'todas' || (state.filter === 'porlograr' ? ['proxima', 'largo'].includes(plazoKey(m)) : plazoKey(m) === state.filter)) &&
     (!q || `${m.conc} ${m.cat}`.toLowerCase().includes(q))
   );
   return { base, items, q };
@@ -227,62 +227,50 @@ function buildMetas() {
 /* =========================================================
    Render: resumen
    ========================================================= */
-function setHero(h) {
-  $('#s-label').textContent = h.label;
-  $('#s-amount').textContent = h.amount;
-  $('#s-note').textContent = h.note;
-  [['#stat-1', h.stat1], ['#stat-2', h.stat2], ['#stat-3', h.stat3]].forEach(([sel, s]) => {
-    const el = $(sel);
-    $('.stat-label', el).textContent = s.label;
-    const v = $('.stat-value', el);
-    v.textContent = s.value;
-    v.className = 'stat-value' + (s.tone ? ' t-' + s.tone : '');
-    $('.stat-sub', el).textContent = s.sub || '';
-  });
-}
-
 function renderHeroGastos(b) {
   $('#kpi-dash').innerHTML = kpiDashboard(b.base);
   $('#kpi-dash').hidden = false;
-  $('#hero-simple').hidden = true;
 }
 
 function renderHeroMetas(b) {
   const base = b.base;
   const totalObj = sum(base, 'imp'), totalAbo = sum(base, 'abo');
   const pend = base.reduce((t, m) => t + (m.imp > 0 ? Math.max(0, m.imp - m.abo) : 0), 0);
-  const pct = totalObj > 0 ? Math.round(totalAbo / totalObj * 100) : 0;
+  const faltante = m => m.imp > 0 ? Math.max(0, m.imp - m.abo) : 0;
   const alcanzadas = base.filter(m => plazoKey(m) === 'alcanzada');
   const vencidas = base.filter(m => plazoKey(m) === 'vencida');
-  const atrasado = vencidas.reduce((t, m) => t + (m.imp - m.abo), 0);
+  const enCurso = base.filter(m => ['proxima', 'largo'].includes(plazoKey(m)));
+  const atrasado = vencidas.reduce((t, m) => t + faltante(m), 0);
+  const porLograr = enCurso.reduce((t, m) => t + faltante(m), 0);
+  const pct = totalObj > 0 ? Math.round(totalAbo / totalObj * 100) : 0;
 
   const siguiente = base
-    .filter(m => m.imp > 0 && m.abo < m.imp && daysFromToday(m.date) <= 180)
+    .filter(m => m.imp > 0 && m.abo < m.imp && daysFromToday(m.date) >= 0)
     .sort((a, c) => a.date - c.date)[0];
+  const ic = d => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+  const tiles = [
+    { k: 'a', filter: 'alcanzada', label: 'Ahorrado', v: totalAbo, sub: `${pct}% del total` },
+    { k: 'm', filter: 'porlograr', label: 'Por lograr', v: porLograr, sub: plural(enCurso.length, 'meta', 'metas') },
+    { k: 'b', filter: 'vencida', label: 'Atrasada', v: atrasado, sub: plural(vencidas.length, 'meta', 'metas') }
+  ].map(t => {
+    const on = state.filter === t.filter;
+    return `<button type="button" class="kpi-lg lg-${t.k}" data-action="filter" data-filter="${on ? 'todas' : t.filter}" aria-pressed="${on}"><span class="kpi-lg-t">${t.label}</span><span><span class="kpi-lg-m">${fmtMoney(t.v)}</span><span class="kpi-s">${t.sub}</span></span></button>`;
+  }).join('');
 
-  setHero({
-    label: 'Te falta ahorrar',
-    amount: fmtMoney(pend),
-    note: totalObj > 0 ? `Llevas ahorrado ${fmtMoney(totalAbo)} de ${fmtMoney(totalObj)} (${pct}%)` : 'Aún no hay metas con monto',
-    stat1: { label: 'Ahorrado', value: fmtMoney(totalAbo), tone: totalAbo > 0 ? 'ok' : '' },
-    stat2: { label: 'Atrasado', value: fmtMoney(atrasado), tone: atrasado > 0 ? 'danger' : '' },
-    stat3: { label: 'Siguiente', value: siguiente ? fmtMoney(siguiente.imp - siguiente.abo) : '—', sub: siguiente ? fmtDate(siguiente.fecha) : '' }
-  });
-
-  $('#s-meter').hidden = false;
-  $('#s-meter span').style.width = pct + '%';
-  $('#kpi-dash').hidden = true;
-  $('#hero-simple').hidden = false;
+  $('#kpi-dash').innerHTML = `
+    <div class="kpi-alert kpi-alert-meta">
+      <span class="kpi-alert-ico">${ic('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>')}</span>
+      <span class="kpi-main"><span class="kpi-sec">SIGUIENTE META</span><span class="kpi-alert-v">${siguiente ? `${esc(siguiente.conc)} · ${fmtDate(siguiente.fecha)} · ${fmtMoney(faltante(siguiente))}` : 'Sin metas en curso'}</span></span>
+    </div>
+    <div class="kpi-card kpi-meta"><span class="kpi-sec">TE FALTA AHORRAR</span><span class="kpi-meta-v">${fmtMoney(pend)}</span><span class="kpi-s">${totalObj > 0 ? `de ${fmtMoney(totalObj)} en ${plural(base.length, 'meta', 'metas')}` : 'Aún no hay metas con monto'}</span></div>
+    <div class="kpi-legend">${tiles}</div>
+    <button type="button" class="kpi-card kpi-total" data-action="filter" data-filter="todas" aria-pressed="${state.filter === 'todas'}"><span class="kpi-main"><span class="kpi-sec">RESUMEN DE METAS</span><span class="kpi-s">${plural(alcanzadas.length, 'alcanzada', 'alcanzadas')}</span></span><span class="kpi-aside"><span class="kpi-l">Total objetivo</span><span class="kpi-v">${fmtMoney(totalObj)}</span></span></button>`;
+  $('#kpi-dash').hidden = false;
 }
 
 /* =========================================================
    Render: filtros
    ========================================================= */
-function renderChips(defs) {
-  $('#chips').innerHTML = defs.map(d =>
-    `<button type="button" class="chip" data-action="filter" data-filter="${d.key}" aria-pressed="${state.filter === d.key}">${d.label}<span class="n">${d.count}</span></button>`
-  ).join('');
-}
 
 function renderMonthControls() {
   const urg = state.grouping === 'urgencia';
@@ -441,10 +429,9 @@ function renderList(groups, caption, countText, emptyKind, baseEmpty) {
    ========================================================= */
 function render() {
   const isG = state.view === 'gastos';
-  $$('.nav-btn').forEach(b => b.setAttribute('aria-current', b.dataset.view === state.view ? 'page' : 'false'));
-  $('#month-label').hidden = !isG;
-  $('.controls').hidden = isG;
-  $('#title-metas').hidden = isG;
+  $$('#view-switch button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
+  $('#month-label').disabled = !isG;
+  $('.controls').hidden = true;
   $('#seg').hidden = !isG;
   const addBtn = $('.nav-add'), addLabel = isG ? 'Agregar pago o abono' : 'Agregar meta o ahorro';
   addBtn.setAttribute('aria-label', addLabel); addBtn.title = addLabel;
@@ -453,24 +440,11 @@ function render() {
     const b = buildGastos();
     renderHeroGastos(b);
     renderMonthControls();
-    renderChips([
-      { key: 'todos', label: 'Todos', count: b.base.length },
-      { key: 'vencido', label: 'Vencidos', count: b.base.filter(m => m.estado === 'Vencido').length },
-      { key: 'pendiente', label: 'Pendientes', count: b.base.filter(m => m.estado === 'Pendiente').length },
-      { key: 'pagado', label: 'Pagados', count: b.base.filter(m => m.estado === 'Pagado').length }
-    ]);
     renderList(groupsGastos(b), b.isUrg ? 'Por urgencia' : 'Por categoría', plural(b.items.length, 'movimiento', 'movimientos'), 'gastos', b.base.length === 0);
   } else {
     const b = buildMetas();
     renderHeroMetas(b);
-    const count = k => b.base.filter(m => plazoKey(m) === k).length;
-    renderChips([
-      { key: 'todas', label: 'Todas', count: b.base.length },
-      { key: 'vencida', label: 'Vencidas', count: count('vencida') },
-      { key: 'proxima', label: 'Próximas', count: count('proxima') },
-      { key: 'largo', label: 'Largo plazo', count: count('largo') },
-      { key: 'alcanzada', label: 'Alcanzadas', count: count('alcanzada') }
-    ]);
+    $('#month-text').textContent = `${HOY.getDate()} ${MESES[HOY.getMonth()]} ${HOY.getFullYear()}`;
     renderList(groupsMetas(b), 'Por plazo', plural(b.items.length, 'meta', 'metas'), 'metas', b.base.length === 0);
   }
 }

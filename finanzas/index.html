@@ -30,10 +30,13 @@
 <div class="app">
   <header class="header">
     <div class="header-title-row">
-      <h1 id="title-metas" hidden>Metas de ahorro</h1>
       <button type="button" class="hp-label" id="month-label" data-action="month-picker" aria-haspopup="dialog">
         <span id="month-text"></span>
       </button>
+    </div>
+    <div class="view-switch" id="view-switch" role="group" aria-label="Ver">
+      <button type="button" data-action="view" data-view="gastos" aria-pressed="true">Pagos</button>
+      <button type="button" data-action="view" data-view="metas" aria-pressed="false">Metas</button>
     </div>
   </header>
 
@@ -44,20 +47,6 @@
 
   <section class="hero" aria-label="Resumen">
     <div id="kpi-dash"></div>
-    <div id="hero-simple">
-    <p class="hero-label" id="s-label"></p>
-    <div class="hero-main">
-      <p class="hero-amount" id="s-amount">$0</p>
-      <p class="hero-note" id="s-note"></p>
-    </div>
-    <div class="meter" id="s-meter" hidden><span></span></div>
-
-    <div class="hero-stats">
-      <div class="stat" id="stat-1"><span class="stat-label"></span><span class="stat-value"></span><span class="stat-sub"></span></div>
-      <div class="stat" id="stat-2"><span class="stat-label"></span><span class="stat-value"></span><span class="stat-sub"></span></div>
-      <div class="stat" id="stat-3"><span class="stat-label"></span><span class="stat-value"></span><span class="stat-sub"></span></div>
-    </div>
-    </div>
   </section>
 
   <section class="controls" aria-label="Filtros">
@@ -79,20 +68,10 @@
   </main>
 </div>
 
-<nav class="bottom-nav" aria-label="Secciones">
-  <div class="bottom-nav-inner">
-    <button type="button" class="nav-btn" data-action="view" data-view="gastos" aria-current="page">
-      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
-      Movimientos
-    </button>
-    <button type="button" class="nav-add" data-action="add" aria-label="Agregar">
-      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
-    <button type="button" class="nav-btn" data-action="view" data-view="metas" aria-current="false">
-      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
-      Metas
-    </button>
-  </div>
+<nav class="bottom-nav" aria-label="Agregar">
+  <button type="button" class="nav-add" data-action="add" aria-label="Agregar">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
 </nav>
 
 <div class="sheet-backdrop" id="sheet" data-action="backdrop" hidden>

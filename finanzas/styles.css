@@ -513,3 +513,18 @@ body { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
 .header-title-row { margin-top: 0; }
 .hp-label { min-height: 56px; width: 100%; justify-content: center; font-size: 30px; }
 .header-title-row h1 { font-size: 30px; }
+
+/* Una sola pantalla: interruptor Pagos | Metas y botón + flotante sin barra */
+.view-switch { display: flex; gap: 4px; padding: 4px; border-radius: 18px; background: var(--surface-2); margin-top: 4px; }
+.view-switch button { flex: 1; height: 44px; border: 0; border-radius: 14px; background: none; color: var(--muted); font-size: 16px; font-weight: 700; }
+.view-switch button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+.bottom-nav { background: none; border: 0; box-shadow: none; backdrop-filter: none; height: 0; pointer-events: none; }
+.bottom-nav .nav-add { pointer-events: auto; }
+.hp-label:disabled { cursor: default; }
+:root { --meta: #6b4fd6; --meta-bg: #ece6ff; }
+:root[data-theme="dark"] { --meta: #b9a3ff; --meta-bg: #241f3a; }
+.kpi-alert-meta { background: var(--meta-bg); }
+.kpi-alert-meta .kpi-alert-ico { color: var(--meta); background: color-mix(in srgb, var(--meta) 16%, transparent); }
+.kpi-alert-meta .kpi-sec { color: var(--meta); }
+.lg-m .kpi-lg-t, .lg-m .kpi-lg-m { color: var(--meta); }
+body { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }

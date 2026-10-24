@@ -441,8 +441,7 @@ function renderList(groups, caption, countText, emptyKind, baseEmpty) {
    ========================================================= */
 function render() {
   const isG = state.view === 'gastos';
-  $('#header-sub').textContent = `Finanzas · ${isG ? 'Gastos' : 'Metas'}`;
-  $('#today-pill').textContent = `Hoy · ${DIAS[HOY.getDay()].slice(0, 3).toLowerCase()} ${HOY.getDate()}`;
+  $('#today-pill').textContent = `${HOY.getDate()} de ${MESES[HOY.getMonth()].toLowerCase()} de ${HOY.getFullYear()}`;
   $$('.nav-btn').forEach(b => b.setAttribute('aria-current', b.dataset.view === state.view ? 'page' : 'false'));
   $('#month-label').hidden = !isG;
   $('.controls').hidden = isG;
@@ -615,7 +614,7 @@ function reveal(kind, raw) {
   if (!okFilter) state.filter = isMeta ? 'todas' : 'todos';
   const q = state.search.trim().toLowerCase();
   if (q && !`${raw.conc} ${raw.cat}`.toLowerCase().includes(q)) {
-    state.search = ''; $('#search').value = ''; $('#search-bar').hidden = true; $('#search-toggle').setAttribute('aria-expanded', 'false');
+    state.search = ''; $('#search').value = ''; $('#search-bar').hidden = true;
   }
   state.open[isMeta ? `p|${plazoKey(raw)}` : (state.grouping === 'urgencia' ? `u|${urgenciaKey(procesar(raw))}` : `c|${catOf(raw.cat).id}`)] = true;
 }
@@ -972,7 +971,6 @@ function setView(v) {
   state.search = '';
   $('#search').value = '';
   $('#search-bar').hidden = true;
-  $('#search-toggle').setAttribute('aria-expanded', 'false');
   window.scrollTo(0, 0);
   render();
 }

@@ -1,5 +1,5 @@
 // Service worker: la app funciona offline. Sube CACHE al publicar cambios.
-const CACHE = 'secondbrain-v41';
+const CACHE = 'secondbrain-v42';
 const ASSETS = [
   './',
   'index.html',

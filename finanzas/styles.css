@@ -500,3 +500,11 @@ body { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
 .kpi-alert .kpi-sec { color: var(--warn); }
 .kpi-alert-v { font-size: 18px; font-weight: 800; letter-spacing: -.02em; margin-top: 2px; }
 .kpi-note { margin: 8px 0 0 4px; font-size: 14px; color: var(--muted); }
+
+/* Encabezado: solo la fecha de hoy completa, centrada, y el selector de mes */
+.header { padding-top: calc(16px + env(safe-area-inset-top)); }
+.today-banner { text-align: center; font-size: 17px; font-weight: 700; padding: 12px 16px; border-radius: 18px; color: var(--ok); background: var(--ok-bg); }
+.header-title-row { justify-content: center; margin-top: 6px; }
+.hp-label { font-size: 22px; }
+.hp-label .ic { width: 18px; height: 18px; }
+.header-title-row h1 { font-size: 24px; text-align: center; }

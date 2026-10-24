@@ -286,7 +286,7 @@ function renderChips(defs) {
 
 function renderMonthControls() {
   const urg = state.grouping === 'urgencia';
-  $('#month-text').textContent = `${MESES[state.month.month]} ${state.month.year}`;
+  $('#month-text').textContent = `${isCurrentMonth() ? HOY.getDate() + ' ' : ''}${MESES[state.month.month]} ${state.month.year}`;
   $('#g-cat').setAttribute('aria-pressed', String(!urg));
   $('#g-urg').setAttribute('aria-pressed', String(urg));
 }
@@ -441,7 +441,6 @@ function renderList(groups, caption, countText, emptyKind, baseEmpty) {
    ========================================================= */
 function render() {
   const isG = state.view === 'gastos';
-  $('#today-pill').textContent = `${HOY.getDate()} de ${MESES[HOY.getMonth()].toLowerCase()} de ${HOY.getFullYear()}`;
   $$('.nav-btn').forEach(b => b.setAttribute('aria-current', b.dataset.view === state.view ? 'page' : 'false'));
   $('#month-label').hidden = !isG;
   $('.controls').hidden = isG;
